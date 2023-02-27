@@ -1,4 +1,4 @@
-.PHONY: all test clean distclean install sysupdate tar rpm rpm-foobar rpm-local
+.PHONY: all test clean distclean install sysupdate tar rpm foopkg
 
 all: test
 
@@ -8,7 +8,7 @@ test:
 	pylint-3 src/foomuuri
 
 clean distclean:
-	rm -rf foomuuri-*.tar.bz2 foomuuri-*.src.rpm foopkg.conf tmp/
+	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm foopkg.conf tmp/
 
 install:
 	mkdir -p $(PREFIX)/etc/foomuuri/
@@ -42,15 +42,11 @@ VERSION ?= $(lastword $(shell grep ^Version: foomuuri.spec))
 tar: clean
 	tar cavf foomuuri-$(VERSION).tar.gz --transform=s,,foomuuri-$(VERSION)/, --show-transformed .gitignore *
 
-foopkg.conf:
-	echo "[foopkg]" > foopkg.conf
-	echo "buildrepo = foo9/foobar-testing" >> foopkg.conf
-
 rpm: tar
 	rpmbuild -ba --define="_topdir $(CURDIR)/tmp" --define="_sourcedir $(CURDIR)" foomuuri.spec
 
-rpm-foobar: tar foopkg.conf
+foopkg:
+	rpmdev-spectool --get-files foomuuri.spec
+	echo "[foopkg]" > foopkg.conf
+	echo "buildrepo = foo9/foobar-testing" >> foopkg.conf
 	foopkg build
-
-rpm-local: tar foopkg.conf
-	foopkg local
