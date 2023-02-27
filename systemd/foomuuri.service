@@ -1,0 +1,16 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall
+Before=network-pre.target
+Wants=network-pre.target
+Wants=foomuuri-dbus.service
+Wants=foomuuri-resolve.timer
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/foomuuri start-or-good
+ExecReload=/usr/sbin/foomuuri start
+ExecStop=/usr/sbin/foomuuri stop
+
+[Install]
+WantedBy=basic.target

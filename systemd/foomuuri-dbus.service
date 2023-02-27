@@ -1,0 +1,13 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall - D-Bus handler
+After=dbus.service
+After=polkit.service
+After=foomuuri.service
+Requires=foomuuri.service
+PartOf=foomuuri.service
+Conflicts=firewalld.service
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/foomuuri dbus
+ExecReload=kill -HUP $MAINPID

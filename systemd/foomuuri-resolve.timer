@@ -1,0 +1,8 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall - Resolve hostnames
+Requires=foomuuri.service
+PartOf=foomuuri.service
+
+[Timer]
+OnBootSec=3m
+OnUnitInactiveSec=15m

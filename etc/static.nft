@@ -1,0 +1,44 @@
+	chain allow_icmp_4 {
+		icmp type {
+			destination-unreachable,
+			time-exceeded,
+			parameter-problem
+		} accept
+	}
+
+	chain allow_icmp_6 {
+		icmpv6 type {
+			destination-unreachable,
+			packet-too-big,
+			time-exceeded,
+			parameter-problem,
+			nd-router-solicit,
+			nd-neighbor-solicit,
+			nd-neighbor-advert,
+			ind-neighbor-solicit,
+			ind-neighbor-advert
+		} accept
+		ip6 saddr fe80::/10 icmpv6 type {
+			nd-router-advert,
+			mld-listener-query,
+			mld-listener-report,
+			mld-listener-done,
+			149,  # Certification Path Advertisement
+			151,  # Multicast Router Advertisement
+			152,  # Multicast Router Solicitation
+			153   # Multicast Router Termination
+		} accept
+		ip6 saddr { ::, fe80::/10 } icmpv6 type {
+			mld2-listener-report,
+			148   # Certification Path Solicitation
+		} accept
+	}
+
+	chain smurfs_4 {
+		ip saddr 0.0.0.0 return
+		fib saddr type { broadcast, multicast } goto smurfs_drop
+	}
+
+	chain smurfs_6 {
+		fib saddr type { broadcast, multicast } goto smurfs_drop
+	}
