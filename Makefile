@@ -1,4 +1,4 @@
-.PHONY: all test clean distclean install sysupdate tar rpm foopkg
+.PHONY: all test clean distclean install sysupdate release tar rpm
 
 all: test
 
@@ -8,7 +8,7 @@ test:
 	pylint-3 src/foomuuri
 
 clean distclean:
-	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm foopkg.conf tmp/
+	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm tmp/
 
 install:
 	mkdir -p $(PREFIX)/etc/foomuuri/
@@ -37,16 +37,27 @@ sysupdate:
 	make install PREFIX=/
 	systemctl daemon-reload
 
-VERSION ?= $(lastword $(shell grep ^Version: foomuuri.spec))
+### Release
+
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "make release VERSION=x.xx"; \
+		exit 1; \
+	fi
+	git diff --exit-code
+	git diff --cached --exit-code
+	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
+	sed -i -e "s@^\(Version:        \).*@\1$(VERSION)@" foomuuri.spec
+	git add src/foomuuri foomuuri.spec
+	git commit --message="v$(VERSION)"
+	git tag "v$(VERSION)"
+
+### Build tar/rpm locally
+
+SPEC_VERSION ?= $(lastword $(shell grep ^Version: foomuuri.spec))
 
 tar: clean
-	tar cavf foomuuri-$(VERSION).tar.gz --transform=s,,foomuuri-$(VERSION)/, --show-transformed .gitignore *
+	tar cavf foomuuri-$(SPEC_VERSION).tar.gz --transform=s,,foomuuri-$(SPEC_VERSION)/, --show-transformed .gitignore *
 
 rpm: tar
 	rpmbuild -ba --define="_topdir $(CURDIR)/tmp" --define="_sourcedir $(CURDIR)" foomuuri.spec
-
-foopkg:
-	rpmdev-spectool --get-files foomuuri.spec
-	echo "[foopkg]" > foopkg.conf
-	echo "buildrepo = foo9/foobar-testing" >> foopkg.conf
-	foopkg build

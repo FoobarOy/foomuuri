@@ -26,6 +26,8 @@ from gi.repository import GLib
 from systemd.daemon import notify
 
 
+VERSION = '0.16'
+
 CONFIG = {
     # Parsed foomuuri{} from config files
     'log_rate': '1/second burst 3 packets',
@@ -1921,6 +1923,9 @@ def command_line():
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['command'] = 'help'
+        elif arg == '--version':
+            print(VERSION)
+            sys.exit(0)
         elif arg == '--devel':
             CONFIG['devel'] = True
             CONFIG['etc_dir'] = '../foomuuri-devel'
@@ -1944,9 +1949,11 @@ def command_line():
 
     # Help
     if CONFIG['command'] == 'help':
+        print(f'Foomuuri {VERSION}')
+        print()
         print(f'Usage: {sys.argv[0]} command')
         print()
-        print('Available commands are:')
+        print('Available commands:')
         print()
         print('  start           Load rules')
         print('  start-or-good   Load rules or fallback to previous "good"')
@@ -1955,7 +1962,7 @@ def command_line():
         print('  list zone-zone  List active rules for zone-zone')
         print('  check           Check config files')
         print()
-        print('Internally used commands are:')
+        print('Internally used commands:')
         print()
         print('  resolve         Resolve hostnames')
         print('  dbus            Start dbus daemon')
