@@ -44,9 +44,9 @@ CONFIG = {
     'counter': 'no',
     'dbus_firewalld': 'no',
     'recursion_limit': '65535',
+    'nft_bin': 'nft',
 
     # Directories and files. Files are relative to state_dir.
-    'nft_bin': '/usr/sbin/nft',
     'etc_dir': '/etc/foomuuri',
     'share_dir': '/usr/share/foomuuri',
     'state_dir': '/var/lib/foomuuri',
@@ -57,7 +57,7 @@ CONFIG = {
     'resolve_file': 'resolve.fw',
     'zone_file': 'zone',
 
-    # Parsed command line parameters
+    # Parsed command line parameters - used internally
     'command': '',
     'parameters': [],
     'devel': False,
@@ -1932,6 +1932,13 @@ def command_line():
             CONFIG['share_dir'] = 'not-used-as-etc-finds-these'
             CONFIG['state_dir'] = '../foomuuri-devel'
             CONFIG['run_dir'] = '../foomuuri-devel'
+        elif arg.startswith('--set='):
+            if arg.count('=') == 1:
+                fail(f'Invalid syntax for --set=variable=value: {arg}')
+            _dummy, variable, value = arg.split('=', 2)
+            if variable not in CONFIG:
+                fail(f'Unknown foomuuri{{}} option: {arg}')
+            CONFIG[variable] = value
         elif not CONFIG['command']:
             CONFIG['command'] = arg
         else:
