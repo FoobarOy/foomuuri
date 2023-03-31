@@ -463,8 +463,8 @@ def parse_rule_line(fileline_line):
         'to': None,  # snat to
         'counter': False,
         'helper': None,
-        'src_ipsec': None,
-        'dst_ipsec': None,
+        'sipsec': None,
+        'dipsec': None,
         'log': None,
         'nft': None,
         'mss': None,
@@ -504,10 +504,10 @@ def parse_rule_line(fileline_line):
         elif item in ('ipv4', 'ipv6', 'counter'):
             ret[item] = True
             keyword = None
-        elif item in ('src_ipsec', 'dst_ipsec'):
+        elif item in ('sipsec', 'dipsec'):
             ret[item] = 'exists'
             keyword = None
-        elif item in ('-src_ipsec', '-dst_ipsec'):
+        elif item in ('-sipsec', '-dipsec'):
             ret[item[1:]] = 'missing'
             keyword = None
 
@@ -944,10 +944,10 @@ def match_rules(rule, cast, ipv, skip_options=True, need_addrlist=False):
         castmeta = f'meta pkttype {rule["cast"]} '
 
     ipsecmeta = ''
-    if rule['src_ipsec']:
-        ipsecmeta += f'meta ipsec {rule["src_ipsec"]} '
-    if rule['dst_ipsec']:
-        ipsecmeta += f'rt ipsec {rule["dst_ipsec"]} '
+    if rule['sipsec']:
+        ipsecmeta += f'meta ipsec {rule["sipsec"]} '
+    if rule['dipsec']:
+        ipsecmeta += f'rt ipsec {rule["dipsec"]} '
 
     ifname = parse_interface_names(rule)
 
