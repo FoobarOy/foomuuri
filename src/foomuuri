@@ -1906,14 +1906,24 @@ def command_list():
     zones = parse_config_zones(config)
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
-    # List rules for single zone-zone
+    # List rules for single zone-zone, or known macros
     ret = 0
     for zone in CONFIG['parameters']:
-        if zone not in zonepairs:
-            fail(f'Unknown zone-zone: {zone}')
-        for ipv in (4, 6):
-            ret += run_program([CONFIG['nft_bin'], 'list', 'chain', 'inet',
-                                'foomuuri', f'{zone}_{ipv}'], True)
+        if zone == 'macro':
+            # List macros. config{} doesn't have macro{} anymore so config
+            # must be re-read.
+            macros = parse_config_macros(read_config())
+            print('macro {')
+            for macro in sorted(macros):
+                print(f'  {macro:15s} {" ".join(macros[macro])}')
+            print('}')
+        else:
+            # List zone-zone
+            if zone not in zonepairs:
+                fail(f'Unknown zone-zone: {zone}')
+            for ipv in (4, 6):
+                ret += run_program([CONFIG['nft_bin'], 'list', 'chain', 'inet',
+                                    'foomuuri', f'{zone}_{ipv}'], True)
     return ret
 
 
@@ -1967,6 +1977,7 @@ def command_line():
         print('  stop            Remove rules')
         print('  list            List active rules')
         print('  list zone-zone  List active rules for zone-zone')
+        print('  list macro      List all known macros')
         print('  check           Check config files')
         print()
         print('Internally used commands:')
