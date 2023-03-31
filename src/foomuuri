@@ -1927,9 +1927,31 @@ def command_list():
     return ret
 
 
-def command_line():
-    """Parse command line."""
-    # Parse arguments
+def command_help():
+    """Print command line help."""
+    print(f'Foomuuri {VERSION}')
+    print()
+    print(f'Usage: {sys.argv[0]} command')
+    print()
+    print('Available commands:')
+    print()
+    print('  start           Load rules')
+    print('  start-or-good   Load rules or fallback to previous "good"')
+    print('  stop            Remove rules')
+    print('  list            List active rules')
+    print('  list zone-zone  List active rules for zone-zone')
+    print('  list macro      List all known macros')
+    print('  check           Check config files')
+    print()
+    print('Internally used commands:')
+    print()
+    print('  resolve         Resolve hostnames')
+    print('  dbus            Start dbus daemon')
+    return 0
+
+
+def parse_command_line():
+    """Parse command line to CONFIG[command] and CONFIG[parameters]."""
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['command'] = 'help'
@@ -1957,43 +1979,22 @@ def command_line():
         CONFIG['command'] = 'help'
     config_to_pathlib()
 
-    # Verify command
+
+def run_command():
+    """Run CONFIG[command]."""
+    # Only "list" can take arguments
     if CONFIG['parameters'] and CONFIG['command'] != 'list':
         fail(f'Command "{CONFIG["command"]}" doesn\'t take parameters')
-    if CONFIG['command'] not in ('start', 'start-or-good', 'stop', 'list',
-                                 'check', 'resolve', 'dbus', 'help'):
-        fail(f'Unknown command: {CONFIG["command"]}')
 
-    # Help
+    # Help doesn't need root
     if CONFIG['command'] == 'help':
-        print(f'Foomuuri {VERSION}')
-        print()
-        print(f'Usage: {sys.argv[0]} command')
-        print()
-        print('Available commands:')
-        print()
-        print('  start           Load rules')
-        print('  start-or-good   Load rules or fallback to previous "good"')
-        print('  stop            Remove rules')
-        print('  list            List active rules')
-        print('  list zone-zone  List active rules for zone-zone')
-        print('  list macro      List all known macros')
-        print('  check           Check config files')
-        print()
-        print('Internally used commands:')
-        print()
-        print('  resolve         Resolve hostnames')
-        print('  dbus            Start dbus daemon')
-        fail()
+        return command_help()
 
     # Warning if not running as root
     if os.getuid() and not CONFIG['devel']:
         print('Warning: Foomuuri should be run as "root"', flush=True)
 
-
-def main():
-    """Parse command line, run command and apply final ruleset."""
-    command_line()
+    # Run command
     if CONFIG['command'] in ('start', 'start-or-good', 'check'):
         command_start()
     elif CONFIG['command'] == 'stop':
@@ -2002,10 +2003,20 @@ def main():
         return command_list()
     elif CONFIG['command'] == 'resolve':
         return command_resolve()
-    else:
+    elif CONFIG['command'] == 'dbus':
         return command_dbus()
+    else:
+        fail(f'Unknown command: {CONFIG["command"]}')
+
+    # Save and apply changes
     save_final(CONFIG['next_file'])
     return apply_final()
+
+
+def main():
+    """Parse command line and run command."""
+    parse_command_line()
+    return run_command()
 
 
 if __name__ == '__main__':
