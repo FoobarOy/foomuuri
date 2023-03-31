@@ -41,7 +41,9 @@ sysupdate:
 
 release:
 	@if [ -z "$(VERSION)" ]; then \
-		echo "make release VERSION=x.xx"; \
+		echo "Usage: make release VERSION=x.xx"; \
+		echo; \
+		echo "Current: $(shell grep ^VERSION src/foomuuri)"; \
 		exit 1; \
 	fi
 	git diff --exit-code
