@@ -53,6 +53,11 @@ release:
 	git add src/foomuuri foomuuri.spec
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
+	echo
+	echo "== TODO =="
+	echo "make rpm"
+	echo "git push; git push --tags"
+	echo "In GitHub: draft a new release and upload rpm files."
 
 ### Build tar/rpm locally
 
