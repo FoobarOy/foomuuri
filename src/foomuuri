@@ -416,10 +416,23 @@ def is_port(value):
 
 def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
-    for no_space in ('saddr_rate_name', 'daddr_rate_name'):
+    for no_space in ('saddr_rate_name', 'daddr_rate_name', 'helper'):
         value = rule[no_space] or ''
         if ' ' in value:
             fail(f'{fileline}Space is not allowed in {no_space}: {value}')
+
+    for basic, extra in (
+            ('protocol', 'sport'),
+            ('protocol', 'dport'),
+            ('saddr_rate', 'saddr_rate_name'),
+            ('saddr_rate', 'saddr_rate_mask'),
+            ('daddr_rate', 'daddr_rate_name'),
+            ('daddr_rate', 'daddr_rate_mask'),
+            ('saddr_daddr_rate', 'saddr_daddr_rate_name'),
+            ('saddr_daddr_rate', 'saddr_daddr_rate_mask'),
+    ):
+        if rule[extra] and not rule[basic]:
+            fail(f'{fileline}{extra} without {basic} is not valid')
 
 
 def parse_rule_line(fileline_line):
