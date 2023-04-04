@@ -414,6 +414,14 @@ def is_port(value):
     return True
 
 
+def verify_rule_sanity(rule, fileline):
+    """Do some basic verify that single rule is valid."""
+    for no_space in ('saddr_rate_name', 'daddr_rate_name'):
+        value = rule[no_space] or ''
+        if ' ' in value:
+            fail(f'{fileline}Space is not allowed in {no_space}: {value}')
+
+
 def parse_rule_line(fileline_line):
     """Parse single config section line to rule dict.
 
@@ -544,6 +552,7 @@ def parse_rule_line(fileline_line):
         else:
             fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
 
+    verify_rule_sanity(ret, fileline)
     return ret
 
 
