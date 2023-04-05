@@ -750,7 +750,7 @@ def netmask_to_and(masklist, ipv, fileline):
     if not masklist:
         return ''
     masks = [int(item) for item in masklist.split() if item.isnumeric()]
-    if len(masks) != 2:
+    if len(masks) != 2 or masks[0] > 32 or masks[1] > 128:
         fail(f'{fileline}Invalid rate_mask: {masklist}')
 
     if ipv == 4:
