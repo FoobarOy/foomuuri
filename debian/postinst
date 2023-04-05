@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    if [ -z "$2" ]; then  # First install
+	chown root:adm /etc/foomuuri
+	chmod 750 /etc/foomuuri
+	chmod 700 /var/lib/foomuuri
+	chown 700 /run/foomuuri
+    fi
+fi
