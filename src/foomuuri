@@ -652,14 +652,15 @@ def verify_config(config, zones, rules):
     if not zones:
         fail('No zones defined in section zone{}')
 
-    if 'fw' not in zones:
-        zones['fw'] = {'interface': []}
-        print(f'{config["_section_line"]["zone"]}Warning: Zone "fw" is '
+    if 'localhost' not in zones:
+        zones['localhost'] = {'interface': []}
+        print(f'{config["_section_line"]["zone"]}Warning: Zone "localhost" is '
               f'missing from zone{{}}, adding it', flush=True)
 
-    if zones['fw']['interface']:
-        fail(f'{config["_section_line"]["zone"]}Zone "fw" has interfaces '
-             f'"{" ".join(zones["fw"]["interface"])}", it must be empty')
+    if zones['localhost']['interface']:
+        fail(f'{config["_section_line"]["zone"]}Zone "localhost" has '
+             f'interfaces "{" ".join(zones["localhost"]["interface"])}", '
+             f'it must be empty')
 
     if CONFIG['default_zone'] not in zones:
         print(f'Warning: Config option default_zone value '
@@ -676,7 +677,10 @@ def verify_config(config, zones, rules):
     # They will have single rule "drop log".
     for szone in zones:
         for dzone in zones:
-            if (szone, dzone) not in rules and (szone, dzone) != ('fw', 'fw'):
+            if (
+                    (szone, dzone) not in rules and
+                    (szone, dzone) != ('localhost', 'localhost')
+            ):
                 rules[(szone, dzone)] = [
                     parse_rule_line(('', ['drop', 'log']))]
 
@@ -1097,7 +1101,7 @@ def output_zone_vmaps(zones):
     out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {zone}-fw,')
+            out(f'{interface} : jump {zone}-localhost,')
     out('}')
     out('}')
 
@@ -1108,7 +1112,7 @@ def output_zone_vmaps(zones):
     out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump fw-{zone},')
+            out(f'{interface} : jump localhost-{zone},')
     out('}')
     out('}')
 
@@ -1354,7 +1358,7 @@ def output_resolve_sets(resolve):
 
 
 def output_resolve_elements(resolve):
-    """Add resolve elements from resolve.fw to ruleset."""
+    """Add resolve elements from resolve state file to ruleset."""
     # Read previous resolve results
     try:
         # pylint: disable=no-member
@@ -1370,7 +1374,7 @@ def output_resolve_elements(resolve):
     # Add previous result if resolve name is known
     out('')
     for line in content.splitlines():
-        if line.startswith('# '):  # Try "didn't exist in active fw" now
+        if line.startswith('# '):  # Try "didn't exist in active ruleset" now
             line = line[2:]
         if (
                 line.startswith('add element inet foomuuri ') and
@@ -1621,9 +1625,9 @@ class DbusCommon:
 
         # input, output
         out(f'delete element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-fw }}')
+            f'{{ {interface} : jump {zone}-localhost }}')
         out(f'delete element inet foomuuri output_zones '
-            f'{{ {interface} : jump fw-{zone} }}')
+            f'{{ {interface} : jump localhost-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
@@ -1638,9 +1642,9 @@ class DbusCommon:
         """Add interface to zone."""
         # input, output
         out(f'add element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-fw }}')
+            f'{{ {interface} : jump {zone}-localhost }}')
         out(f'add element inet foomuuri output_zones '
-            f'{{ {interface} : jump fw-{zone} }}')
+            f'{{ {interface} : jump localhost-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
@@ -1658,8 +1662,8 @@ class DbusCommon:
         if new_zone and new_zone not in self.zones:
             print(f'Warning: Zone "{new_zone}" is unknown', flush=True)
             return '', ''
-        if new_zone == 'fw':
-            print('Warning: Can\'t set to zone "fw"', flush=True)
+        if new_zone == 'localhost':
+            print('Warning: Can\'t add to zone "localhost"', flush=True)
             return '', ''
         interface_zone = self.parse_interface_zone()
         self.clean_out()
@@ -1682,8 +1686,8 @@ class DbusCommon:
         return CONFIG['default_zone']
 
     def method_get_zones(self):
-        """Get available zones. Filter fw out as there can be no interface."""
-        return [name for name in self.zones if name != 'fw']
+        """Get available zones. "localhost" can't have interfaces."""
+        return [name for name in self.zones if name != 'localhost']
 
     def method_remove_interface(self, zone, interface):
         """Remove interface from zone, or from all if zone is empty."""
@@ -1711,7 +1715,7 @@ class DbusFoomuuri(dbus.service.Object, DbusCommon):
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
                          in_signature='', out_signature='as')
     def getZones(self):
-        """Get available zones. Filter fw out as there can be no interface."""
+        """Get available zones. "localhost" can't have interfaces."""
         return self.method_get_zones()
 
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
@@ -1741,7 +1745,7 @@ class DbusFirewallD(dbus.service.Object, DbusCommon):
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
                          in_signature='', out_signature='as')
     def getZones(self):
-        """Get available zones. Filter fw out as there can be no interface."""
+        """Get available zones. "localhost" can't have interfaces."""
         return self.method_get_zones()
 
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
@@ -1888,10 +1892,10 @@ def command_resolve():
                 if is_ip_address(ipaddr) == ipv:
                     elements.add(ipaddr)
 
-        # Add them to resolve.fw
+        # Add them to resolve state file
         for ipaddr in elements:
             if setname[1:] not in known:
-                # Not active in current fw, add as comment
+                # Not active in current ruleset, add as comment
                 out(f'# add element inet foomuuri {setname[1:]} '
                     f'{{ {ipaddr} timeout {timeout} }}')
                 if setname[:-2] not in warned:
@@ -1899,8 +1903,9 @@ def command_resolve():
                           f'in currently active firewall')
                     warned.add(setname[:-2])
             else:
-                # Update element to fw set. There is no "update" command in nft
-                # command line. It can be emulated with "add + delete + add".
+                # Update element to ruleset. There is no "update" command in
+                # nft command line. It can be emulated with
+                # "add + delete + add".
                 out(f'add element inet foomuuri {setname[1:]} {{ {ipaddr} }}')
                 out(f'delete element inet foomuuri {setname[1:]} '
                     f'{{ {ipaddr} }}')
