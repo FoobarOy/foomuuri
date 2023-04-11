@@ -49,15 +49,15 @@ release:
 	git diff --exit-code
 	git diff --cached --exit-code
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
-	sed -i -e "s@^\(Version:        \).*@\1$(VERSION)@" foomuuri.spec
-	sed -i -e "s@^\(Version: \).*@\1$(VERSION)@" debian/control
-	sed -i -e "s@^\(Version: \).*@\1$(VERSION)@" debian/firewalld.control
+	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" foomuuri.spec
+	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/control
+	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/firewalld.control
 	git add src/foomuuri foomuuri.spec debian/control debian/firewalld.control
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
+	make rpm deb
 	echo
 	echo "== TODO =="
-	echo "make rpm deb"
 	echo "git push; git push --tags"
 	echo "In GitHub: draft a new release and upload rpm and deb files."
 
