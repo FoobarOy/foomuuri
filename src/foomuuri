@@ -38,7 +38,7 @@ CONFIG = {
     'log_invalid': 'no',
     'log_smurfs': 'no',
     'log_level': 'level info',
-    'default_zone': 'public',
+    'dbus_zone': 'public',
     'rpfilter': 'yes',
     'counter': 'no',
     'set_size': '65535',
@@ -662,9 +662,9 @@ def verify_config(config, zones, rules):
              f'interfaces "{" ".join(zones["localhost"]["interface"])}", '
              f'it must be empty')
 
-    if CONFIG['default_zone'] not in zones:
-        print(f'Warning: Config option default_zone value '
-              f'"{CONFIG["default_zone"]}" is unknown zone', flush=True)
+    if CONFIG['dbus_zone'] not in zones:
+        print(f'Warning: Config option dbus_zone value '
+              f'"{CONFIG["dbus_zone"]}" is unknown zone', flush=True)
 
     # All zone-zone pairs must be known
     for szone, dzone in rules:
@@ -1674,16 +1674,16 @@ class DbusCommon:
         return old_zone, new_zone
 
     def parse_default_zone(self, interface, zone):
-        """Return zone, or default_zone if empty."""
+        """Return zone, or dbus_zone if empty."""
         interface, zone = str(interface), str(zone)
         if zone:
             return zone
 
-        # Fallback to zones section, or to foomuuri.default_zone
+        # Fallback to zones section, or to foomuuri.dbus_zone
         for key, value in self.zones.items():
             if interface in value['interface']:
                 return key
-        return CONFIG['default_zone']
+        return CONFIG['dbus_zone']
 
     def method_get_zones(self):
         """Get available zones. "localhost" can't have interfaces."""
