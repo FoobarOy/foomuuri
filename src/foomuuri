@@ -38,6 +38,7 @@ CONFIG = {
     'log_invalid': 'no',
     'log_smurfs': 'no',
     'log_level': 'level info',
+    'localhost_zone': 'localhost',
     'dbus_zone': 'public',
     'rpfilter': 'yes',
     'counter': 'no',
@@ -652,19 +653,20 @@ def verify_config(config, zones, rules):
     if not zones:
         fail('No zones defined in section zone{}')
 
-    if 'localhost' not in zones:
-        zones['localhost'] = {'interface': []}
-        print(f'{config["_section_line"]["zone"]}Warning: Zone "localhost" is '
-              f'missing from zone{{}}, adding it', flush=True)
+    localhost = CONFIG['localhost_zone']
+    if localhost not in zones:
+        zones[localhost] = {'interface': []}
+        print(f'{config["_section_line"]["zone"]}Warning: Zone "{localhost}" '
+              f'is missing from zone{{}}, adding it', flush=True)
 
-    if zones['localhost']['interface']:
-        fail(f'{config["_section_line"]["zone"]}Zone "localhost" has '
-             f'interfaces "{" ".join(zones["localhost"]["interface"])}", '
+    if zones[localhost]['interface']:
+        fail(f'{config["_section_line"]["zone"]}Zone "{localhost}" has '
+             f'interfaces "{" ".join(zones[localhost]["interface"])}", '
              f'it must be empty')
 
     if CONFIG['dbus_zone'] not in zones:
         print(f'Warning: Config option dbus_zone value '
-              f'"{CONFIG["dbus_zone"]}" is unknown zone', flush=True)
+              f'"{CONFIG["dbus_zone"]}" is missing from zone{{}}', flush=True)
 
     # All zone-zone pairs must be known
     for szone, dzone in rules:
@@ -679,7 +681,7 @@ def verify_config(config, zones, rules):
         for dzone in zones:
             if (
                     (szone, dzone) not in rules and
-                    (szone, dzone) != ('localhost', 'localhost')
+                    (szone, dzone) != (localhost, localhost)
             ):
                 rules[(szone, dzone)] = [
                     parse_rule_line(('', ['drop', 'log']))]
@@ -1101,7 +1103,7 @@ def output_zone_vmaps(zones):
     out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {zone}-localhost,')
+            out(f'{interface} : jump {zone}-{CONFIG["localhost_zone"]},')
     out('}')
     out('}')
 
@@ -1112,7 +1114,7 @@ def output_zone_vmaps(zones):
     out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump localhost-{zone},')
+            out(f'{interface} : jump {CONFIG["localhost_zone"]}-{zone},')
     out('}')
     out('}')
 
@@ -1625,9 +1627,9 @@ class DbusCommon:
 
         # input, output
         out(f'delete element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-localhost }}')
+            f'{{ {interface} : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'delete element inet foomuuri output_zones '
-            f'{{ {interface} : jump localhost-{zone} }}')
+            f'{{ {interface} : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
@@ -1642,9 +1644,9 @@ class DbusCommon:
         """Add interface to zone."""
         # input, output
         out(f'add element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-localhost }}')
+            f'{{ {interface} : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'add element inet foomuuri output_zones '
-            f'{{ {interface} : jump localhost-{zone} }}')
+            f'{{ {interface} : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
@@ -1662,8 +1664,9 @@ class DbusCommon:
         if new_zone and new_zone not in self.zones:
             print(f'Warning: Zone "{new_zone}" is unknown', flush=True)
             return '', ''
-        if new_zone == 'localhost':
-            print('Warning: Can\'t add to zone "localhost"', flush=True)
+        if new_zone == CONFIG['localhost_zone']:
+            print(f'Warning: Can\'t add to zone '
+                  f'"{CONFIG["localhost_zone"]}"', flush=True)
             return '', ''
         interface_zone = self.parse_interface_zone()
         self.clean_out()
@@ -1687,7 +1690,8 @@ class DbusCommon:
 
     def method_get_zones(self):
         """Get available zones. "localhost" can't have interfaces."""
-        return [name for name in self.zones if name != 'localhost']
+        return [name for name in self.zones
+                if name != CONFIG['localhost_zone']]
 
     def method_remove_interface(self, zone, interface):
         """Remove interface from zone, or from all if zone is empty."""
