@@ -55,11 +55,15 @@ release:
 	git add src/foomuuri foomuuri.spec debian/control debian/firewalld.control
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
-	make rpm deb
-	echo
-	echo "== TODO =="
-	echo "git push; git push --tags"
-	echo "In GitHub: draft a new release and upload rpm and deb files."
+	make rpm
+	mv tmp/RPMS/noarch/foomuuri-*.rpm tmp/SRPMS/foomuuri-*.rpm ~
+	make deb
+	mv foomuuri-*.deb ~
+	make clean
+	@echo
+	@echo "== TODO =="
+	@echo "git push; git push --tags"
+	@echo "In GitHub: draft a new release and upload rpm and deb files."
 
 ### Build tar/rpm/deb locally
 
