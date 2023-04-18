@@ -1,5 +1,5 @@
 Name:           foomuuri
-Version:        0.17
+Version:        0.18
 Release:        1%{?dist}
 Summary:        Multizone bidirectional nftables firewall
 License:        GPLv2+
