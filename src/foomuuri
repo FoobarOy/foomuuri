@@ -699,7 +699,7 @@ def verify_config(config, zones, rules):
 def output_rate_names(rules):
     """Output empty saddr_rate sets to ruleset."""
     counter = 1
-    already_named = set()
+    already_added = set()
     for rulelist in rules.values():
         for rule in rulelist:
             for rate in ('saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
@@ -708,12 +708,12 @@ def output_rate_names(rules):
 
                 # Rule with rate found. It can be pre-named or anonymous.
                 setname = rule[f'{rate}_name']
-                if setname in already_named:
-                    continue  # Pre-named and already handled
+                if setname in already_added:
+                    continue  # Pre-named and already added
                 if not setname:  # Anonymous - invent a name for it
-                    setname = rule[f'{rate}_name'] = f'rate_set_{counter}'
+                    setname = rule[f'{rate}_name'] = f'_rate_set_{counter}'
                     counter += 1
-                    already_named.add(setname)
+                already_added.add(setname)
 
                 # Output empty sets for IPv4 and IPv6. These will have
                 # one minute timeout.
@@ -1199,9 +1199,9 @@ def output_static_chain_logging(chain, policy):
         out(f'log prefix "{chain} {policy} "{flags}')
         return
 
-    out(f'update @lograte_set_4 {{ ip saddr limit rate {lograte} }} '
+    out(f'update @_lograte_set_4 {{ ip saddr limit rate {lograte} }} '
         f'log prefix "{chain} {policy} "{flags}')
-    out(f'update @lograte_set_6 {{ ip6 saddr limit rate {lograte} }} '
+    out(f'update @_lograte_set_6 {{ ip6 saddr limit rate {lograte} }} '
         f'log prefix "{chain} {policy} "{flags}')
 
 
@@ -1324,7 +1324,7 @@ def optimize_jumps():
             ipv, logtext, policy = LOGRATES.pop(logname)
             rate = ''
             if CONFIG['log_rate']:
-                rate = (f'update @lograte_set_{ipv} '
+                rate = (f'update @_lograte_set_{ipv} '
                         f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                         f'limit rate {CONFIG["log_rate"]} }} ')
             OUT[linenum] = (f'{rate}log prefix "{logtext} " '
@@ -1340,7 +1340,7 @@ def output_logrates():
         out(f'chain {logname} {{')
         rate = ''
         if CONFIG['log_rate']:
-            rate = (f'update @lograte_set_{ipv} '
+            rate = (f'update @_lograte_set_{ipv} '
                     f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                     f'limit rate {CONFIG["log_rate"]} }} ')
         out(f'{rate}log prefix "{logtext} " {CONFIG["log_level"]}')
@@ -1349,7 +1349,7 @@ def output_logrates():
 
     # Output empty lograte sets (optimized and non-optimized)
     for ipv in (4, 6):
-        out(f'set lograte_set_{ipv} {{')
+        out(f'set _lograte_set_{ipv} {{')
         out(f'type ipv{ipv}_addr')
         out(f'size {CONFIG["set_size"]}')
         out('flags dynamic,timeout')
