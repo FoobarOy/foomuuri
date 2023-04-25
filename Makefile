@@ -22,8 +22,10 @@ install:
 	mkdir -p $(PREFIX)/usr/lib/systemd/system/
 	cp systemd/foomuuri.service $(PREFIX)/usr/lib/systemd/system/
 	cp systemd/foomuuri-dbus.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-resolve.timer $(PREFIX)/usr/lib/systemd/system/
+	cp systemd/foomuuri-iplist.service $(PREFIX)/usr/lib/systemd/system/
+	cp systemd/foomuuri-iplist.timer $(PREFIX)/usr/lib/systemd/system/
 	cp systemd/foomuuri-resolve.service $(PREFIX)/usr/lib/systemd/system/
+	cp systemd/foomuuri-resolve.timer $(PREFIX)/usr/lib/systemd/system/
 	mkdir -p $(PREFIX)/usr/lib/tmpfiles.d/
 	cp systemd/foomuuri.tmpfilesd $(PREFIX)/usr/lib/tmpfiles.d/foomuuri.conf
 	mkdir -p $(PREFIX)/run/foomuuri/

@@ -45,19 +45,19 @@ make install PREFIX=%{buildroot}
 
 
 %post
-%systemd_post foomuuri.service foomuuri-dbus.service foomuuri-resolve.timer foomuuri-resolve.service
+%systemd_post foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-resolve.timer foomuuri-resolve.service
 
 
 %preun
-%systemd_preun foomuuri.service foomuuri-dbus.service foomuuri-resolve.timer foomuuri-resolve.service
+%systemd_preun foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-resolve.timer foomuuri-resolve.service
 
 
 %postun
-%systemd_postun foomuuri.service foomuuri-resolve.service
+%systemd_postun foomuuri.service foomuuri-iplist.service foomuuri-resolve.service
 if [ $1 -ge 1 ]; then
     systemctl reload-or-try-restart foomuuri.service > /dev/null 2>&1 || :
 fi
-%systemd_postun_with_restart foomuuri-dbus.service foomuuri-resolve.timer
+%systemd_postun_with_restart foomuuri-dbus.service foomuuri-iplist.timer foomuuri-resolve.timer
 
 
 %files
@@ -71,8 +71,10 @@ fi
 %{_datadir}/foomuuri/static.nft
 %{_unitdir}/foomuuri.service
 %{_unitdir}/foomuuri-dbus.service
-%{_unitdir}/foomuuri-resolve.timer
+%{_unitdir}/foomuuri-iplist.service
+%{_unitdir}/foomuuri-iplist.timer
 %{_unitdir}/foomuuri-resolve.service
+%{_unitdir}/foomuuri-resolve.timer
 %{_tmpfilesdir}/foomuuri.conf
 %attr(0700, root, root) %dir %{_rundir}/foomuuri
 %attr(0700, root, root) %dir %{_sharedstatedir}/foomuuri

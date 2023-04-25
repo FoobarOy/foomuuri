@@ -1,0 +1,8 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall - Update iplist entries
+Requires=foomuuri.service
+PartOf=foomuuri.service
+
+[Timer]
+OnBootSec=4m
+OnUnitInactiveSec=24h
