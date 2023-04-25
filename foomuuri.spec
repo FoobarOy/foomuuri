@@ -11,6 +11,7 @@ BuildRequires:  systemd-rpm-macros
 Requires:       nftables
 Requires:       python3-dbus
 Requires:       python3-gobject
+Requires:       python3-requests
 Requires:       python3-systemd
 Recommends:     (foomuuri-firewalld if NetworkManager)
 %{?systemd_requires}

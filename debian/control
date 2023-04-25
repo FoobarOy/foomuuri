@@ -5,6 +5,6 @@ Priority: optional
 Architecture: all
 Maintainer: Kim B. Heino <b@bbbs.net>
 Homepage: https://github.com/FoobarOy/foomuuri
-Depends: nftables, python3-dbus, python3-gi, python3-systemd
+Depends: nftables, python3-dbus, python3-gi, python3-requests, python3-systemd
 Recommends: foomuuri-firewalld
 Description: Foomuuri is a multizone bidirectional nftables firewall.

@@ -22,6 +22,7 @@ import sys
 import dbus
 import dbus.mainloop.glib
 import dbus.service
+import requests
 from gi.repository import GLib
 
 # SystemD notify support is optional
@@ -1356,14 +1357,14 @@ def output_logrates():
         out('}')
 
 
-def output_resolve_sets(resolve):
+def output_resolve_sets(resolve, flags):
     """Output empty resolve{} and iplist{} sets."""
     for name in resolve:
         if name == 'timeout':
             continue
         out(f'set {name[1:]} {{')
         out(f'type ipv{name[-1]}_addr')
-        out('flags dynamic,timeout')
+        out(f'flags {flags}timeout')
         out('}')
 
 
@@ -1576,8 +1577,8 @@ def command_start():
     optimize_jumps()
     optimize_accepts()
     output_logrates()
-    output_resolve_sets(resolve)
-    output_resolve_sets(iplist)
+    output_resolve_sets(resolve, '')
+    output_resolve_sets(iplist, 'interval,')
     output_helpers()
     output_prerouting()
     output_footer()
@@ -1874,7 +1875,7 @@ def resolve_all_hostnames(resolve):
     return hosts
 
 
-def active_resolve_sets():
+def active_sets():
     """Return list of set names in currently active firewall."""
     ret = set()
     proc = subprocess.run([CONFIG['nft_bin'], '--json', 'list', 'ruleset'],
@@ -1899,7 +1900,7 @@ def command_resolve():
     resolve = parse_resolve(config, 'resolve', '24h')
     timeout = resolve.pop('timeout')
     hosts = resolve_all_hostnames(resolve)
-    known = active_resolve_sets()
+    known = active_sets()
 
     # Output resolved
     warned = set()
@@ -1940,6 +1941,164 @@ def command_resolve():
     if ret:
         print(f'Error: Failed to update resolve, error code {ret}')
     return ret
+
+
+def get_url(url):
+    """Download URL and return it as text, or None if failure."""
+    try:
+        response = requests.get(url, timeout=60)
+    except OSError as error:
+        print(f'Warning: Can\'t download URL {url}, error: {error}')
+        return None
+    if response.status_code != 200:
+        print(f'Warning: Can\'t download URL {url}, '
+              f'status code: {response.status_code}')
+        return None
+    return response.text
+
+
+def get_file(wildcard):
+    """Read all files and return them as single text."""
+    wildpath = pathlib.Path(wildcard)
+    filenames = sorted(wildpath.parent.glob(wildpath.name))
+    if not filenames:
+        print(f'Warning: File {wildcard}: Can\'t read: No such file')
+        return None
+    text = ''
+    for filename in filenames:
+        try:
+            content = filename.read_text(encoding='utf-8')
+        except PermissionError as error:
+            print(f'Warning: File {filename}: Can\'t read: {error}')
+            return None
+        text = text + '\n' + content
+    return text
+
+
+def get_all_urls_and_files(namelist):
+    """Read all URLs and filename-wildcards and return them as text."""
+    text = ''
+    for filename in namelist:
+        if filename.startswith(('https:', 'http:')):
+            content = get_url(filename)
+        else:
+            content = get_file(filename)
+        if content is None:
+            return None  # Return None if any fails
+        text = text + '\n' + content
+    return text
+
+
+def read_previous_iplist():
+    """Read previous iplist state file and parse it to dict."""
+    # Read state file, silently ignore if missing
+    try:
+        # pylint: disable=no-member
+        content = CONFIG['iplist_file'].read_text(encoding='utf-8')
+    except FileNotFoundError:
+        return {}
+    except PermissionError as error:
+        fail(f'File {CONFIG["iplist_file"]}: Can\'t read: {error}')
+
+    # Parse lines to setname->set(ipaddrs)
+    ret = {}
+    for line in content.splitlines():
+        tokens = line.replace('# ', '').split()
+        if len(tokens) != 10 or tokens[7] != 'timeout':
+            continue
+        setname = tokens[4]
+        if setname not in ret:
+            ret[setname] = set()
+        ret[setname].add(tokens[6])
+    return ret
+
+
+def read_all_iplists(iplist):
+    """Read all iplist files and return dict setname_ipv->iplist."""
+    ret = {}
+    for setname, filenames in iplist.items():
+        # iplist has "name_6" and "name_4" with same content, ignore "_6"
+        if setname.endswith('_6'):
+            continue
+        setname = setname[1:-2]  # Strip "@" and "_4"
+
+        # Get content
+        text = get_all_urls_and_files(filenames)
+        if text is None:
+            continue
+
+        # Parse each line to IPv4/IPv6 lists
+        addr_4 = set()
+        addr_6 = set()
+        for line in text.splitlines():
+            # Strip comments and empty lines
+            if '#' in line:
+                line = line.split('#')[0]
+            line = line.strip()
+            if not line:
+                continue
+
+            # Parse single item per line
+            if is_ipv4_address(line):
+                addr_4.add(line)
+            elif is_ipv6_address(line):
+                addr_6.add(line)
+            else:
+                print(f'Warning: Invalid content in iplist {{ @{setname} }}: '
+                      f'{line}')
+                break
+        else:  # Include it to reply if all success
+            ret[f'{setname}_4'] = addr_4
+            ret[f'{setname}_6'] = addr_6
+    return ret
+
+
+def command_iplist():
+    """Update iplist{} entries."""
+    # Read minimal config and read iplist{} entries
+    config = minimal_config()
+    iplist = parse_resolve(config, 'iplist', '10d')
+    timeout = iplist.pop('timeout')
+    previous = read_previous_iplist()
+    current = read_all_iplists(iplist)
+    known = active_sets()
+
+    # Output entries
+    warned = set()
+    error = 0
+    for setname in iplist:
+        setname = setname[1:]  # Strip "@"
+        if setname not in current:
+            # Fetch for this set failed, add previous fetch as comments
+            error = 1
+            comment = '# '
+            addrlist = previous.get(setname, [])
+        elif setname not in known:
+            # Not active in current ruleset, add items as comments
+            comment = '# '
+            addrlist = current[setname]
+            if setname[:-2] not in warned:
+                print(f'Warning: Iplist "@{setname[:-2]}" does not exist '
+                      f'in currently active firewall')
+                warned.add(setname[:-2])
+        else:
+            # Success, update elements to ruleset
+            out(f'flush set inet foomuuri {setname}')
+            comment = ''
+            addrlist = current[setname]
+
+        for ipaddr in sorted(addrlist):
+            out(f'{comment}add element inet foomuuri {setname} '
+                f'{{ {ipaddr} timeout {timeout} }}')
+
+    # Apply update
+    if not OUT:
+        return error
+    save_final(CONFIG['iplist_file'])
+    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['iplist_file']])
+    if ret:
+        print(f'Error: Failed to update iplist, error code {ret}')
+    return ret or error
 
 
 def command_list():
@@ -1993,6 +2152,7 @@ def command_help():
     print('Internally used commands:')
     print()
     print('  resolve         Resolve hostnames')
+    print('  iplist          Update iplist entries')
     print('  dbus            Start dbus daemon')
     return 0
 
@@ -2050,6 +2210,8 @@ def run_command():
         return command_list()
     elif CONFIG['command'] == 'resolve':
         return command_resolve()
+    elif CONFIG['command'] == 'iplist':
+        return command_iplist()
     elif CONFIG['command'] == 'dbus':
         return command_dbus()
     else:
