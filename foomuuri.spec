@@ -35,7 +35,7 @@ This optional package includes FirewallD emulation configuration files.
 
 
 %prep
-%setup -q
+%autosetup -p1
 
 
 %build
