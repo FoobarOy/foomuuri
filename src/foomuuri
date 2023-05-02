@@ -1565,7 +1565,8 @@ def command_start():
     snat = parse_config_nat(config, 'snat')
     dnat = parse_config_nat(config, 'dnat')
     templates = parse_config_templates(config)
-    rules = parse_config_rules(config)
+    parse_config_groups(config, parse_config_targets(config))
+    rules = parse_config_rules(config)  # Also verify for unknown sections
     insert_any_zones(zones, rules)
     expand_templates(rules, templates)
     verify_config(config, zones, rules)
