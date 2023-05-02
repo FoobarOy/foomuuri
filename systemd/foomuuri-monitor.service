@@ -1,0 +1,12 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall - Target monitor
+After=foomuuri.service
+PartOf=foomuuri.service
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/foomuuri monitor
+ExecReload=kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

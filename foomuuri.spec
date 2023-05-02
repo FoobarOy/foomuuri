@@ -45,11 +45,11 @@ make install PREFIX=%{buildroot}
 
 
 %post
-%systemd_post foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-resolve.timer foomuuri-resolve.service
+%systemd_post foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-monitor.service foomuuri-resolve.timer foomuuri-resolve.service
 
 
 %preun
-%systemd_preun foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-resolve.timer foomuuri-resolve.service
+%systemd_preun foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-monitor.service foomuuri-resolve.timer foomuuri-resolve.service
 
 
 %postun
@@ -57,7 +57,7 @@ make install PREFIX=%{buildroot}
 if [ $1 -ge 1 ]; then
     systemctl reload-or-try-restart foomuuri.service > /dev/null 2>&1 || :
 fi
-%systemd_postun_with_restart foomuuri-dbus.service foomuuri-iplist.timer foomuuri-resolve.timer
+%systemd_postun_with_restart foomuuri-dbus.service foomuuri-monitor.service foomuuri-iplist.timer foomuuri-resolve.timer
 
 
 %files
@@ -73,6 +73,7 @@ fi
 %{_unitdir}/foomuuri-dbus.service
 %{_unitdir}/foomuuri-iplist.service
 %{_unitdir}/foomuuri-iplist.timer
+%{_unitdir}/foomuuri-monitor.service
 %{_unitdir}/foomuuri-resolve.service
 %{_unitdir}/foomuuri-resolve.timer
 %{_tmpfilesdir}/foomuuri.conf
