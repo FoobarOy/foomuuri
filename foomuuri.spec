@@ -13,6 +13,7 @@ Requires:       python3-dbus
 Requires:       python3-gobject
 Requires:       python3-requests
 Requires:       python3-systemd
+Recommends:     fping
 Recommends:     (foomuuri-firewalld if NetworkManager)
 %{?systemd_requires}
 
