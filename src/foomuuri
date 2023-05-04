@@ -1462,13 +1462,21 @@ def save_file(filename, lines):
         fail(f'File {filename}: Can\'t write: {error}')
 
 
-def run_program(args, show_output=False):
+def run_program(args, show_output=False, env=None):
     """Run external program and return errorcode.
 
     Print it's output if run fails.
     """
-    proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, encoding='utf-8')
+    if not args:
+        return 0
+    try:
+        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, encoding='utf-8',
+                              env=env, timeout=60)
+    except OSError as error:
+        print(f'Error: Failed to run command "{" ".join(args)}": {error}',
+              flush=True)
+        return 1
     if (proc.returncode and proc.stdout) or show_output:
         print(proc.stdout, flush=True)
     return proc.returncode
@@ -2148,7 +2156,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     history = None
     if prev:
         seconds = int(now - prev + 0.5)
-        extra = (f', previous change was {seconds // 3600}h '
+        extra = (f'previous change was {seconds // 3600}h '
                  f'{seconds // 60 % 60}m {seconds % 60}s ago')
         if grouptarget == 'target':
             for cons in range(0, cfg['history_size']):
@@ -2159,31 +2167,32 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
                      f'history_{updown} {historycount}')
             history = ''.join('.' if item else '!' for item in cfg['history'])
     else:
-        extra = ', startup change'
-    print(f'{grouptarget} {name} changed state to {updown}{extra}', flush=True)
+        extra = 'startup change'
+    print(f'{grouptarget} {name} changed state to {updown}, {extra}',
+          flush=True)
     if history:
         print(f'history: {history}', flush=True)
     cfg['state_time'] = now
 
-    # Run external command if configured. It will receive following args:
-    # - changed state: group/target name state
-    # - extra log text
-    # - for all configured targets: target name state
-    # - for all configured groups: group name state
-    cmd = cfg[f'command_{updown}']
-    if not cmd:
-        return
-    cmd = cmd + [grouptarget, name, updown, extra[2:]]
+    # Run external command if configured. It will receive current state change
+    # event info and all states in environment variables.
+    env = {
+        # Change state event
+        'FOOMUURI_CHANGE_TYPE': grouptarget,
+        'FOOMUURI_CHANGE_NAME': name,
+        'FOOMUURI_CHANGE_STATE': updown,
+        'FOOMUURI_CHANGE_LOG': extra,
+        # List of configured targets
+        'FOOMUURI_ALL_TARGET': ' '.join(targets),
+        # List of configured groups
+        'FOOMUURI_ALL_GROUP': ' '.join(groups),
+    }
     for target, icfg in targets.items():
-        cmd.extend(['target', target, 'up' if icfg['state'] else 'down'])
+        env[f'FOOMUURI_TARGET_{target}'] = 'up' if icfg['state'] else 'down'
     for group, icfg in groups.items():
-        cmd.extend(['group', group,
-                    'up' if icfg.get('state', True) else 'down'])
-    try:
-        subprocess.run(cmd, check=False, timeout=60)
-    except OSError as error:
-        print(f'Error: Failed to run command "{" ".join(cmd)}": {error}',
-              flush=True)
+        env[f'FOOMUURI_GROUP_{group}'] = ('up' if icfg.get('state', True)
+                                          else 'down')
+    run_program(cfg[f'command_{updown}'], env=env)
 
 
 def monitor_update_groups(targets, groups):
