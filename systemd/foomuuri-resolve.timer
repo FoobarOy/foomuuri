@@ -1,5 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall - Resolve hostnames
+Documentation=https://github.com/FoobarOy/foomuuri/wiki
 Requires=foomuuri.service
 PartOf=foomuuri.service
 

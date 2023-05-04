@@ -1,5 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall - D-Bus handler
+Documentation=https://github.com/FoobarOy/foomuuri/wiki
 After=dbus.service
 After=polkit.service
 After=foomuuri.service

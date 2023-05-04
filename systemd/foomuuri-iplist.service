@@ -1,5 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall - Update iplist entries
+Documentation=https://github.com/FoobarOy/foomuuri/wiki
 
 [Service]
 ExecStart=/usr/sbin/foomuuri iplist

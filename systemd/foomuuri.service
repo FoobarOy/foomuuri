@@ -1,5 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall
+Documentation=https://github.com/FoobarOy/foomuuri/wiki
 Before=network-pre.target
 Wants=network-pre.target
 Wants=foomuuri-dbus.service
