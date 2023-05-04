@@ -1494,24 +1494,23 @@ def save_final(filename):
     save_file(filename, lines)
 
 
-def dbus_signal():
-    """Signal foomuuri-dbus to reload."""
-    # Get dbus pid
-    filename = CONFIG['run_dir'] / 'foomuuri-dbus.pid'
-    try:
-        pid = int(filename.read_text(encoding='utf-8'))
-    except FileNotFoundError:
-        return
-    except PermissionError as error:
-        fail(f'File {filename}: Can\'t read: {error}')
-    except ValueError:
-        return
+def signal_childs():
+    """Signal foomuuri-dbus and foomuuri-monitor to reload."""
+    for child in ('dbus', 'monitor'):
+        # Read pid
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        try:
+            pid = int(filename.read_text(encoding='utf-8'))
+        except PermissionError as error:
+            fail(f'File {filename}: Can\'t read: {error}')
+        except (FileNotFoundError, ValueError):
+            continue
 
-    # Send reload-signal
-    try:
-        os.kill(pid, signal.SIGHUP)
-    except OSError:
-        pass
+        # Send reload-signal
+        try:
+            os.kill(pid, signal.SIGHUP)
+        except OSError:
+            pass
 
 
 def apply_final():
@@ -1536,7 +1535,7 @@ def apply_final():
             CONFIG['good_file'].unlink(missing_ok=True)
             CONFIG['next_file'].rename(CONFIG['good_file'])
             print(f'{CONFIG["command"]} success')
-        dbus_signal()
+        signal_childs()
         return 0
 
     # Failure. Exit or fallback to good if "start-or-good".
@@ -1548,7 +1547,7 @@ def apply_final():
             if ret:
                 print(f'Error: Failed to load good ruleset, error code {ret}')
             else:
-                dbus_signal()  # Good success, signal dbus
+                signal_childs()  # Good success, signal dbus + monitor
         else:
             print('Error: Failed to load good ruleset, no such file')
     return 1
@@ -1797,7 +1796,6 @@ def command_dbus():
         # Read minimal config
         config = minimal_config()
         zones = parse_config_zones(config)
-        save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
 
         # Initialize D-Bus
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -1826,7 +1824,7 @@ def command_dbus():
                                              '/org/fedoraproject/FirewallD1')
             firewalld_object.set_data(zones)
 
-        # Start processing messages
+        # Define reload/stop signal handler
         mainloop = GLib.MainLoop()
 
         def signal_handler(sig, _dummy_frame):
@@ -1840,7 +1838,9 @@ def command_dbus():
 
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
+        save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
 
+        # Start processing messages
         print('D-Bus handler ready', flush=True)
         if HAVE_NOTIFY:
             notify('READY=1')
@@ -2356,8 +2356,6 @@ def parse_config_targets(config):
                   f'history_up {cfg["history_up"]} >= '
                   f'history_down {cfg["history_down"]}', flush=True)
 
-    if not targets:
-        fail('Error: No targets defined in configuration files')
     return targets
 
 
@@ -2391,37 +2389,47 @@ def parse_config_groups(config, targets):
 
 def command_monitor():
     """Monitor targets and run command when their state changes up or down."""
-    # Define reload/stop signal handler
-    def signal_handler(sig, _dummy_frame):
-        if sig == signal.SIGINT:
-            CONFIG['keep_going'] = 0
-            if HAVE_NOTIFY:
-                notify('STOPPING=1')
-        else:
-            CONFIG['keep_going'] = 2
-            if HAVE_NOTIFY:
-                notify('RELOADING=1')
-
-    signal.signal(signal.SIGHUP, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    # Read config
-    while True:
+    CONFIG['keep_going'] = 1
+    while CONFIG['keep_going']:
+        # Read minimal config
         config = minimal_config()
         targets = parse_config_targets(config)
         groups = parse_config_groups(config, targets)
+
+        # Exit silently with OK if no targets defined in configuration
+        if not targets:
+            if HAVE_NOTIFY:
+                notify('READY=1')
+                notify('STOPPING=1')
+            return 0
+
+        # Define reload/stop signal handler
+        def signal_handler(sig, _dummy_frame):
+            if sig == signal.SIGINT:
+                CONFIG['keep_going'] = 0
+                if HAVE_NOTIFY:
+                    notify('STOPPING=1')
+            else:
+                CONFIG['keep_going'] = 2
+                if HAVE_NOTIFY:
+                    notify('RELOADING=1')
+
+        CONFIG['keep_going'] = 1
+        signal.signal(signal.SIGHUP, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        save_file(CONFIG['run_dir'] / 'foomuuri-monitor.pid',
+                  [str(os.getpid())])
 
         # Start monitoring
         monitor_start_targets(targets)
         print('Target monitor ready', flush=True)
         if HAVE_NOTIFY:
             notify('READY=1')
-        CONFIG['keep_going'] = 1
         while CONFIG['keep_going'] == 1:
             monitor_read_targets(targets, groups)
         monitor_terminate_targets(targets)
-        if not CONFIG['keep_going']:
-            return 0
+
+    return 0
 
 
 def command_help():

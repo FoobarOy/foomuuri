@@ -4,6 +4,7 @@ Before=network-pre.target
 Wants=network-pre.target
 Wants=foomuuri-dbus.service
 Wants=foomuuri-iplist.timer
+Wants=foomuuri-monitor.service
 Wants=foomuuri-resolve.timer
 
 [Service]
