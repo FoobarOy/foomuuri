@@ -21,6 +21,7 @@ import socket
 import subprocess
 import sys
 import time
+import unicodedata
 import dbus
 import dbus.mainloop.glib
 import dbus.service
@@ -1482,6 +1483,16 @@ def run_program(args, show_output=False, env=None):
     return proc.returncode
 
 
+def env_cleanup(text):
+    """Allow only letters and numbers in text for environment variable."""
+    # Convert ä->a as isalpha('ä') is true
+    value = unicodedata.normalize('NFKD', text)
+    value = value.encode('ASCII', 'ignore').decode('utf-8')
+
+    # Remove non-alphanumeric chars
+    return ''.join(char if char.isalnum() else '_' for char in value)
+
+
 def save_final(filename):
     """Save final ruleset to file."""
     # Convert to indented lines
@@ -2179,18 +2190,21 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     env = {
         # Change state event
         'FOOMUURI_CHANGE_TYPE': grouptarget,
-        'FOOMUURI_CHANGE_NAME': name,
+        'FOOMUURI_CHANGE_NAME': env_cleanup(name),
         'FOOMUURI_CHANGE_STATE': updown,
         'FOOMUURI_CHANGE_LOG': extra,
+        'FOOMUURI_CHANGE_HISTORY': history or '',
         # List of configured targets
-        'FOOMUURI_ALL_TARGET': ' '.join(targets),
+        'FOOMUURI_ALL_TARGET': ' '.join(env_cleanup(item) for item in targets),
         # List of configured groups
-        'FOOMUURI_ALL_GROUP': ' '.join(groups),
+        'FOOMUURI_ALL_GROUP': ' '.join(env_cleanup(item) for item in groups),
     }
     for target, icfg in targets.items():
-        env[f'FOOMUURI_TARGET_{target}'] = 'up' if icfg['state'] else 'down'
+        env[f'FOOMUURI_TARGET_{env_cleanup(target)}'] = (
+            'up' if icfg['state'] else 'down')
     for group, icfg in groups.items():
-        env[f'FOOMUURI_GROUP_{group}'] = ('up' if icfg.get('state', True)
+        env[f'FOOMUURI_GROUP_{env_cleanup(group)}'] = (
+            'up' if icfg.get('state', True)
                                           else 'down')
     run_program(cfg[f'command_{updown}'], env=env)
 
