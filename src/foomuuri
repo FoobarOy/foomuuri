@@ -2182,7 +2182,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     print(f'{grouptarget} {name} changed state to {updown}, {extra}',
           flush=True)
     if history:
-        print(f'history: {history}', flush=True)
+        print(f'{grouptarget} {name} history: {history}', flush=True)
     cfg['state_time'] = now
 
     # Run external command if configured. It will receive current state change
@@ -2204,8 +2204,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
             'up' if icfg['state'] else 'down')
     for group, icfg in groups.items():
         env[f'FOOMUURI_GROUP_{env_cleanup(group)}'] = (
-            'up' if icfg.get('state', True)
-                                          else 'down')
+            'up' if icfg.get('state', True) else 'down')
     run_program(cfg[f'command_{updown}'], env=env)
 
 
