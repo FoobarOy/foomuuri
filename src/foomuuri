@@ -1098,9 +1098,12 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     out('}')
 
     # Broadcast and multicast
-    output_cast('broadcast', szone, dzone, rules, ipv)
     output_cast('multicast', szone, dzone, rules, ipv)
-    out('meta pkttype { broadcast, multicast } drop')
+    if ipv == 4:
+        output_cast('broadcast', szone, dzone, rules, ipv)
+        out('meta pkttype { broadcast, multicast } drop')
+    else:
+        out('meta pkttype multicast drop')
 
     # Unicast
     output_cast('unicast', szone, dzone, rules, ipv)

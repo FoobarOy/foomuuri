@@ -40,5 +40,5 @@
 	}
 
 	chain smurfs_6 {
-		fib saddr type { broadcast, multicast } goto smurfs_drop
+		fib saddr type multicast goto smurfs_drop
 	}
