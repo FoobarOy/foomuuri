@@ -35,6 +35,8 @@ install:
 	cp systemd/fi.foobar.Foomuuri1.conf $(PREFIX)/usr/share/dbus-1/system.d/
 	cp firewalld/fi.foobar.Foomuuri-FirewallD.conf $(PREFIX)/usr/share/dbus-1/system.d/
 	cp firewalld/dbus-firewalld.conf $(PREFIX)/usr/share/foomuuri/
+	mkdir -p $(PREFIX)/usr/share/man/man1
+	cp doc/foomuuri.1 $(PREFIX)/usr/share/man/man1/
 
 sysupdate:
 	make install PREFIX=/
@@ -52,10 +54,12 @@ release:
 	git diff --exit-code
 	git diff --cached --exit-code
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
+	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
 	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" foomuuri.spec
 	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/control
 	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/firewalld.control
-	git add src/foomuuri foomuuri.spec debian/control debian/firewalld.control
+	make --directory=doc
+	git add src/foomuuri doc/foomuuri.md doc/foomuuri.1 foomuuri.spec debian/control debian/firewalld.control
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
 	make rpm

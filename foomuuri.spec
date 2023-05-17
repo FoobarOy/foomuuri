@@ -72,6 +72,7 @@ fi
 %files
 %license COPYING
 %doc README.md
+%doc %{_mandir}/man1/foomuuri.1*
 %attr(0750, root, adm) %dir %{_sysconfdir}/foomuuri
 %{_sbindir}/foomuuri
 %{_sysctldir}/50-foomuuri.conf
