@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Example command_up / command_down script for foomuuri-monitor.
+# This script sends an email to root.
+
+# Ignore startup change event
+[ "${FOOMUURI_CHANGE_LOG}" = "startup change" ] && exit 0
+
+# Notify root by email
+(
+    # Changed state
+    echo "State change event:"
+    echo "  ${FOOMUURI_CHANGE_TYPE} ${FOOMUURI_CHANGE_NAME} ${FOOMUURI_CHANGE_STATE}"
+    echo "  ${FOOMUURI_CHANGE_LOG}"
+    echo
+
+    # All states
+    echo "All states:"
+    for name in ${FOOMUURI_ALL_TARGET}; do
+	state_ref=FOOMUURI_TARGET_${name}
+	state=$(eval "echo \"\$${state_ref}\"")
+	echo "  target ${name} ${state}"
+    done
+    for name in ${FOOMUURI_ALL_GROUP}; do
+	state_ref=FOOMUURI_GROUP_${name}
+	state=$(eval "echo \"\$${state_ref}\"")
+	echo "  group ${name} ${state}"
+    done
+) | mail -s "[foomuuri-monitor] ${FOOMUURI_CHANGE_TYPE} ${FOOMUURI_CHANGE_NAME} ${FOOMUURI_CHANGE_STATE}" root
