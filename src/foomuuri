@@ -366,6 +366,17 @@ def parse_resolve(config, section, timeout):
     return ret
 
 
+def parse_config_hook(config):
+    """Parse hook{} from config."""
+    for fileline, line in config.pop('hook', []):
+        if line[0] not in (
+                'pre_start', 'post_start',
+                'pre_stop', 'post_stop',
+        ):
+            fail(f'{fileline}Unknown hook: {" ".join(line)}')
+        CONFIG[line[0]] = line[1:]
+
+
 def minimal_config():
     """Read and parse minimal config."""
     config = read_config()
@@ -1481,8 +1492,9 @@ def run_program(args, show_output=False, env=None):
         print(f'Error: Failed to run command "{" ".join(args)}": {error}',
               flush=True)
         return 1
-    if (proc.returncode and proc.stdout) or show_output:
-        print(proc.stdout, flush=True)
+    output = proc.stdout.rstrip()
+    if output and (proc.returncode or show_output):
+        print(output, flush=True)
     return proc.returncode
 
 
@@ -1547,6 +1559,9 @@ def apply_final():
             print('check success')
         return ret
 
+    # Run pre_start / pre_stop hook
+    run_program(CONFIG.get(f'pre_{CONFIG["command"][:5]}'), True)
+
     # Load "next"
     ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['next_file']])
 
@@ -1556,8 +1571,9 @@ def apply_final():
             # pylint: disable=no-member
             CONFIG['good_file'].unlink(missing_ok=True)
             CONFIG['next_file'].rename(CONFIG['good_file'])
-            print(f'{CONFIG["command"]} success')
         signal_childs()
+        run_program(CONFIG.get(f'post_{CONFIG["command"][:5]}'), True)
+        print(f'{CONFIG["command"]} success')
         return 0
 
     # Failure. Exit or fallback to good if "start-or-good".
@@ -1567,11 +1583,14 @@ def apply_final():
             ret = run_program([CONFIG['nft_bin'], '--file',
                                CONFIG['good_file']])
             if ret:
-                print(f'Error: Failed to load good ruleset, error code {ret}')
+                print(f'Error: Failed to load \"good\" ruleset to nftables, '
+                      f'error code {ret}')
             else:
                 signal_childs()  # Good success, signal dbus + monitor
+                run_program(CONFIG.get('post_start'), True)
+                print('Warning: Fallbacked to previous \"good\" ruleset')
         else:
-            print('Error: Failed to load good ruleset, no such file')
+            print('Error: Failed to load \"good\" ruleset, no such file')
     return 1
 
 
@@ -1587,6 +1606,7 @@ def command_start():
     dnat = parse_config_nat(config, 'dnat')
     templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
+    parse_config_hook(config)
     rules = parse_config_rules(config)  # Also verify for unknown sections
     insert_any_zones(zones, rules)
     expand_templates(rules, templates)
