@@ -19,7 +19,11 @@ Recommends:     (foomuuri-firewalld if NetworkManager)
 
 
 %description
-Foomuuri is a multizone bidirectional nftables firewall.
+Foomuuri is a firewall generator for nftables based on the concept of zones.
+It is suitable for all systems from personal machines to corporate firewalls,
+and supports advanced features such as a rich rule language, IPv4/IPv6 rule
+splitting, dynamic DNS lookups, a D-Bus API and FirewallD emulation for
+NetworkManager's zone support.
 
 
 %package firewalld
@@ -29,7 +33,11 @@ Requires:       %{name} = %{version}
 
 
 %description firewalld
-Foomuuri is a multizone bidirectional nftables firewall.
+Foomuuri is a firewall generator for nftables based on the concept of zones.
+It is suitable for all systems from personal machines to corporate firewalls,
+and supports advanced features such as a rich rule language, IPv4/IPv6 rule
+splitting, dynamic DNS lookups, a D-Bus API and FirewallD emulation for
+NetworkManager's zone support.
 
 This optional package includes FirewallD emulation configuration files.
 
