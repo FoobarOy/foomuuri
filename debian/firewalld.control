@@ -1,5 +1,5 @@
 Package: foomuuri-firewalld
-Version: 0.18
+Version: 0.19
 Section: net
 Priority: optional
 Architecture: all

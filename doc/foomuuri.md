@@ -2,7 +2,7 @@
 title: FOOMUURI
 section: 1
 header: User Manual
-footer: Foomuuri 0.18
+footer: Foomuuri 0.19
 date: May 17, 2023
 ---
 
