@@ -1,12 +1,14 @@
 # ChangeLog
 
-## 0.19 (2023-xx-xx)
+## 0.19 (2023-05-19)
 
 * Add `iplist` section to import IP address lists. These can be used to
   import IP country lists, whitelists, blacklists, etc.
 * Add `hook` section to run external commands when Foomuuri starts/stops
 * Fix `dhcpv6-server` macro in default.services.conf
 * Add man page and improve documentation
+* Add experimental connectivity monitor which will be used for upcoming
+  multi ISP support
 
 ## 0.18 (2023-04-18)
 
