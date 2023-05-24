@@ -2179,6 +2179,21 @@ def command_list():
     return ret
 
 
+def seconds_to_human(seconds):
+    """Convert seconds int to human readable "2d 3h 2m 30s" format."""
+    day = seconds // 86400
+    hour = (seconds // 3600) % 24
+    minute = (seconds // 60) % 60
+    second = seconds % 60
+    if day:
+        return f'{day}d {hour}h {minute}m {second}s'
+    if hour:
+        return f'{hour}h {minute}m {second}s'
+    if minute:
+        return f'{minute}m {second}s'
+    return f'{second}s'
+
+
 def monitor_state_command(targets, groups, cfg, grouptarget, name):
     """Run command if group/target state changes."""
     # pylint: disable=too-many-locals
@@ -2190,8 +2205,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     history = None
     if prev:
         seconds = int(now - prev + 0.5)
-        extra = (f'previous change was {seconds // 3600}h '
-                 f'{seconds // 60 % 60}m {seconds % 60}s ago')
+        extra = f'previous change was {seconds_to_human(seconds)} ago'
         if grouptarget == 'target':
             for cons in range(0, cfg['history_size']):
                 if cfg['history'][-1 - cons] != cfg['state']:
