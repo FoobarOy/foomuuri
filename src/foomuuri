@@ -1225,7 +1225,7 @@ def output_static_chain_logging(chain, policy):
 
 def output_header():
     """Output generic nft header."""
-    command_stop()  # Stop previous foomuuri
+    command_stop(False)  # Stop previous foomuuri
     out('')
     out('table inet foomuuri {')  # Add new foomuuri
     out('')
@@ -1634,8 +1634,11 @@ def command_start():
     save_file(CONFIG['zone_file'], zones.keys())
 
 
-def command_stop():
+def command_stop(parse_config=True):
     """Process "stop" command. This will remove all foomuuri rules."""
+    if parse_config:  # Needed for pre_stop and post_stop hooks
+        config = minimal_config()
+        parse_config_hook(config)
     out('table inet foomuuri')
     out('delete table inet foomuuri')
 
