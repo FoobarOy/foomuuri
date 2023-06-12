@@ -1477,11 +1477,8 @@ def save_file(filename, lines):
         fail(f'File {filename}: Can\'t write: {error}')
 
 
-def run_program(args, show_output=False, env=None):
-    """Run external program and return errorcode.
-
-    Print it's output if run fails.
-    """
+def run_program(args, *, env=None):
+    """Run external program and return it's errorcode."""
     if not args:
         return 0
     try:
@@ -1493,7 +1490,7 @@ def run_program(args, show_output=False, env=None):
               flush=True)
         return 1
     output = proc.stdout.rstrip()
-    if output and (proc.returncode or show_output):
+    if output:
         print(output, flush=True)
     return proc.returncode
 
@@ -1560,7 +1557,7 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program(CONFIG.get(f'pre_{CONFIG["command"][:5]}'), True)
+    run_program(CONFIG.get(f'pre_{CONFIG["command"][:5]}'))
 
     # Load "next"
     ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['next_file']])
@@ -1572,7 +1569,7 @@ def apply_final():
             CONFIG['good_file'].unlink(missing_ok=True)
             CONFIG['next_file'].rename(CONFIG['good_file'])
         signal_childs()
-        run_program(CONFIG.get(f'post_{CONFIG["command"][:5]}'), True)
+        run_program(CONFIG.get(f'post_{CONFIG["command"][:5]}'))
         print(f'{CONFIG["command"]} success')
         return 0
 
@@ -1587,7 +1584,7 @@ def apply_final():
                       f'error code {ret}')
             else:
                 signal_childs()  # Good success, signal dbus + monitor
-                run_program(CONFIG.get('post_start'), True)
+                run_program(CONFIG.get('post_start'))
                 print('Warning: Fallbacked to previous \"good\" ruleset')
         else:
             print('Error: Failed to load \"good\" ruleset, no such file')
@@ -2154,7 +2151,7 @@ def command_list():
     """List currently active ruleset."""
     # List all
     if not CONFIG['parameters']:
-        return run_program([CONFIG['nft_bin'], 'list', 'ruleset'], True)
+        return run_program([CONFIG['nft_bin'], 'list', 'ruleset'])
 
     # Parse list of possible zone-zone pairs
     config = minimal_config()
@@ -2178,7 +2175,7 @@ def command_list():
                 fail(f'Unknown zone-zone: {zone}')
             for ipv in (4, 6):
                 ret += run_program([CONFIG['nft_bin'], 'list', 'chain', 'inet',
-                                    'foomuuri', f'{zone}_{ipv}'], True)
+                                    'foomuuri', f'{zone}_{ipv}'])
     return ret
 
 
