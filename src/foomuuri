@@ -333,9 +333,9 @@ def parse_config_zonemap(config):
     return zonemap
 
 
-def parse_config_nat(config, nat):
-    """Parse snat{} or dnat{} rules from config."""
-    lines = config.pop(nat, [])
+def parse_config_rule_section(config, section):
+    """Parse snat{}, dnat{}, prerouting{} etc. rules from config."""
+    lines = config.pop(section, [])
     rules = [parse_rule_line(line) for line in lines]
     return rules
 
@@ -459,6 +459,9 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}{extra} without {basic} is not valid')
 
+    if rule['policy'] == 'mark_set' and not rule['mark_set']:
+        fail(f'{fileline}{rule["policy"]} without value is not valid')
+
 
 def parse_rule_line(fileline_line):
     """Parse single config section line to rule dict.
@@ -515,6 +518,7 @@ def parse_rule_line(fileline_line):
         'nft': None,
         'mss': None,
         'template': None,
+        'mark_set': None,
 
         # Internal housekeeping
         'fileline': fileline,  # For error messages
@@ -575,10 +579,13 @@ def parse_rule_line(fileline_line):
                       'nft',
                       'mss',
                       'template',
+                      'mark_set',
                       ):
             keyword = item
             if ret[keyword] is None:
                 ret[keyword] = ''
+            if item == 'mark_set':  # policy and start keyword
+                ret['policy'] = item
 
         # More parameters for keyword
         elif keyword:
@@ -819,6 +826,17 @@ def rule_rate_limit(rule, ipv):
     return ret
 
 
+def mark_set_argument(rule):
+    """Convert "x" to "x", "x/y" to "mark and y xor x"."""
+    value = rule['mark_set']
+    x_y = value.split('/')
+    if len(x_y) > 2:
+        fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
+    if len(x_y) == 1:
+        return value
+    return f'mark and {x_y[1]} xor {x_y[0]}'
+
+
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
                          do_lograte=True):
     """Return rule's user, rate, log and policy as nft command."""
@@ -863,6 +881,10 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
             LOGRATES[logname] = (ipv, logtext, policy)
             return f'{ret}jump {logname}'
         ret += f'log prefix "{logtext} " {CONFIG["log_level"]} '
+
+    # mark_set argument parser
+    if policy == 'mark_set':
+        policy = f'meta mark set {mark_set_argument(rule)}'
 
     return ret + policy
 
@@ -1176,17 +1198,26 @@ def output_zone2zone_rules(rules, zonemap):
         output_zone(zonemap, szone, dzone, rules[(szone, dzone)], 6)
 
 
-def output_nat(rules, nat):
-    """Output snat or dnat rules."""
+def output_rule_section(rules, section):
+    """Output snat, dnat, prerouting or postrouting rules."""
     if not rules:
         return
-    if nat == 'snat':
+
+    if section == 'snat':
         out('chain source_nat {')
         out('type nat hook postrouting priority srcnat + 10')
-    else:
+    elif section == 'dnat':
         out('chain destination_nat {')
         out('type nat hook prerouting priority dstnat + 10')
+    elif section == 'prerouting':
+        out('chain prerouting_rules {')
+        out('type filter hook prerouting priority mangle')
+    elif section == 'postrouting':
+        out('chain postrouting_rules {')
+        out('type filter hook postrouting priority mangle')
 
+    has_mark = False
+    ip_merger = set()
     for rule in rules:
         for ipv in (4, 6):
             to_rule = parse_to(rule, ipv)
@@ -1195,9 +1226,21 @@ def output_nat(rules, nat):
             match = match_rules(rule, rule['cast'], ipv, need_addrlist=to_rule)
             if match is None:
                 continue
-            policy = rule_rate_log_policy(nat.upper(), '', rule, ipv,
+            policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
                                           rule['nft'], do_lograte=False)
-            out(f'{match}{policy}{to_rule}')
+            has_mark |= 'meta mark set' in policy
+
+            # There are no separate IPv4/IPv6 chains so merge possible rules
+            full_rule = f'{match}{policy}{to_rule}'
+            if full_rule in ip_merger:
+                continue
+            ip_merger.add(full_rule)
+            out(full_rule)
+
+    # Save mark to connection tracking if there were mark_set rules. These
+    # are used in prerouting{} for multi-ISP support.
+    if has_mark:
+        out('ct mark set mark and 0xff00')
     out('}')
 
 
@@ -1417,7 +1460,7 @@ def output_resolve_elements(resolve, statefile):
 
 
 def output_helpers():
-    """Output helpers and prerouting."""
+    """Output helpers."""
     # Convert helper list to helper->proto->set(ports) dict
     helpers = {}
     for name, proto, ports in HELPERS:
@@ -1448,7 +1491,7 @@ def output_helpers():
     out('}')
 
 
-def output_prerouting():
+def output_rpfilter():
     """Prerouting chain to check rpfilter."""
     if CONFIG['rpfilter'] == 'no':
         return
@@ -1599,8 +1642,10 @@ def command_start():
     zonemap = parse_config_zonemap(config)
     resolve = parse_resolve(config, 'resolve', '24h')
     iplist = parse_resolve(config, 'iplist', '10d')
-    snat = parse_config_nat(config, 'snat')
-    dnat = parse_config_nat(config, 'dnat')
+    snat = parse_config_rule_section(config, 'snat')
+    dnat = parse_config_rule_section(config, 'dnat')
+    prerouting = parse_config_rule_section(config, 'prerouting')
+    postrouting = parse_config_rule_section(config, 'postrouting')
     templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -1614,15 +1659,17 @@ def command_start():
     output_rate_names(rules)
     output_zone_vmaps(zones)
     output_zone2zone_rules(rules, zonemap)
-    output_nat(snat, 'snat')
-    output_nat(dnat, 'dnat')
+    output_rule_section(snat, 'snat')
+    output_rule_section(dnat, 'dnat')
+    output_rule_section(prerouting, 'prerouting')
+    output_rule_section(postrouting, 'postrouting')
     optimize_jumps()
     optimize_accepts()
     output_logrates()
     output_resolve_sets(resolve, '')
     output_resolve_sets(iplist, 'interval,')
     output_helpers()
-    output_prerouting()
+    output_rpfilter()
     output_footer()
     output_resolve_elements(resolve, 'resolve_file')
     output_resolve_elements(iplist, 'iplist_file')
