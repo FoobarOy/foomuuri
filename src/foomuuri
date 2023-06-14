@@ -519,6 +519,7 @@ def parse_rule_line(fileline_line):
         'mss': None,
         'template': None,
         'mark_set': None,
+        'mark_match': None,
 
         # Internal housekeeping
         'fileline': fileline,  # For error messages
@@ -580,6 +581,7 @@ def parse_rule_line(fileline_line):
                       'mss',
                       'template',
                       'mark_set',
+                      'mark_match',
                       ):
             keyword = item
             if ret[keyword] is None:
@@ -837,6 +839,19 @@ def mark_set_argument(rule):
     return f'mark and {x_y[1]} xor {x_y[0]}'
 
 
+def mark_match(rule):
+    """Convert "x" to "== x", "x/y" to "and y == x"."""
+    value = rule['mark_match']
+    if not value:
+        return ''
+    x_y = value.split('/')
+    if len(x_y) > 2:
+        fail(f'{rule["fileline"]}Invalid mark_match value: {value}')
+    if len(x_y) == 1:
+        return f'meta mark == {value} '
+    return f'meta mark and {x_y[1]} == {x_y[0]} '
+
+
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
                          do_lograte=True):
     """Return rule's user, rate, log and policy as nft command."""
@@ -1043,12 +1058,15 @@ def match_rules(rule, cast, ipv, skip_options=True, need_addrlist=False):
     else:
         proto_ports = parse_protocol_ports(rule)
 
+    mark = mark_match(rule)
+
     # Return matcher string
-    return f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}'
+    return f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}{mark}'
 
 
 def output_cast(cast, szone, dzone, rules, ipv):
     """Output all uni/multi/broadcast rules for single zone-zone."""
+    has_mark_match = False
     for rule in rules:
         match = match_rules(rule, cast, ipv)
         if match is None:
@@ -1056,6 +1074,11 @@ def output_cast(cast, szone, dzone, rules, ipv):
         policy = rule_rate_log_policy(szone, dzone, rule, ipv, rule['nft'])
         if match + policy == 'counter packets 0 bytes 0 accept':
             continue  # Plain "counter" is handled in output_counter()
+
+        if not has_mark_match and rule['mark_match']:
+            has_mark_match = True
+            out('meta mark set ct mark')
+
         out(f'{match}{policy}')
 
         # Does this rule need kernel helper?
@@ -1210,13 +1233,14 @@ def output_rule_section(rules, section):
         out('chain destination_nat {')
         out('type nat hook prerouting priority dstnat + 10')
     elif section == 'prerouting':
-        out('chain prerouting_rules {')
-        out('type filter hook prerouting priority mangle')
+        out('chain prerouting_mangle {')
+        out('type filter hook prerouting priority mangle + 10')
     elif section == 'postrouting':
-        out('chain postrouting_rules {')
-        out('type filter hook postrouting priority mangle')
+        out('chain postrouting_mangle {')
+        out('type filter hook postrouting priority mangle + 10')
 
-    has_mark = False
+    has_mark_set = False
+    has_mark_match = False
     ip_merger = set()
     for rule in rules:
         for ipv in (4, 6):
@@ -1228,7 +1252,12 @@ def output_rule_section(rules, section):
                 continue
             policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
                                           rule['nft'], do_lograte=False)
-            has_mark |= 'meta mark set' in policy
+
+            # Mark set or mark match
+            has_mark_set |= 'meta mark set' in policy
+            if not has_mark_match and rule['mark_match']:
+                has_mark_match = True
+                out('meta mark set ct mark')
 
             # There are no separate IPv4/IPv6 chains so merge possible rules
             full_rule = f'{match}{policy}{to_rule}'
@@ -1239,8 +1268,8 @@ def output_rule_section(rules, section):
 
     # Save mark to connection tracking if there were mark_set rules. These
     # are used in prerouting{} for multi-ISP support.
-    if has_mark:
-        out('ct mark set mark and 0xff00')
+    if has_mark_set:
+        out('ct mark set mark')
     out('}')
 
 
@@ -1482,8 +1511,8 @@ def output_helpers():
         out('}')
 
     # Output prerouting
-    out('chain helpers {')
-    out('type filter hook prerouting priority filter')
+    out('chain helper {')
+    out('type filter hook prerouting priority filter + 10')
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
@@ -1495,8 +1524,8 @@ def output_rpfilter():
     """Prerouting chain to check rpfilter."""
     if CONFIG['rpfilter'] == 'no':
         return
-    out('chain prerouting {')
-    out('type filter hook prerouting priority filter + 10')
+    out('chain rpfilter {')
+    out('type filter hook prerouting priority filter + 5')
     interfaces = ''
     if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
         interfaces = f'iifname {single_or_set(CONFIG["rpfilter"])} '
