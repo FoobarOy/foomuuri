@@ -840,16 +840,24 @@ def mark_set_argument(rule):
 
 
 def mark_match(rule):
-    """Convert "x" to "== x", "x/y" to "and y == x"."""
+    """Convert "x" to "== x", "x/y" to "and y == x".
+
+    Negative "-x" can also be used to get "!= x".
+    """
     value = rule['mark_match']
     if not value:
         return ''
+    check = '=='
+    if value.startswith('-'):
+        check = '!='
+        value = value[1:]
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(f'{rule["fileline"]}Invalid mark_match value: {value}')
+        fail(f'{rule["fileline"]}Invalid mark_match value: '
+             f'{rule["mark_match"]}')
     if len(x_y) == 1:
-        return f'meta mark == {value} '
-    return f'meta mark and {x_y[1]} == {x_y[0]} '
+        return f'meta mark {check} {value} '
+    return f'meta mark and {x_y[1]} {check} {x_y[0]} '
 
 
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
