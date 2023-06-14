@@ -829,14 +829,21 @@ def rule_rate_limit(rule, ipv):
 
 
 def mark_set_argument(rule):
-    """Convert "x" to "x", "x/y" to "mark and y xor x"."""
+    """Convert "x" to "x", "x/y" to "mark and ~y xor x"."""
     value = rule['mark_set']
     x_y = value.split('/')
     if len(x_y) > 2:
         fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
     if len(x_y) == 1:
         return value
-    return f'mark and {x_y[1]} xor {x_y[0]}'
+
+    # Convert "/0xff00" to "/0xffff00ff" so that same mask is used in
+    # set and match operations in config. Nftables requires 0xffff00ff.
+    try:
+        mask = int(x_y[1], 0)  # dec or hex
+    except ValueError:
+        fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
+    return f'mark and {hex(0xffffffff ^ mask)} xor {x_y[0]}'
 
 
 def mark_match(rule):
