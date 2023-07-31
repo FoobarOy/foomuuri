@@ -380,9 +380,9 @@ def parse_config_hook(config):
 def minimal_config():
     """Read and parse minimal config."""
     config = read_config()
-    parse_config_foomuuri(config)
     expand_macros(config)
     remove_quotes(config)
+    parse_config_foomuuri(config)
     return config
 
 
