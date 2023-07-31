@@ -1,5 +1,14 @@
 # ChangeLog
 
+## 0.20-devel (xxxx-xx-xx)
+
+* Add `prerouting` and `postrouting` sections
+* Add `mark_set` rule
+* Add `mark_match` matcher
+* Expand macros and support quotes in `foomuuri` section
+* Fix running pre/post_stop hooks on `foomuuri stop`
+* Fix man page section from 1 to 8
+
 ## 0.19 (2023-05-19)
 
 * Add `iplist` section to import IP address lists. These can be used to
