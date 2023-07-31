@@ -3,9 +3,9 @@
 all: test
 
 test:
-	flake8-3 src/foomuuri
-	pycodestyle-3 src/foomuuri
-	pylint-3 src/foomuuri
+	flake8 src/foomuuri
+	pycodestyle src/foomuuri
+	pylint src/foomuuri
 
 clean distclean:
 	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm foomuuri-*.deb tmp/
@@ -35,8 +35,8 @@ install:
 	cp systemd/fi.foobar.Foomuuri1.conf $(PREFIX)/usr/share/dbus-1/system.d/
 	cp firewalld/fi.foobar.Foomuuri-FirewallD.conf $(PREFIX)/usr/share/dbus-1/system.d/
 	cp firewalld/dbus-firewalld.conf $(PREFIX)/usr/share/foomuuri/
-	mkdir -p $(PREFIX)/usr/share/man/man1
-	cp doc/foomuuri.1 $(PREFIX)/usr/share/man/man1/
+	mkdir -p $(PREFIX)/usr/share/man/man8
+	cp doc/foomuuri.8 $(PREFIX)/usr/share/man/man8/
 
 sysupdate:
 	make install PREFIX=/
