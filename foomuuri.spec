@@ -7,6 +7,9 @@ URL:            https://github.com/FoobarOy/foomuuri
 Source0:        https://github.com/FoobarOy/foomuuri/archive/v%{version}/foomuuri-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  make
+BuildRequires:  pylint
+BuildRequires:  python3-flake8
+BuildRequires:  python3-pycodestyle
 BuildRequires:  systemd-rpm-macros
 Requires:       nftables
 Requires:       python3-dbus
@@ -53,6 +56,10 @@ This optional package includes FirewallD emulation configuration files.
 make install PREFIX=%{buildroot}
 
 
+%check
+make test
+
+
 %post
 %systemd_post foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-monitor.service foomuuri-resolve.timer foomuuri-resolve.service
 
@@ -72,7 +79,7 @@ fi
 %files
 %license COPYING
 %doc README.md CHANGELOG.md
-%doc %{_mandir}/man1/foomuuri.1*
+%doc %{_mandir}/man8/foomuuri.8*
 %attr(0750, root, adm) %dir %{_sysconfdir}/foomuuri
 %{_sbindir}/foomuuri
 %{_sysctldir}/50-foomuuri.conf
