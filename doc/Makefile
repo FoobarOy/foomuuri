@@ -1,2 +1,2 @@
-foomuuri.1: foomuuri.md
-	pandoc --standalone --to=man foomuuri.md --output foomuuri.1
+foomuuri.8: foomuuri.md
+	pandoc --standalone --to=man foomuuri.md --output foomuuri.8
