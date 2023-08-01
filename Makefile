@@ -1,5 +1,7 @@
 .PHONY: all test clean distclean install sysupdate release tar rpm deb
 
+SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
+
 all: test
 
 test:
@@ -11,35 +13,35 @@ clean distclean:
 	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm foomuuri-*.deb tmp/
 
 install:
-	mkdir -p $(PREFIX)/etc/foomuuri/
-	mkdir -p $(PREFIX)/usr/sbin/
-	cp src/foomuuri $(PREFIX)/usr/sbin/
-	mkdir -p $(PREFIX)/usr/lib/sysctl.d/
-	cp etc/50-foomuuri.conf $(PREFIX)/usr/lib/sysctl.d/50-foomuuri.conf
-	mkdir -p $(PREFIX)/usr/share/foomuuri/
-	cp etc/default.services.conf $(PREFIX)/usr/share/foomuuri/
-	cp etc/static.nft $(PREFIX)/usr/share/foomuuri/
-	mkdir -p $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-dbus.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-iplist.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-iplist.timer $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-monitor.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-resolve.service $(PREFIX)/usr/lib/systemd/system/
-	cp systemd/foomuuri-resolve.timer $(PREFIX)/usr/lib/systemd/system/
-	mkdir -p $(PREFIX)/usr/lib/tmpfiles.d/
-	cp systemd/foomuuri.tmpfilesd $(PREFIX)/usr/lib/tmpfiles.d/foomuuri.conf
-	mkdir -p $(PREFIX)/run/foomuuri/
-	mkdir -p $(PREFIX)/var/lib/foomuuri/
-	mkdir -p $(PREFIX)/usr/share/dbus-1/system.d/
-	cp systemd/fi.foobar.Foomuuri1.conf $(PREFIX)/usr/share/dbus-1/system.d/
-	cp firewalld/fi.foobar.Foomuuri-FirewallD.conf $(PREFIX)/usr/share/dbus-1/system.d/
-	cp firewalld/dbus-firewalld.conf $(PREFIX)/usr/share/foomuuri/
-	mkdir -p $(PREFIX)/usr/share/man/man8
-	cp doc/foomuuri.8 $(PREFIX)/usr/share/man/man8/
+	mkdir -p $(DESTDIR)/etc/foomuuri/
+	mkdir -p $(DESTDIR)/usr/sbin/
+	cp src/foomuuri $(DESTDIR)/usr/sbin/
+	mkdir -p $(DESTDIR)/usr/lib/sysctl.d/
+	cp etc/50-foomuuri.conf $(DESTDIR)/usr/lib/sysctl.d/50-foomuuri.conf
+	mkdir -p $(DESTDIR)/usr/share/foomuuri/
+	cp etc/default.services.conf $(DESTDIR)/usr/share/foomuuri/
+	cp etc/static.nft $(DESTDIR)/usr/share/foomuuri/
+	mkdir -p $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-dbus.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-iplist.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-iplist.timer $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-monitor.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-resolve.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-resolve.timer $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	mkdir -p $(DESTDIR)/usr/lib/tmpfiles.d/
+	cp systemd/foomuuri.tmpfilesd $(DESTDIR)/usr/lib/tmpfiles.d/foomuuri.conf
+	mkdir -p $(DESTDIR)/run/foomuuri/
+	mkdir -p $(DESTDIR)/var/lib/foomuuri/
+	mkdir -p $(DESTDIR)/usr/share/dbus-1/system.d/
+	cp systemd/fi.foobar.Foomuuri1.conf $(DESTDIR)/usr/share/dbus-1/system.d/
+	cp firewalld/fi.foobar.Foomuuri-FirewallD.conf $(DESTDIR)/usr/share/dbus-1/system.d/
+	cp firewalld/dbus-firewalld.conf $(DESTDIR)/usr/share/foomuuri/
+	mkdir -p $(DESTDIR)/usr/share/man/man8
+	cp doc/foomuuri.8 $(DESTDIR)/usr/share/man/man8/
 
 sysupdate:
-	make install PREFIX=/
+	make install DESTDIR=/
 	systemctl daemon-reload
 
 ### Release
@@ -83,7 +85,7 @@ rpm: tar
 	rpmbuild -ba --define="_topdir $(CURDIR)/tmp" --define="_sourcedir $(CURDIR)" foomuuri.spec
 
 deb: clean
-	make install PREFIX=tmp/1
+	make install DESTDIR=tmp/1
 	cp --archive debian tmp/1/DEBIAN
 	mkdir -p tmp/2/DEBIAN
 	mkdir -p tmp/2/usr/share/dbus-1/system.d

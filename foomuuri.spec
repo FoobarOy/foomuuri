@@ -54,7 +54,7 @@ allowing dynamically assign interfaces to Foomuuri zones via NetworkManager.
 
 
 %install
-make install PREFIX=%{buildroot}
+make install DESTDIR=%{buildroot}
 
 
 %check

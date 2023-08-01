@@ -7,7 +7,7 @@
 * Add `mark_match` matcher
 * Expand macros and support quotes in `foomuuri` section
 * Fix running pre/post_stop hooks on `foomuuri stop`
-* Fix man page section from 1 to 8
+* Fix man page section from 1 to 8, other Makefile and spec fixes
 
 ## 0.19 (2023-05-19)
 
