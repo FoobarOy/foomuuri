@@ -42,7 +42,8 @@ and supports advanced features such as a rich rule language, IPv4/IPv6 rule
 splitting, dynamic DNS lookups, a D-Bus API and FirewallD emulation for
 NetworkManager's zone support.
 
-This optional package includes FirewallD emulation configuration files.
+This optional package provides FirewallD D-Bus emulation for Foomuuri,
+allowing dynamically assign interfaces to Foomuuri zones via NetworkManager.
 
 
 %prep
