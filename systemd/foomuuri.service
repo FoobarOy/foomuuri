@@ -1,6 +1,7 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall
 Documentation=https://github.com/FoobarOy/foomuuri/wiki
+After=local-fs.target
 Before=network-pre.target
 Wants=network-pre.target
 Wants=foomuuri-dbus.service
@@ -16,4 +17,4 @@ ExecReload=/usr/sbin/foomuuri start
 ExecStop=/usr/sbin/foomuuri stop
 
 [Install]
-WantedBy=basic.target
+WantedBy=multi-user.target
