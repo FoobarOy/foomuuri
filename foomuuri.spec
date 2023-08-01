@@ -94,7 +94,7 @@ fi
 %{_unitdir}/foomuuri-resolve.service
 %{_unitdir}/foomuuri-resolve.timer
 %{_tmpfilesdir}/foomuuri.conf
-%attr(0700, root, root) %dir %{_rundir}/foomuuri
+%attr(0755, root, root) %dir %{_rundir}/foomuuri
 %attr(0700, root, root) %dir %{_sharedstatedir}/foomuuri
 %{_datadir}/dbus-1/system.d/fi.foobar.Foomuuri1.conf
 
