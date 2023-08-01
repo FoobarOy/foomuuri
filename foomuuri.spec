@@ -62,6 +62,7 @@ make test
 
 %post
 %systemd_post foomuuri.service foomuuri-dbus.service foomuuri-iplist.timer foomuuri-iplist.service foomuuri-monitor.service foomuuri-resolve.timer foomuuri-resolve.service
+%tmpfiles_create foomuuri.conf
 
 
 %preun
@@ -94,7 +95,7 @@ fi
 %{_unitdir}/foomuuri-resolve.service
 %{_unitdir}/foomuuri-resolve.timer
 %{_tmpfilesdir}/foomuuri.conf
-%attr(0755, root, root) %dir %{_rundir}/foomuuri
+%ghost %dir %{_rundir}/foomuuri
 %attr(0700, root, root) %dir %{_sharedstatedir}/foomuuri
 %{_datadir}/dbus-1/system.d/fi.foobar.Foomuuri1.conf
 
