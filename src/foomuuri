@@ -829,7 +829,7 @@ def rule_rate_limit(rule, ipv):
 
 
 def mark_set_argument(rule):
-    """Convert "x" to "x", "x/y" to "mark and ~y xor x"."""
+    """Convert "x" to "x", "x/y" to "mark and ~y or x"."""
     value = rule['mark_set']
     x_y = value.split('/')
     if len(x_y) > 2:
@@ -843,7 +843,7 @@ def mark_set_argument(rule):
         mask = int(x_y[1], 0)  # dec or hex
     except ValueError:
         fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
-    return f'mark and {hex(0xffffffff ^ mask)} xor {x_y[0]}'
+    return f'meta mark & {hex(0xffffffff ^ mask)} | {x_y[0]}'
 
 
 def mark_match(rule):
@@ -864,7 +864,7 @@ def mark_match(rule):
              f'{rule["mark_match"]}')
     if len(x_y) == 1:
         return f'meta mark {check} {value} '
-    return f'meta mark and {x_y[1]} {check} {x_y[0]} '
+    return f'meta mark & {x_y[1]} {check} {x_y[0]} '
 
 
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
@@ -1284,7 +1284,7 @@ def output_rule_section(rules, section):
     # Save mark to connection tracking if there were mark_set rules. These
     # are used in prerouting{} for multi-ISP support.
     if has_mark_set:
-        out('ct mark set mark')
+        out('ct mark set meta mark')
     out('}')
 
 
