@@ -3,7 +3,7 @@
 ## 0.20-devel (xxxx-xx-xx)
 
 * Multi-ISP support, see wiki for example configuration
-* Add `mark_set` rule
+* Add `mark_set`, `mark_restore` and `mark_save` statements
 * Add `mark_match` matcher
 * Add `prerouting`, `postrouting` and `output` sections for marks
 * Expand macros and support quotes in `foomuuri` section

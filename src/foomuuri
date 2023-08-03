@@ -540,7 +540,8 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return',
-                      'masquerade', 'snat', 'dnat'):
+                      'masquerade', 'snat', 'dnat',
+                      'mark_save', 'mark_restore'):
             ret['policy'] = item
             keyword = None
         elif item == 'reject':
@@ -915,6 +916,10 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     # mark_set argument parser
     if policy == 'mark_set':
         policy = f'meta mark set {mark_set_argument(rule)}'
+    elif policy == 'mark_save':  # packet -> ct
+        policy = 'ct mark set meta mark'
+    elif policy == 'mark_restore':  # ct -> packet
+        policy = 'meta mark set ct mark'
 
     return ret + policy
 
@@ -1090,6 +1095,8 @@ def output_cast(cast, szone, dzone, rules, ipv):
         if match + policy == 'counter packets 0 bytes 0 accept':
             continue  # Plain "counter" is handled in output_counter()
 
+        if match + policy == 'meta mark set ct mark':
+            has_mark_match = True
         if not has_mark_match and rule['mark_match']:
             has_mark_match = True
             out('meta mark set ct mark')
@@ -1267,8 +1274,15 @@ def output_rule_section(rules, section):
             policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
                                           rule['nft'], do_lograte=False)
 
-            # Mark set or mark match
-            has_mark_set |= 'meta mark set' in policy
+            # Mark match/set requires restoring/saving mark. Add it if not
+            # already added.
+            if match + policy == 'meta mark set ct mark':
+                has_mark_match = True
+            else:
+                has_mark_set |= 'meta mark set' in policy
+            if match + policy == 'ct mark set meta mark':
+                has_mark_set = False
+
             if not has_mark_match and rule['mark_match']:
                 has_mark_match = True
                 out('meta mark set ct mark')
