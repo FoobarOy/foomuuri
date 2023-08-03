@@ -1241,18 +1241,17 @@ def output_rule_section(rules, section):
     if not rules:
         return
 
-    if section == 'snat':
-        out('chain source_nat {')
-        out('type nat hook postrouting priority srcnat + 10')
-    elif section == 'dnat':
-        out('chain destination_nat {')
-        out('type nat hook prerouting priority dstnat + 10')
-    elif section == 'prerouting':
-        out('chain prerouting_mangle {')
-        out('type filter hook prerouting priority mangle + 10')
-    elif section == 'postrouting':
-        out('chain postrouting_mangle {')
-        out('type filter hook postrouting priority mangle + 10')
+    hooktype = {
+        'snat': 'type nat hook postrouting priority srcnat',
+        'dnat': 'type nat hook prerouting priority dstnat',
+        'prerouting': 'type filter hook prerouting priority mangle',
+        'postrouting': 'type filter hook postrouting priority mangle',
+        'output': 'type route hook output priority mangle',
+    }.get(section)
+
+    chain_name = hooktype.split()
+    out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
+    out(hooktype)
 
     has_mark_set = False
     has_mark_match = False
@@ -1341,21 +1340,21 @@ def output_header():
 
     # input/output/forward jump chains
     out('chain input {')
-    out('type filter hook input priority filter + 10')
+    out('type filter hook input priority filter')
     out('iifname vmap @input_zones')
     output_static_chain_logging('input', 'drop')
     out('drop')
     out('}')
 
     out('chain output {')
-    out('type filter hook output priority filter + 10')
+    out('type filter hook output priority filter')
     out('oifname vmap @output_zones')
     output_static_chain_logging('output', 'reject')
     out('reject with icmpx admin-prohibited')
     out('}')
 
     out('chain forward {')
-    out('type filter hook forward priority filter + 10')
+    out('type filter hook forward priority filter')
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
@@ -1527,7 +1526,7 @@ def output_helpers():
 
     # Output prerouting
     out('chain helper {')
-    out('type filter hook prerouting priority filter + 10')
+    out('type filter hook prerouting priority filter')
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
@@ -1540,7 +1539,7 @@ def output_rpfilter():
     if CONFIG['rpfilter'] == 'no':
         return
     out('chain rpfilter {')
-    out('type filter hook prerouting priority filter + 5')
+    out('type filter hook prerouting priority filter')
     interfaces = ''
     if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
         interfaces = f'iifname {single_or_set(CONFIG["rpfilter"])} '
@@ -1690,6 +1689,7 @@ def command_start():
     dnat = parse_config_rule_section(config, 'dnat')
     prerouting = parse_config_rule_section(config, 'prerouting')
     postrouting = parse_config_rule_section(config, 'postrouting')
+    output = parse_config_rule_section(config, 'output')
     templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -1707,6 +1707,7 @@ def command_start():
     output_rule_section(dnat, 'dnat')
     output_rule_section(prerouting, 'prerouting')
     output_rule_section(postrouting, 'postrouting')
+    output_rule_section(output, 'output')
     optimize_jumps()
     optimize_accepts()
     output_logrates()

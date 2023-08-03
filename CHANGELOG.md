@@ -2,9 +2,10 @@
 
 ## 0.20-devel (xxxx-xx-xx)
 
-* Add `prerouting` and `postrouting` sections
+* Multi-ISP support, see wiki for example configuration
 * Add `mark_set` rule
 * Add `mark_match` matcher
+* Add `prerouting`, `postrouting` and `output` sections for marks
 * Expand macros and support quotes in `foomuuri` section
 * Fix running pre/post_stop hooks on `foomuuri stop`
 * Fix man page section from 1 to 8, other Makefile and spec fixes
