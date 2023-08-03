@@ -1254,6 +1254,7 @@ def output_rule_section(rules, section):
         'prerouting': 'type filter hook prerouting priority mangle',
         'postrouting': 'type filter hook postrouting priority mangle',
         'output': 'type route hook output priority mangle',
+        'forward': 'type filter hook forward priority mangle',
     }.get(section)
 
     chain_name = hooktype.split()
@@ -1704,6 +1705,7 @@ def command_start():
     prerouting = parse_config_rule_section(config, 'prerouting')
     postrouting = parse_config_rule_section(config, 'postrouting')
     output = parse_config_rule_section(config, 'output')
+    forward = parse_config_rule_section(config, 'forward')
     templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -1722,6 +1724,7 @@ def command_start():
     output_rule_section(prerouting, 'prerouting')
     output_rule_section(postrouting, 'postrouting')
     output_rule_section(output, 'output')
+    output_rule_section(forward, 'forward')
     optimize_jumps()
     optimize_accepts()
     output_logrates()
