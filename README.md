@@ -25,6 +25,7 @@ contains tarball and precompiled packages. Help is available via
 * Logging and counting
 * Rate limiting
 * DNS hostname lookup support with dynamic IP address refreshing
+* Multi-ISP support with internal network connectivity monitor
 * Country database support aka geolocation
 * IPsec matching support
 * Ability to map certain traffic to separate zones

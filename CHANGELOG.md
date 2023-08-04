@@ -2,7 +2,8 @@
 
 ## 0.20-devel (xxxx-xx-xx)
 
-* Multi-ISP support, see wiki's best practices for example configuration
+* Multi-ISP support with internal network connectivity monitor.
+  See wiki's best practices for example configuration
 * Add `mark_set`, `mark_restore` and `mark_save` statements
 * Add `mark_match` matcher
 * Add `prerouting`, `postrouting`, `output` and `forward` sections for marks

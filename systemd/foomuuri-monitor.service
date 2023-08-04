@@ -1,5 +1,5 @@
 [Unit]
-Description=Multizone bidirectional nftables firewall - Target monitor
+Description=Multizone bidirectional nftables firewall - Connectivity monitor
 Documentation=https://github.com/FoobarOy/foomuuri/wiki
 After=network-online.target
 After=foomuuri.service
