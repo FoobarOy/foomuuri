@@ -77,7 +77,7 @@ release:
 	@echo
 	@echo "== TODO =="
 	@echo "git push && git push --tags"
-	@echo "In GitHub: draft a new release."
+	@echo "GitHub release: https://github.com/FoobarOy/foomuuri/releases/new"
 
 # Build tarball locally
 
