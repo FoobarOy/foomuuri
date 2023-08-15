@@ -1,16 +1,27 @@
-.PHONY: all test clean distclean install sysupdate release tar rpm deb
+# Foomuuri - Multizone bidirectional nftables firewall.
 
+.PHONY: all test clean distclean install sysupdate release tar
+
+CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }')
 SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
 
+# Default target is to run tests
+
 all: test
+
+# Check source
 
 test:
 	flake8 src/foomuuri
 	pycodestyle src/foomuuri
 	pylint src/foomuuri
 
+# Delete created files
+
 clean distclean:
-	rm -rf foomuuri-*.tar.gz foomuuri-*.src.rpm foomuuri-*.deb tmp/
+	rm -f foomuuri-*.tar.gz
+
+# Install current source to DESTDIR
 
 install:
 	mkdir -p $(DESTDIR)/etc/foomuuri/
@@ -40,58 +51,35 @@ install:
 	mkdir -p $(DESTDIR)/usr/share/man/man8
 	cp doc/foomuuri.8 $(DESTDIR)/usr/share/man/man8/
 
+# Install current source to local system's root
+
 sysupdate:
 	make install DESTDIR=/
 	systemctl daemon-reload
 
-### Release
+# Make new release
 
 release:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Usage: make release VERSION=x.xx"; \
 		echo; \
-		echo "Current: $(shell grep ^VERSION src/foomuuri)"; \
+		echo "Current: $(CURRENT_VERSION)"; \
 		exit 1; \
 	fi
 	git diff --exit-code
 	git diff --cached --exit-code
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
 	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
-	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" foomuuri.spec
-	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/control
-	sed -i -e "s@^\(Version: *\).*@\1$(VERSION)@" debian/firewalld.control
 	make --directory=doc
-	git add src/foomuuri doc/foomuuri.md doc/foomuuri.1 foomuuri.spec debian/control debian/firewalld.control
+	git add src/foomuuri doc/foomuuri.md doc/foomuuri.1
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
-	make rpm
-	mv tmp/RPMS/noarch/foomuuri-*.rpm tmp/SRPMS/foomuuri-*.rpm ~
-	make deb
-	mv foomuuri-*.deb ~
-	make clean
 	@echo
 	@echo "== TODO =="
-	@echo "git push; git push --tags"
-	@echo "In GitHub: draft a new release and upload rpm and deb files."
+	@echo "git push && git push --tags"
+	@echo "In GitHub: draft a new release."
 
-### Build tar/rpm/deb locally
-
-SPEC_VERSION ?= $(lastword $(shell grep ^Version: foomuuri.spec))
+# Build tarball locally
 
 tar: clean
-	tar cavf foomuuri-$(SPEC_VERSION).tar.gz --transform=s,,foomuuri-$(SPEC_VERSION)/, --show-transformed .gitignore *
-
-rpm: tar
-	rpmbuild -ba --define="_topdir $(CURDIR)/tmp" --define="_sourcedir $(CURDIR)" foomuuri.spec
-
-deb: clean
-	make install DESTDIR=tmp/1
-	cp --archive debian tmp/1/DEBIAN
-	mkdir -p tmp/2/DEBIAN
-	mkdir -p tmp/2/usr/share/dbus-1/system.d
-	mkdir -p tmp/2/usr/share/foomuuri
-	mv tmp/1/DEBIAN/firewalld.control tmp/2/DEBIAN/control
-	mv tmp/1/usr/share/dbus-1/system.d/fi.foobar.Foomuuri-FirewallD.conf tmp/2/usr/share/dbus-1/system.d/
-	mv tmp/1/usr/share/foomuuri/dbus-firewalld.conf tmp/2/usr/share/foomuuri/
-	dpkg-deb --root-owner-group --build tmp/1 foomuuri-$(SPEC_VERSION)_all.deb
-	dpkg-deb --root-owner-group --build tmp/2 foomuuri-firewalld-$(SPEC_VERSION)_all.deb
+	tar cavf foomuuri-$(CURRENT_VERSION).tar.gz --transform=s,,foomuuri-$(CURRENT_VERSION)/, --show-transformed .gitignore *

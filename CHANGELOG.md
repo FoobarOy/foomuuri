@@ -9,7 +9,9 @@
 * Add `prerouting`, `postrouting`, `output` and `forward` sections for marks
 * Expand macros and support quotes in `foomuuri` section
 * Fix running pre/post_stop hooks on `foomuuri stop`
-* Fix man page section from 1 to 8, other Makefile and spec fixes
+* Fix man page section from 1 to 8, other Makefile fixes
+* Foomuuri is now included to Fedora, EPEL and Debian. Remove local build
+  rules for rpm/deb packages.
 
 ## 0.19 (2023-05-19)
 

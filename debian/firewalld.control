@@ -1,9 +1,0 @@
-Package: foomuuri-firewalld
-Version: 0.19
-Section: net
-Priority: optional
-Architecture: all
-Maintainer: Kim B. Heino <b@bbbs.net>
-Homepage: https://github.com/FoobarOy/foomuuri
-Depends: foomuuri
-Description: FirewallD emulation configuration files for Foomuuri.
