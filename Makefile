@@ -71,7 +71,7 @@ release:
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
 	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
 	make --directory=doc
-	git add src/foomuuri doc/foomuuri.md doc/foomuuri.1
+	git add src/foomuuri doc/foomuuri.md doc/foomuuri.8
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
 	@echo
