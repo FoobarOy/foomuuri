@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.20-devel (xxxx-xx-xx)
+## 0.20 (2023-08-15)
 
 * Multi-ISP support with internal network connectivity monitor.
   See wiki's best practices for example configuration
