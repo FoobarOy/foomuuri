@@ -5,7 +5,7 @@
 
 Copyright 2023, Kim B. Heino, Foobar Oy <b@bbbs.net>
 
-License: GPLv2+
+License: GPL-2.0-or-later
 """
 
 import ipaddress
