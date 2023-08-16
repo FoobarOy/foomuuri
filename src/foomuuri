@@ -197,10 +197,11 @@ def read_config():
 
 def config_to_pathlib():
     """Convert str paths in CONFIG{} to pathlib.Paths."""
-    for key in CONFIG:
+    keys = list(CONFIG)
+    for key in keys:
         if key.endswith('_dir'):
             CONFIG[key] = pathlib.Path(CONFIG[key])
-    for key in CONFIG:
+    for key in keys:
         if key.endswith('_file'):
             CONFIG[key] = CONFIG['state_dir'] / CONFIG[key]
 
@@ -1758,7 +1759,8 @@ class DbusCommon:
         """Save config data: zone list is static."""
         self.zones = zones
 
-    def parse_interface_zone(self):
+    @staticmethod
+    def parse_interface_zone():
         """Parse current interface->zone mapping from active nft ruleset."""
         proc = subprocess.run([CONFIG['nft_bin'], '--json', 'list', 'map',
                                'inet', 'foomuuri', 'input_zones'],
@@ -1778,17 +1780,20 @@ class DbusCommon:
                         ret[interface] = rule['jump']['target'].split('-')[0]
         return ret
 
-    def clean_out(self):
+    @staticmethod
+    def clean_out():
         """Remove all entries from current OUT[] variable."""
         while OUT:
             del OUT[0]
 
-    def apply_out(self):
+    @staticmethod
+    def apply_out():
         """Apply current OUT commands."""
         save_final(CONFIG['dbus_file'])
         run_program([CONFIG['nft_bin'], '--file', CONFIG['dbus_file']])
 
-    def remove_interface(self, interface_zone, interface):
+    @staticmethod
+    def remove_interface(interface_zone, interface):
         """Remove interface from all zones."""
         zone = interface_zone.get(interface)
         if not zone:
@@ -1809,7 +1814,8 @@ class DbusCommon:
                     f'{{ {interface} . {other} : jump {zone}-{otherzone} }}')
         return zone
 
-    def add_interface(self, interface_zone, interface, zone):
+    @staticmethod
+    def add_interface(interface_zone, interface, zone):
         """Add interface to zone."""
         # input, output
         out(f'add element inet foomuuri input_zones '
