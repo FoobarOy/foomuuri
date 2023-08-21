@@ -70,6 +70,7 @@ release:
 	git diff --cached --exit-code
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
 	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
+	sed -i -e "s@^\(date: \).*@\1$(shell date +'%b %d, %Y')@" doc/foomuuri.md
 	make --directory=doc
 	git add src/foomuuri doc/foomuuri.md doc/foomuuri.8
 	git commit --message="v$(VERSION)"
