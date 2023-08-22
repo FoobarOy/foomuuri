@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.21 (xxxx-xx-xx)
+
+* Add support for `$(shell command)` in configuration file
+
 ## 0.20 (2023-08-15)
 
 * Multi-ISP support with internal network connectivity monitor.
