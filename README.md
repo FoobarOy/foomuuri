@@ -5,11 +5,11 @@ Foomuuri is a multizone bidirectional nftables firewall.
 See [wiki](https://github.com/FoobarOy/foomuuri/wiki) for documentation
 and [host firewall](https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall)
 or [router firewall](https://github.com/FoobarOy/foomuuri/wiki/Router-Firewall)
-for example configurations.
+for example configuration files.
 
-[Releases page](https://github.com/FoobarOy/foomuuri/releases/latest)
-contains tarball and precompiled packages. Help is available via
-[discussions](https://github.com/FoobarOy/foomuuri/discussions).
+[Getting started](https://github.com/FoobarOy/foomuuri/wiki/Getting-Started)
+page contains quick instructions how to install Foomuuri. Help is available
+via [discussions](https://github.com/FoobarOy/foomuuri/discussions).
 
 
 ## Features
