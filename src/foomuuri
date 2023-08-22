@@ -93,6 +93,37 @@ def out(line):
     OUT.append(line)
 
 
+def run_shell(args, fileline):
+    """Run external shell program and return it's output. Failure is fatal."""
+    if not args:
+        return ''
+    try:
+        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, encoding='utf-8',
+                              shell=True, timeout=60)
+    except OSError as error:
+        fail(f'{fileline}Failed to run command "{args}": {error}')
+    if proc.returncode:
+        fail(f'{fileline}Failed to run command "{args}": '
+             f'return code {proc.returncode}')
+    return proc.stdout.rstrip()
+
+
+def shell_expansion(content, fileline):
+    """Expand $(shell command) in configuration file.
+
+    This is the first expansion done. Failure in command is fatal.
+    """
+    while '$(shell ' in content:
+        prefix, postfix = content.split('$(shell ', 1)
+        if ')' not in postfix:
+            postfix = postfix.splitlines()[0]
+            fail(f'{fileline}$(shell without ) in command: {postfix}')
+        shell, postfix = postfix.split(')', 1)
+        content = f'{prefix}{run_shell(shell, fileline)}{postfix}'
+    return content
+
+
 def read_config():
     """Read att config files to config dict: section -> lines[].
 
@@ -120,6 +151,10 @@ def read_config():
             content = filename.read_text(encoding='utf-8')
         except PermissionError as error:
             fail(f'File {filename}: Can\'t read: {error}')
+
+        # Expand $(shell in configuration file. Do this for whole file instead
+        # of single line so that command can return multiple lines.
+        content = shell_expansion(content, f'File {filename}: ')
 
         # Parse single config file content
         continuation = ''
