@@ -498,6 +498,9 @@ def verify_rule_sanity(rule, fileline):
     if rule['policy'] == 'mark_set' and not rule['mark_set']:
         fail(f'{fileline}{rule["policy"]} without value is not valid')
 
+    if rule['counter'] and ' ' in rule['counter']:
+        fail(f'{fileline}Counter name must be single word')
+
 
 def parse_rule_line(fileline_line):
     """Parse single config section line to rule dict.
@@ -546,7 +549,7 @@ def parse_rule_line(fileline_line):
         'new_dzone': None,
         # Misc rules
         'to': None,  # snat to
-        'counter': False,
+        'counter': None,
         'helper': None,
         'sipsec': None,
         'dipsec': None,
@@ -570,8 +573,9 @@ def parse_rule_line(fileline_line):
                 ret[keyword] = ''
 
         # First item after start keyword is always a parameter for it, except
-        # for "log". Log will have good default value if not defined.
-        if keyword and not ret[keyword] and keyword != 'log':
+        # for "log" or "counter". Log will have good default value if not
+        # defined. Counter without parameter will create anonymous counter.
+        if keyword and not ret[keyword] and keyword not in ('log', 'counter'):
             ret[keyword] = item
 
         # Non-start keywords
@@ -589,7 +593,7 @@ def parse_rule_line(fileline_line):
         elif item in ('tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'):
             ret['protocol'] = item
             keyword = None
-        elif item in ('ipv4', 'ipv6', 'counter'):
+        elif item in ('ipv4', 'ipv6'):
             ret[item] = True
             keyword = None
         elif item in ('sipsec', 'dipsec'):
@@ -612,6 +616,7 @@ def parse_rule_line(fileline_line):
                       'szone', 'dzone',
                       'new_szone', 'new_dzone',
                       'to',
+                      'counter',
                       'helper',
                       'log',
                       'nft',
@@ -928,13 +933,15 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     # Multiple zone-pairs can be defined
     counterlist = CONFIG['counter'].split()
     if (
-            rule['counter'] or  # "counter" in this rule
+            rule['counter'] is not None or  # "counter" in this rule
             'yes' in counterlist or  # global "yes"
             f'{szone}-{dzone}' in counterlist or  # matching zone-zone
             f'{szone}-any' in counterlist or
             f'any-{dzone}' in counterlist
     ):
-        ret += 'counter packets 0 bytes 0 '
+        ret += 'counter '
+        if rule['counter']:
+            ret += f'name {rule["counter"]} '
 
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone POLICY".
@@ -1128,7 +1135,7 @@ def output_cast(cast, szone, dzone, rules, ipv):
         if match is None:
             continue
         policy = rule_rate_log_policy(szone, dzone, rule, ipv, rule['nft'])
-        if match + policy == 'counter packets 0 bytes 0 accept':
+        if re.match(r'^counter( name \w+)? accept$', match + policy):
             continue  # Plain "counter" is handled in output_counter()
 
         if match + policy == 'meta mark set ct mark':
@@ -1177,16 +1184,16 @@ def output_options(rules, ipv):
 
 
 def output_counter(rules, ipv):
-    """Output plain "counter"."""
+    """Output plain "counter" without "accept"."""
     for rule in rules:
-        if rule['counter']:
+        if rule['counter'] is not None:
             match = match_rules(rule, rule['cast'], ipv)
-            if match is None:
+            if match != '':
                 continue
             policy = rule_rate_log_policy('-', '-', rule, ipv,
                                           do_lograte=False)
-            if match + policy == 'counter packets 0 bytes 0 accept':
-                out('counter packets 0 bytes 0')
+            if re.match(r'^counter( name \w+)? accept$', policy):
+                out(policy[:-7])
 
 
 def output_zone(zonemap, szone, dzone, rules, ipv):
@@ -1553,6 +1560,21 @@ def output_resolve_elements(resolve, statefile):
             out(line)
 
 
+def output_named_counters(rules):
+    """Output named counters."""
+    # Collect all counter names
+    names = set()
+    for rulelist in rules.values():
+        for rule in rulelist:
+            if rule['counter']:
+                names.add(rule['counter'])
+
+    # Output counters
+    for name in names:
+        out(f'counter {name} {{')
+        out('}')
+
+
 def output_helpers():
     """Output helpers."""
     # Convert helper list to helper->proto->set(ports) dict
@@ -1766,6 +1788,7 @@ def command_start():
     output_logrates()
     output_resolve_sets(resolve, '')
     output_resolve_sets(iplist, 'interval,')
+    output_named_counters(rules)
     output_helpers()
     output_rpfilter()
     output_footer()
@@ -2308,7 +2331,7 @@ def command_list():
     zones = parse_config_zones(config)
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
-    # List rules for single zone-zone, or known macros
+    # List rules for single zone-zone, known macros, etc
     ret = 0
     for zone in CONFIG['parameters']:
         if zone == 'macro':
@@ -2319,6 +2342,10 @@ def command_list():
             for macro in sorted(macros):
                 print(f'  {macro:15s} {" ".join(macros[macro])}')
             print('}')
+        elif zone == 'counter':
+            # List named counters
+            ret += run_program([CONFIG['nft_bin'], 'list', 'counters',
+                                'table', 'inet', 'foomuuri'])
         else:
             # List zone-zone
             if zone not in zonepairs:

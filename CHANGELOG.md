@@ -3,6 +3,7 @@
 ## 0.21 (xxxx-xx-xx)
 
 * Add support for `$(shell command)` in configuration file
+* Add support for named counters
 
 ## 0.20 (2023-08-15)
 

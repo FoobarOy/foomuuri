@@ -57,6 +57,9 @@ emulation for NetworkManager's zone support.
 **list macro**
 : list all known macros
 
+**list counter**
+: list all named counters
+
 
 # FILES
 
