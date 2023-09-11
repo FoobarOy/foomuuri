@@ -4,6 +4,7 @@
 
 * Add support for `$(shell command)` in configuration file
 * Add support for named counters
+* Add support for IPv6 suffix netmask: `::192:168:1:1/-64`
 
 ## 0.20 (2023-08-15)
 

@@ -439,9 +439,18 @@ def is_ipv4_address(value):
 
 def is_ipv6_address(value):
     """Is value IPv6 address, network or interval."""
+    if value.count('/-') == 1:  # Suffix mask "IP/-mask"
+        addr, maskstr = value.split('/-')
+        try:
+            mask = int(maskstr)
+            return 0 <= mask <= 128 and is_ipv6_address(addr)
+        except ValueError:
+            return False
+
     if value.count('-') == 1:  # Interval "IP-IP"
         addr_from, addr_to = value.split('-')
         return is_ipv6_address(addr_from) and is_ipv6_address(addr_to)
+
     try:  # Address "IP"
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
     except ValueError:
@@ -795,6 +804,19 @@ def output_rate_names(rules):
                     out('}')
 
 
+def suffix_mask(value, compare):
+    """Convert suffix mask "IP/-mask" to nft."""
+    if not compare:
+        compare = '== '
+    addr, mask = value.split('/-')
+    mask = hex(pow(2, int(mask)) - 1)[2:]  # As long hex
+    splitted = ''  # Convert to ":1234" parts
+    while mask:
+        splitted = f':{mask[-4:]}{splitted}'
+        mask = mask[:-4]
+    return f'& :{splitted} {compare}{addr}'
+
+
 def single_or_set(data, fileline=''):
     """Convert data to single item or set if multiple values."""
     # Convert to list
@@ -817,6 +839,8 @@ def single_or_set(data, fileline=''):
 
     # Single item
     if len(values) == 1 and ' ' not in values[0]:
+        if '/-' in values[0]:
+            return suffix_mask(values[0], neg)
         return neg + values[0]
 
     # Multiple -> set
