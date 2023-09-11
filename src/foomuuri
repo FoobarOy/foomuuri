@@ -55,6 +55,7 @@ CONFIG = {
     'counter': 'no',
     'set_size': '65535',
     'recursion_limit': '65535',
+    'priority_offset': '5',
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
 
@@ -345,6 +346,19 @@ def parse_config_foomuuri(config):
         else:
             CONFIG[name] = value  # overwrite
     config_to_pathlib()
+
+    # Convert chain priority offset to nft
+    try:
+        priority = int(CONFIG['priority_offset'])
+    except ValueError:
+        fail(f'Invalid foomuuri{{}} priority_offset: '
+             f'{CONFIG["priority_offset"]}')
+    if priority == 0:
+        CONFIG['priority_offset'] = ''
+    elif priority > 0:
+        CONFIG['priority_offset'] = f' + {priority}'
+    else:
+        CONFIG['priority_offset'] = f' - {-priority}'
 
 
 def parse_config_zones(config):
@@ -1323,6 +1337,7 @@ def output_rule_section(rules, section):
         'output': 'type route hook output priority mangle',
         'forward': 'type filter hook forward priority mangle',
     }.get(section)
+    hooktype += CONFIG['priority_offset']
 
     chain_name = hooktype.split()
     out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
@@ -1422,21 +1437,21 @@ def output_header():
 
     # input/output/forward jump chains
     out('chain input {')
-    out('type filter hook input priority filter')
+    out(f'type filter hook input priority filter{CONFIG["priority_offset"]}')
     out('iifname vmap @input_zones')
     output_static_chain_logging('input', 'drop')
     out('drop')
     out('}')
 
     out('chain output {')
-    out('type filter hook output priority filter')
+    out(f'type filter hook output priority filter{CONFIG["priority_offset"]}')
     out('oifname vmap @output_zones')
     output_static_chain_logging('output', 'reject')
     out('reject with icmpx admin-prohibited')
     out('}')
 
     out('chain forward {')
-    out('type filter hook forward priority filter')
+    out(f'type filter hook forward priority filter{CONFIG["priority_offset"]}')
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
@@ -1623,7 +1638,8 @@ def output_helpers():
 
     # Output prerouting
     out('chain helper {')
-    out('type filter hook prerouting priority filter')
+    out(f'type filter hook prerouting priority filter'
+        f'{CONFIG["priority_offset"]}')
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
@@ -1636,7 +1652,8 @@ def output_rpfilter():
     if CONFIG['rpfilter'] == 'no':
         return
     out('chain rpfilter {')
-    out('type filter hook prerouting priority filter')
+    out(f'type filter hook prerouting priority filter'
+        f'{CONFIG["priority_offset"]}')
     interfaces = ''
     if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
         interfaces = f'iifname {single_or_set(CONFIG["rpfilter"])} '
