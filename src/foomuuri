@@ -1701,10 +1701,7 @@ def run_program(args, *, env=None):
         return 1
     output = proc.stdout.rstrip()
     if output:
-        try:
-            print(output, flush=True)
-        except BrokenPipeError:
-            pass
+        print(output, flush=True)
     return proc.returncode
 
 
@@ -2818,4 +2815,10 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        sys.exit(1)
