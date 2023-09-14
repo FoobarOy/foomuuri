@@ -2730,6 +2730,7 @@ def command_help():
     print('  list            List active ruleset')
     print('  list zone-zone  List active ruleset for zone-zone')
     print('  list macro      List all known macros')
+    print('  list counter    List all named counters')
     print()
     print('Internally used commands:')
     print()
