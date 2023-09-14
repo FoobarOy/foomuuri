@@ -1701,7 +1701,10 @@ def run_program(args, *, env=None):
         return 1
     output = proc.stdout.rstrip()
     if output:
-        print(output, flush=True)
+        try:
+            print(output, flush=True)
+        except BrokenPipeError:
+            pass
     return proc.returncode
 
 
