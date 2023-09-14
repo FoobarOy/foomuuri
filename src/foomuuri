@@ -1011,7 +1011,8 @@ def output_icmp(szone, dzone, rules, ipv):
     These must be handled before ct as "ct established" would accept
     ping floods. Default is to drop pings.
     """
-    add_ping_drop = False
+    has_ping_rule = False
+    has_match_all = False
     if ipv == 4:
         icmp = 'icmp'
         ping = '8'
@@ -1021,26 +1022,32 @@ def output_icmp(szone, dzone, rules, ipv):
     for rule in rules:
         if rule['protocol'] != icmp:
             continue
+
+        match = match_rules(rule, rule['cast'], ipv, skip_icmp=False)
+        if match is None:
+            continue
         policy = rule_rate_log_policy(szone, dzone, rule, ipv)
+
         if rule['dport']:  # Some specific icmp type
             out(f'{icmp} type '
                 f'{single_or_set(rule["dport"], rule["fileline"])} '
-                f'{policy}')
-            if (
-                    ping in rule['dport'].split() and
-                    policy not in ('accept', 'drop')
-            ):
-                # There was some rule for pings, usually accepting non-flood
-                # pings. Add explicit rule to drop all other pings.
-                add_ping_drop = True
+                f'{match}{policy}')
+            if ping not in rule['dport'].split():
+                continue  # Continue to next rule if this wasn't ping
         else:  # All icmp types
             out(f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} '
-                f'{icmp} {policy}')
-            if policy in ('accept', 'drop'):
-                add_ping_drop = False
+                f'{icmp} {match}{policy}')
+
+        # This rule was for ping, usually accepting non-flood pings. Add
+        # explicit rule to drop all other pings.
+        has_ping_rule = True
+        if (match + policy).startswith(('accept', 'drop', 'reject', 'jump')):
+            has_match_all = True
+        elif has_match_all:  # Specific ping rule after match-all rule
+            print(f'{rule["fileline"]}Warning: Unreachable ping rule')
 
     # Overflow-pings must be dropped before ct
-    if add_ping_drop:
+    if has_ping_rule and not has_match_all:
         out(f'{icmp} type {ping} drop')
 
     # Allow needed icmp
@@ -1088,7 +1095,8 @@ def parse_interface_names(rule):
 def parse_protocol_ports(rule):
     """Parse tcp/udp sport/dport to nft rule."""
     protocol = rule['protocol']
-    if not protocol:  # Port without protocol doesn't work
+    if not protocol or protocol in ('icmp', 'icmpv6'):
+        # Port without protocol doesn't work, icmp doesn't have ports
         return ''
 
     ports = ''
@@ -1113,11 +1121,13 @@ def parse_to(rule, ipv):
     return None
 
 
-def match_rules(rule, cast, ipv, skip_options=True, need_addrlist=False):
+def match_rules(rule, cast, ipv, *, skip_options=True, skip_icmp=True,
+                need_addrlist=False):
     """Parse rule's matchers to nft rule."""
+    # pylint: disable=too-many-arguments
     if (
             rule['cast'] != cast or
-            rule['protocol'] in ('icmp', 'icmpv6') or
+            (skip_icmp and rule['protocol'] in ('icmp', 'icmpv6')) or
             (skip_options and rule['mss'])
     ):
         return None
@@ -1216,7 +1226,7 @@ def output_options(rules, ipv):
     """Output "mss" etc options."""
     for rule in rules:
         if rule['mss'] and ipv == 4:
-            match = match_rules(rule, rule['cast'], ipv, False)
+            match = match_rules(rule, rule['cast'], ipv, skip_options=False)
             out(f'{match}tcp flags syn tcp option '
                 f'maxseg size set {rule["mss"]}')
 
