@@ -56,6 +56,7 @@ CONFIG = {
     'set_size': '65535',
     'recursion_limit': '65535',
     'priority_offset': '5',
+    'cast_policy': 'drop',
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
 
@@ -1270,12 +1271,15 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     output_cast('multicast', szone, dzone, rules, ipv)
     if ipv == 4:
         output_cast('broadcast', szone, dzone, rules, ipv)
-        out('meta pkttype { broadcast, multicast } drop')
+        ptype = "{ broadcast, multicast }"
     else:
-        out('meta pkttype multicast drop')
+        ptype = " multicast "
+
+    out(f'meta pkttype {ptype} {CONFIG["cast_policy"]}')
 
     # Unicast
     output_cast('unicast', szone, dzone, rules, ipv)
+
     out('}')
 
 
