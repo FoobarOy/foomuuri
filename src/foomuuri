@@ -409,7 +409,9 @@ def parse_resolve(config, section, timeout):
                 fail(f'{fileline}Bad {section} name: {" ".join(line)}')
             for ipv in (4, 6):  # "@foo" to "@foo_4" and "@foo_6"
                 name = f'{line[0]}_{ipv}'
-                if line[1] == '+':  # append
+                if len(line) == 1 or line[1:] == ['-']:
+                    ret[name] = []
+                elif line[1] == '+':  # append
                     ret[name] = ret.get(name, []) + line[2:]
                 else:  # overwrite
                     ret[name] = line[1:]
@@ -2323,8 +2325,77 @@ def read_all_iplists(iplist):
     return ret
 
 
-def command_iplist():
-    """Update iplist{} entries."""
+def command_iplist_list():
+    """List iplist entries."""
+    config = minimal_config()
+    known = set()
+    for item in (
+            list(parse_resolve(config, 'iplist', None)) +
+            list(parse_resolve(config, 'resolve', None))
+    ):
+        if item.startswith('@'):
+            known.add(item[:-2])
+
+    ret = 0
+    for setname in CONFIG['parameters'][1:] or known:
+        if setname.startswith('@'):
+            setname = setname[1:]
+        if setname.endswith(('_4', '_6')):
+            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
+                                'foomuuri', setname])
+        else:
+            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
+                                'foomuuri', f'{setname}_4'])
+            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
+                                'foomuuri', f'{setname}_6'])
+    return ret
+
+
+def command_iplist_add():
+    """Add entries to iplist."""
+    config = minimal_config()
+    timeout = parse_resolve(config, 'iplist', '10d').pop('timeout')
+    setname = CONFIG['parameters'][1]
+    if setname.startswith('@'):
+        setname = setname[1:]
+
+    ret = 0
+    for address in CONFIG['parameters'][2:]:
+        ipv = is_ip_address(address)
+        if not ipv:
+            if address[-1] in 'smhd':
+                timeout = address.replace(' ', '')
+                continue
+            fail(f'Invalid IP address {address}')
+        table_set = f'inet foomuuri {setname}_{ipv}'
+        ret += run_program([CONFIG['nft_bin'],
+                            f'add element {table_set} {{ {address} }}; '
+                            f'delete element {table_set} {{ {address} }}; '
+                            f'add element {table_set} {{ {address} '
+                            f'timeout {timeout} }};'])
+    return ret
+
+
+def command_iplist_del():
+    """Delete entries from iplist."""
+    setname = CONFIG['parameters'][1]
+    if setname.startswith('@'):
+        setname = setname[1:]
+
+    ret = 0
+    for address in CONFIG['parameters'][2:]:
+        ipv = is_ip_address(address)
+        if not ipv:
+            fail(f'Invalid IP address {address}')
+        table_set = f'inet foomuuri {setname}_{ipv}'
+        ret += run_program([CONFIG['nft_bin'],
+                            f'add element {table_set} {{ {address} }}; '
+                            f'delete element {table_set} {{ {address} }};'])
+    return ret
+
+
+def command_iplist_refresh():
+    """Refresh iplist{} entries."""
     # Read minimal config and read iplist{} entries
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist', '10d')
@@ -2336,7 +2407,10 @@ def command_iplist():
     # Output entries
     warned = set()
     error = 0
-    for setname in iplist:
+    for setname, filenames in iplist.items():
+        if not filenames:
+            continue  # Don't touch sets without filenames
+
         setname = setname[1:]  # Strip "@"
         if setname not in current:
             # Fetch for this set failed, add previous fetch as comments
@@ -2352,7 +2426,8 @@ def command_iplist():
                       f'in currently active firewall')
                 warned.add(setname[:-2])
         else:
-            # Success, update elements to ruleset
+            # Success, update elements to ruleset. There is no "update" command
+            # in nft, emulate it with "flush + add"
             out(f'flush set inet foomuuri {setname}')
             comment = ''
             addrlist = current[setname]
@@ -2369,6 +2444,19 @@ def command_iplist():
     if ret:
         print(f'Error: Failed to update iplist, error code {ret}')
     return ret or error
+
+
+def command_iplist():
+    """Parse "foomuuri iplist" subcommand."""
+    if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'list':
+        return command_iplist_list()
+    if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'add':
+        return command_iplist_add()
+    if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'del':
+        return command_iplist_del()
+    if len(CONFIG['parameters']) == 1 and CONFIG['parameters'][0] == 'refresh':
+        return command_iplist_refresh()
+    return command_help()
 
 
 def command_list():
@@ -2723,21 +2811,30 @@ def command_help():
     print()
     print('Available commands:')
     print()
-    print('  start           Load configuration files and generate ruleset')
-    print('  start-or-good   Same as start with fallback to previous "good"')
-    print('  stop            Remove ruleset')
-    print('  check           Verify configuration files')
-    print('  list            List active ruleset')
-    print('  list zone-zone  List active ruleset for zone-zone')
-    print('  list macro      List all known macros')
-    print('  list counter    List all named counters')
+    print('  start            Load configuration files and generate ruleset')
+    print('  start-or-good    Same as start with fallback to previous "good"')
+    print('  stop             Remove ruleset')
+    print('  check            Verify configuration files')
+    print('  list             List active ruleset')
+    print('  list zone-zone {zone-zone...}')
+    print('                   List active ruleset for zone-zone')
+    print('  list macro       List all known macros')
+    print('  list counter     List all named counters')
+    print('  iplist list      List entries in all configured iplists and '
+          'resolves')
+    print('  iplist list name {name...}')
+    print('                   List entries in named iplist/resolve')
+    print('  iplist add name {timeout} ipaddress {ipaddress...}')
+    print('                   Add or refresh IP address to iplist')
+    print('  iplist del name ipaddress {ipaddress...}')
+    print('                   Delete IP address from iplist')
     print()
     print('Internally used commands:')
     print()
-    print('  resolve         Resolve hostnames')
-    print('  iplist          Update iplist entries')
-    print('  dbus            Start D-Bus daemon')
-    print('  monitor         Start target monitor daemon')
+    print('  resolve refresh  Resolve hostnames')
+    print('  iplist refresh   Refresh iplist entries')
+    print('  dbus             Start D-Bus daemon')
+    print('  monitor          Start target monitor daemon')
     return 0
 
 
@@ -2773,8 +2870,9 @@ def parse_command_line():
 
 def run_command():
     """Run CONFIG[command]."""
-    # Only "list" can take arguments
-    if CONFIG['parameters'] and CONFIG['command'] != 'list':
+    # Only some commands can take arguments
+    if CONFIG['parameters'] and CONFIG['command'] not in (
+            'list', 'resolve', 'iplist'):
         fail(f'Command "{CONFIG["command"]}" doesn\'t take parameters')
 
     # Help doesn't need root

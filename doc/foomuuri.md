@@ -51,7 +51,7 @@ emulation for NetworkManager's zone support.
 **list**
 : list active ruleset currently loaded to kernel
 
-**list zone-zone**
+**list zone-zone {zone-zone...}**
 : list active ruleset for **zone-zone** currently loaded to kernel
 
 **list macro**
@@ -59,6 +59,18 @@ emulation for NetworkManager's zone support.
 
 **list counter**
 : list all named counters
+
+**iplist list**
+: list entries in all configured iplists and resolves
+
+**iplist list name {name...}**
+: list entries in named iplist/resolve
+
+**iplist add name {timeout} ipaddress {ipaddress...}**
+: add or refresh IP address to iplist
+
+**iplist del name ipaddress {ipaddress...}**
+: delete IP address from iplist
 
 
 # FILES

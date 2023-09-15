@@ -3,4 +3,4 @@ Description=Multizone bidirectional nftables firewall - Resolve hostnames
 Documentation=https://github.com/FoobarOy/foomuuri/wiki
 
 [Service]
-ExecStart=/usr/sbin/foomuuri resolve
+ExecStart=/usr/sbin/foomuuri resolve refresh
