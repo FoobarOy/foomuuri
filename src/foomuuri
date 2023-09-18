@@ -8,6 +8,7 @@ Copyright 2023, Kim B. Heino, Foobar Oy <b@bbbs.net>
 License: GPL-2.0-or-later
 """
 
+import datetime
 import ipaddress
 import itertools
 import json
@@ -69,6 +70,7 @@ CONFIG = {
     'dbus_file': 'dbus.fw',
     'resolve_file': 'resolve.fw',
     'iplist_file': 'iplist.fw',
+    'iplist_manual_file': 'iplist-manual.fw',
     'zone_file': 'zone',
 
     # Parsed command line parameters - used internally
@@ -94,14 +96,14 @@ def out(line):
     OUT.append(line)
 
 
-def run_shell(args, fileline):
+def run_shell(args, fileline, shell=True):
     """Run external shell program and return it's output. Failure is fatal."""
     if not args:
         return ''
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
-                              shell=True, timeout=60)
+                              shell=shell, timeout=60)
     except OSError as error:
         fail(f'{fileline}Failed to run command "{args}": {error}')
     if proc.returncode:
@@ -1604,14 +1606,30 @@ def output_resolve_elements(resolve, statefile):
 
     # Add previous result if resolve name is known
     out('')
+    now = datetime.datetime.utcnow()
     for line in content.splitlines():
         if line.startswith('# '):  # Try "didn't exist in active ruleset" now
             line = line[2:]
+        tokens = line.split()
         if (
                 line.startswith('add element inet foomuuri ') and
-                ' timeout ' in line and
-                line.split()[4] in known  # It's known name
+                len(tokens) >= 10 and
+                tokens[7] == 'timeout' and
+                tokens[4] in known  # It's known name
         ):
+            # Check optional expire timestamp, used in iplist-manual.fw
+            if len(tokens) == 12 and tokens[10] == '#':
+                try:
+                    expire = datetime.datetime.strptime(tokens[11],
+                                                        '%Y-%m-%dT%H:%M:%S')
+                except ValueError:
+                    continue
+                # Skip expired entries, update timeout for rest
+                seconds = int((expire - now).total_seconds())
+                if seconds <= 0:
+                    continue
+                line = f'{" ".join(tokens[:8])} {seconds}s }}'
+
             out(line)
 
 
@@ -1691,6 +1709,8 @@ def save_file(filename, lines):
         filename.chmod(0o600)
     except PermissionError as error:
         fail(f'File {filename}: Can\'t write: {error}')
+    except FileNotFoundError:  # Simultaneos saves and chmod gives error
+        pass
 
 
 def run_program(args, *, env=None):
@@ -1851,6 +1871,7 @@ def command_start():
     output_footer()
     output_resolve_elements(resolve, 'resolve_file')
     output_resolve_elements(iplist, 'iplist_file')
+    output_resolve_elements(iplist, 'iplist_manual_file')
 
     # Save known zones to file
     save_file(CONFIG['zone_file'], zones.keys())
@@ -2358,6 +2379,45 @@ def read_all_iplists(iplist):
     return ret
 
 
+def iplist_manual_state(iplist):
+    """Save manual iplist status to state file.
+
+    There is no locking so simultaneous add/del can result one missing/extra
+    IP address. Next add/del will fix it.
+    """
+    manual = []
+    known = active_sets()
+    for setname, filenames in iplist.items():
+        # Skip if not manual list, has filenames
+        if filenames or not setname.startswith('@'):
+            continue
+        setname = setname[1:]
+        if setname not in known:
+            continue
+
+        # Get set entries
+        output = run_shell([CONFIG['nft_bin'], '--json', 'list', 'set',
+                            'inet', 'foomuuri', setname], '', False)
+        try:
+            data = json.loads(output)
+        except json.decoder.JSONDecodeError:
+            continue
+
+        # Collect IP addresses
+        now = datetime.datetime.utcnow()
+        for item in data['nftables']:
+            for elem in item.get('set', {}).get('elem', []):
+                ipaddr = elem['elem']['val']
+                expire = elem['elem']['expires']
+                stamp = (now + datetime.timedelta(seconds=expire)).strftime(
+                    '%Y-%m-%dT%H:%M:%S')
+                manual.append(f'add element inet foomuuri {setname} '
+                              f'{{ {ipaddr} timeout {expire}s }} # {stamp}')
+
+    # Save manual list
+    save_file(CONFIG['iplist_manual_file'], manual)
+
+
 def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
@@ -2387,7 +2447,8 @@ def command_iplist_list():
 def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
-    timeout = parse_resolve(config, 'iplist', '10d').pop('timeout')
+    iplist = parse_resolve(config, 'iplist', '10d')
+    timeout = iplist.pop('timeout')
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
@@ -2406,11 +2467,14 @@ def command_iplist_add():
                             f'delete element {table_set} {{ {address} }}; '
                             f'add element {table_set} {{ {address} '
                             f'timeout {timeout} }};'])
+    iplist_manual_state(iplist)
     return ret
 
 
 def command_iplist_del():
     """Delete entries from iplist."""
+    config = minimal_config()
+    iplist = parse_resolve(config, 'iplist', '10d')
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
@@ -2424,6 +2488,7 @@ def command_iplist_del():
         ret += run_program([CONFIG['nft_bin'],
                             f'add element {table_set} {{ {address} }}; '
                             f'delete element {table_set} {{ {address} }};'])
+    iplist_manual_state(iplist)
     return ret
 
 
