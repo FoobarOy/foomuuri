@@ -978,7 +978,7 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     #   any-zone   - add to all rules in all *-zone
     # Multiple zone-pairs can be defined
     counterlist = CONFIG['counter'].split()
-    if (
+    if not rule['nft'] and (  # pylint: disable=too-many-boolean-expressions
             rule['counter'] is not None or  # "counter" in this rule
             'yes' in counterlist or  # global "yes"
             f'{szone}-{dzone}' in counterlist or  # matching zone-zone
