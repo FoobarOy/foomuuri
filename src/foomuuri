@@ -816,7 +816,7 @@ def output_rate_names(rules):
                         out(f'type ipv{ipv}_addr')
                     out(f'size {CONFIG["set_size"]}')
                     out('flags dynamic,timeout')
-                    out('timeout 1m')
+                    out(f'timeout {"1h" if "hour" in rule[rate] else "1m"}')
                     out('}')
 
 
