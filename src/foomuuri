@@ -347,12 +347,16 @@ def parse_config_foomuuri(config):
             CONFIG[name] = value  # overwrite
     config_to_pathlib()
 
-    # Convert chain priority offset to nft
-    try:
-        priority = int(CONFIG['priority_offset'])
-    except ValueError:
-        fail(f'Invalid foomuuri{{}} priority_offset: '
-             f'{CONFIG["priority_offset"]}')
+    # Convert chain priority offset to nft. It is already converted on D-Bus
+    # handler reload.
+    if not CONFIG['priority_offset']:
+        priority = 0
+    else:
+        try:
+            priority = int(CONFIG['priority_offset'].replace(' ', ''))
+        except ValueError:
+            fail(f'Invalid foomuuri{{}} priority_offset: '
+                 f'{CONFIG["priority_offset"]}')
     if priority == 0:
         CONFIG['priority_offset'] = ''
     elif priority > 0:
