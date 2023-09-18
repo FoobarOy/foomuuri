@@ -2165,54 +2165,83 @@ def active_sets():
     return ret
 
 
-def command_resolve():
-    """Resolve hostnames."""
-    # Read minimal config and resolve hostnames
+def apply_resolve_iplist(filename, error_txt, pending_error):
+    """Save and apply resolve/iplist update."""
+    if not OUT:
+        return pending_error
+    save_final(CONFIG[filename])
+    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG[filename]])
+    if ret:
+        print(f'Error: Failed to update {error_txt}, error code {ret}')
+    return ret or pending_error
+
+
+def config_resolve_to_iplist():
+    """Parse config's resolve{} and return "setname_4" -> iplist dict."""
     config = minimal_config()
     resolve = parse_resolve(config, 'resolve', '24h')
     timeout = resolve.pop('timeout')
     hosts = resolve_all_hostnames(resolve)
-    known = active_sets()
 
-    # Output resolved
-    warned = set()
+    # Convert resolve "@setname_4 -> hostlist" to "setname_4 -> iplist"
+    current = {}
     for setname, hostlist in resolve.items():
-        # Collect IPs in setname
-        ipv = int(setname[-1:])
-        elements = set()
+        iplist = set()
+        ipv = int(setname[-1])
         for hostname in hostlist:
             for ipaddr in hosts[hostname]:
                 if is_ip_address(ipaddr) == ipv:
-                    elements.add(ipaddr)
+                    iplist.add(ipaddr)
+        current[setname[1:]] = sorted(iplist)
+    return current, timeout
 
-        # Add them to resolve state file
-        for ipaddr in elements:
-            if setname[1:] not in known:
-                # Not active in current ruleset, add as comment
-                out(f'# add element inet foomuuri {setname[1:]} '
-                    f'{{ {ipaddr} timeout {timeout} }}')
-                if setname[:-2] not in warned:
-                    print(f'Warning: Resolve "{setname[:-2]}" does not exist '
-                          f'in currently active firewall')
-                    warned.add(setname[:-2])
+
+def warn_resolve_iplist(setname, warned, error1, error2):
+    """Print warning that setname does not exist."""
+    if setname[:-2] in warned:
+        return  # Already warned
+
+    print(f'Warning: {error1} "@{setname[:-2]}" {error2}', flush=True)
+    warned.add(setname[:-2])
+
+
+def command_resolve():
+    """Resolve hostnames."""
+    # Read config and resolve
+    current, timeout = config_resolve_to_iplist()
+    previous = read_previous_resolve_iplist('resolve_file')
+    known = active_sets()
+
+    # Output entries
+    warned = set()
+    error = 0
+    for setname, addresses in current.items():
+        for address in addresses:
+            # Is this set active in current ruleset? If not, add entry as
+            # comment
+            if setname not in known:
+                comment = '# '
+                warn_resolve_iplist(setname, warned, 'Resolve', 'does not '
+                                    'exist in currently active firewall')
             else:
-                # Update element to ruleset. There is no "update" command in
-                # nft command line. It can be emulated with
-                # "add + delete + add".
-                out(f'add element inet foomuuri {setname[1:]} {{ {ipaddr} }}')
-                out(f'delete element inet foomuuri {setname[1:]} '
-                    f'{{ {ipaddr} }}')
-                out(f'add element inet foomuuri {setname[1:]} '
-                    f'{{ {ipaddr} timeout {timeout} }}')
+                # Success, update elements to ruleset.
+                comment = ''
+                out(f'add element inet foomuuri {setname} {{ {address} }}')
+                out(f'delete element inet foomuuri {setname} {{ {address} }}')
+            out(f'{comment}add element inet foomuuri {setname} '
+                f'{{ {address} timeout {timeout} }}')
+
+        # All lookups failed. Add previous entries as comments.
+        if not addresses and setname in previous:
+            warn_resolve_iplist(setname, warned, 'Resolve',
+                                'failed to resolve')
+            error = 1
+            for address in sorted(previous[setname]):
+                out(f'# add element inet foomuuri {setname} '
+                    f'{{ {address} timeout {timeout} }}')
 
     # Apply update
-    if not OUT:
-        return 0
-    save_final(CONFIG['resolve_file'])
-    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['resolve_file']])
-    if ret:
-        print(f'Error: Failed to update resolve, error code {ret}')
-    return ret
+    return apply_resolve_iplist('resolve_file', 'resolve', error)
 
 
 def get_url(url):
@@ -2261,12 +2290,12 @@ def get_all_urls_and_files(namelist):
     return text
 
 
-def read_previous_iplist():
-    """Read previous iplist state file and parse it to dict."""
+def read_previous_resolve_iplist(filename):
+    """Read previous resolve/iplist state file and parse it to dict."""
     # Read state file, silently ignore if missing
     try:
         # pylint: disable=no-member
-        content = CONFIG['iplist_file'].read_text(encoding='utf-8')
+        content = CONFIG[filename].read_text(encoding='utf-8')
     except FileNotFoundError:
         return {}
     except PermissionError as error:
@@ -2400,7 +2429,7 @@ def command_iplist_refresh():
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist', '10d')
     timeout = iplist.pop('timeout')
-    previous = read_previous_iplist()
+    previous = read_previous_resolve_iplist('iplist_file')
     current = read_all_iplists(iplist)
     known = active_sets()
 
@@ -2417,19 +2446,17 @@ def command_iplist_refresh():
             error = 1
             comment = '# '
             addrlist = previous.get(setname, [])
+            warn_resolve_iplist(setname, warned, 'Iplist', 'failed to fetch')
         elif setname not in known:
             # Not active in current ruleset, add items as comments
             comment = '# '
             addrlist = current[setname]
-            if setname[:-2] not in warned:
-                print(f'Warning: Iplist "@{setname[:-2]}" does not exist '
-                      f'in currently active firewall')
-                warned.add(setname[:-2])
+            warn_resolve_iplist(setname, warned, 'Iplist', 'does not '
+                                'exist in currently active firewall')
         else:
-            # Success, update elements to ruleset. There is no "update" command
-            # in nft, emulate it with "flush + add"
-            out(f'flush set inet foomuuri {setname}')
+            # Success, update elements to ruleset.
             comment = ''
+            out(f'flush set inet foomuuri {setname}')
             addrlist = current[setname]
 
         for ipaddr in sorted(addrlist):
@@ -2437,13 +2464,7 @@ def command_iplist_refresh():
                 f'{{ {ipaddr} timeout {timeout} }}')
 
     # Apply update
-    if not OUT:
-        return error
-    save_final(CONFIG['iplist_file'])
-    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['iplist_file']])
-    if ret:
-        print(f'Error: Failed to update iplist, error code {ret}')
-    return ret or error
+    return apply_resolve_iplist('iplist_file', 'iplist', error)
 
 
 def command_iplist():
