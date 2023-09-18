@@ -9,6 +9,7 @@
 * Add support for IPv6 suffix netmask: `::192:168:1:1/-64`
 * Add `chain_priority` to `foomuuri` section
 * Fix icmp to handle matchers correctly (`ping saddr 192.168.1.1 drop`)
+* Fix caching failed `resolve` section lookups for reboot
 
 ## 0.20 (2023-08-15)
 
