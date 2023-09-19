@@ -1318,10 +1318,27 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
 
 
 def output_zone_vmaps(zones):
-    """Output interface verdict maps to jump to correct zone-zone."""
+    """Output interface verdict maps to jump to correct zone-zone.
+
+    Beware:
+
+    Wildcard matching coredumps in RHEL / nft v1.0.4. Do not use!
+    It works fine on Fedora / nft v1.0.5.
+    """
+    # pylint: disable=too-many-branches
+
+    # Vmap must have interval-flag if there is wildcard-interface.
+    has_wildcard = False
+    for value in zones.values():
+        for interface in value['interface']:
+            if '*' in interface:
+                has_wildcard = True
+
     # Incoming zones
     out('map input_zones {')
     out('type ifname : verdict')
+    if has_wildcard:
+        out('flags interval')
     out('elements = {')
     out('lo : accept,')
     for zone, value in zones.items():
@@ -1333,6 +1350,8 @@ def output_zone_vmaps(zones):
     # Outgoing zones
     out('map output_zones {')
     out('type ifname : verdict')
+    if has_wildcard:
+        out('flags interval')
     out('elements = {')
     out('lo : accept,')
     for zone, value in zones.items():
@@ -1344,6 +1363,8 @@ def output_zone_vmaps(zones):
     # Forwarding zones
     out('map forward_zones {')
     out('type ifname . ifname : verdict')
+    if has_wildcard:
+        out('flags interval')
     out('elements = {')
     out('lo . lo : accept,')
     for szone, svalue in zones.items():
