@@ -508,10 +508,20 @@ def is_port(value):
 
 def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
-    for no_space in ('saddr_rate_name', 'daddr_rate_name', 'helper'):
-        value = rule[no_space] or ''
+    for key in ('saddr_rate_name', 'daddr_rate_name', 'saddr_daddr_rate_name',
+                'helper', 'counter'):
+        value = rule[key] or ''
         if ' ' in value:
-            fail(f'{fileline}Space is not allowed in {no_space}: {value}')
+            fail(f'{fileline}{key} must be single word: {value}')
+
+    for key in ('global_rate', 'saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
+        if not rule[key]:
+            continue
+        if re.match(r'^\d+/(second|minute|hour) burst \d+$', rule[key]):
+            rule[key] += ' packets'
+        if not re.match(r'^\d+/(second|minute|hour)( burst \d+ packets)?$',
+                        rule[key]):
+            fail(f'{fileline}Invalid {key} value: {rule[key]}')
 
     for basic, extra in (
             ('protocol', 'sport'),
@@ -528,9 +538,6 @@ def verify_rule_sanity(rule, fileline):
 
     if rule['policy'] == 'mark_set' and not rule['mark_set']:
         fail(f'{fileline}{rule["policy"]} without value is not valid')
-
-    if rule['counter'] and ' ' in rule['counter']:
-        fail(f'{fileline}Counter name must be single word')
 
 
 def parse_rule_line(fileline_line):
