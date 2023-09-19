@@ -42,7 +42,7 @@ VERSION = '0.20'
 
 CONFIG = {
     # Parsed foomuuri{} from config files
-    'log_rate': '1/second burst 3 packets',
+    'log_rate': '1/second burst 3',
     'log_input': 'yes',
     'log_output': 'yes',
     'log_forward': 'yes',
@@ -365,6 +365,14 @@ def parse_config_foomuuri(config):
         CONFIG['priority_offset'] = f' + {priority}'
     else:
         CONFIG['priority_offset'] = f' - {-priority}'
+
+    # Add "packets" to log rates
+    for key in list(CONFIG):
+        if (
+                key.startswith('log_') and
+                re.match(r'^\d+/(second|minute|hour) burst \d+$', CONFIG[key])
+        ):
+            CONFIG[key] += ' packets'
 
 
 def parse_config_zones(config):
