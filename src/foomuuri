@@ -527,8 +527,11 @@ def verify_rule_sanity(rule, fileline):
             continue
         if re.match(r'^\d+/(second|minute|hour) burst \d+$', rule[key]):
             rule[key] += ' packets'
-        if not re.match(r'^\d+/(second|minute|hour)( burst \d+ packets)?$',
-                        rule[key]):
+        if not (
+                re.match(r'^\d+/(second|minute|hour)( burst \d+ packets)?$',
+                         rule[key]) or
+                re.match(r'^ct count (over )?\d+$', rule[key])
+        ):
             fail(f'{fileline}Invalid {key} value: {rule[key]}')
 
     for basic, extra in (
@@ -836,8 +839,12 @@ def output_rate_names(rules):
                     else:
                         out(f'type ipv{ipv}_addr')
                     out(f'size {CONFIG["set_size"]}')
-                    out('flags dynamic,timeout')
-                    out(f'timeout {"1h" if "hour" in rule[rate] else "1m"}')
+                    if rule[rate].startswith('ct '):
+                        out('flags dynamic')
+                    else:
+                        timeout = '1h' if 'hour' in rule[rate] else '1m'
+                        out('flags dynamic,timeout')
+                        out(f'timeout {timeout}')
                     out('}')
 
 
@@ -903,10 +910,17 @@ def netmask_to_and(masklist, ipv, fileline):
     return f'and {ipaddr.netmask} '
 
 
+def limit_rate_or_ct(rate):
+    """Return "limit rate x" or "ct count x" according to rate."""
+    if rate.startswith('ct '):
+        return f'{rate} '
+    return f'limit rate {rate} '
+
+
 def rule_rate_limit(rule, ipv):
     """Return rule's rate limits as nft update-command."""
     if rule['global_rate']:
-        return f'limit rate {rule["global_rate"]} '
+        return limit_rate_or_ct(rule['global_rate'])
 
     ret = ''
     for rate in ('saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
@@ -917,7 +931,8 @@ def rule_rate_limit(rule, ipv):
         rate_mask = rule[f'{rate}_mask']
 
         # "update @foo { ip saddr "
-        ret += f'update @{rate_name}_{ipv} {{ '
+        ret += 'add' if rate_limit.startswith('ct ') else 'update'
+        ret += f' @{rate_name}_{ipv} {{ '
         if 'saddr' in rate:
             ret += f'{"ip" if ipv == 4 else "ip6"} saddr '
             ret += netmask_to_and(rate_mask, ipv, rule['fileline'])
@@ -927,7 +942,7 @@ def rule_rate_limit(rule, ipv):
             ret += f'{"ip" if ipv == 4 else "ip6"} daddr '
             ret += netmask_to_and(rate_mask, ipv, rule['fileline'])
         # "limit rate 3/second } "
-        ret += f'limit rate {rate_limit} }} '
+        ret += f'{limit_rate_or_ct(rate_limit)}}} '
     return ret
 
 
