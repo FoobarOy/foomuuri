@@ -14,6 +14,8 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/foomuuri start-or-good
 ExecReload=/usr/sbin/foomuuri start
+ExecReload=/usr/sbin/foomuuri iplist refresh
+ExecReload=/usr/sbin/foomuuri resolve refresh
 ExecStop=/usr/sbin/foomuuri stop
 
 [Install]
