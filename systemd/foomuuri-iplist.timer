@@ -5,5 +5,5 @@ Requires=foomuuri.service
 PartOf=foomuuri.service
 
 [Timer]
-OnBootSec=4m
-OnUnitInactiveSec=24h
+OnActiveSec=3m
+OnUnitActiveSec=24h
