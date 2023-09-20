@@ -4,7 +4,7 @@
 
 * Add support for `$(shell command)` in configuration file
 * Add support for named counters: `https counter web_traffic`
-* `foomuuri reload` reloads config and refreshes resolve+iplist
+* `foomuuri reload` restarts firewall and refreshes resolve+iplist
 * `foomuuri list counter` lists all named counters
 * `foomuuri iplist` subcommands manipulates and lists iplist entries
 * Add support for IPv6 suffix netmask: `::192:168:1:1/-64`
