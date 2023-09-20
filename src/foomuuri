@@ -2636,6 +2636,24 @@ def command_list():
     return ret
 
 
+def command_reload():
+    """Run start and refresh resolve and iplist."""
+    # Use same args
+    args = [sys.argv[0]]
+    for arg in sys.argv[1:]:
+        if arg.startswith('--'):
+            args.append(arg)
+
+    # Run commands
+    for sub, fatal in ((['start'], True),
+                       (['resolve', 'refresh'], False),
+                       (['iplist', 'refresh'], False)):
+        ret = run_program(args + sub)
+        if ret and fatal:
+            return ret
+    return 0
+
+
 def seconds_to_human(seconds):
     """Convert seconds int to human readable "19 days, 18:37" format."""
     day = seconds // 86400
@@ -2955,6 +2973,8 @@ def command_help():
     print('  start            Load configuration files and generate ruleset')
     print('  start-or-good    Same as start with fallback to previous "good"')
     print('  stop             Remove ruleset')
+    print('  reload           Same as start, followed by resolve+iplist '
+          'refresh')
     print('  check            Verify configuration files')
     print('  list             List active ruleset')
     print('  list zone-zone {zone-zone...}')
@@ -2972,7 +2992,7 @@ def command_help():
     print()
     print('Internally used commands:')
     print()
-    print('  resolve refresh  Resolve hostnames')
+    print('  resolve refresh  Refresh resolve hostnames')
     print('  iplist refresh   Refresh iplist entries')
     print('  dbus             Start D-Bus daemon')
     print('  monitor          Start target monitor daemon')
@@ -3026,6 +3046,7 @@ def run_command():
 
     # Run simple commands without ruleset output
     handler = {
+        'reload': command_reload,
         'list': command_list,
         'resolve': command_resolve,
         'iplist': command_iplist,

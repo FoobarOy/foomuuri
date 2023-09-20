@@ -45,6 +45,9 @@ emulation for NetworkManager's zone support.
 **stop**
 : remove ruleset from kernel
 
+**reload**
+: same as **start**, followed by resolve+iplist refresh
+
 **check**
 : load configuration files and verify syntax
 
