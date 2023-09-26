@@ -1152,11 +1152,20 @@ def parse_to(rule, ipv):
     """Parse nat "to" rule to nft rule."""
     if not rule['to']:
         return ''
-    if '.' in rule['to'] and ipv == 4:
-        return f' to {rule["to"]}'
-    if '.' not in rule['to'] and ipv == 6:
-        return f' to {rule["to"]}'
-    return None
+
+    # "to" can be IPv4+IPv6, find correct one
+    found = []
+    for check in rule['to'].split():
+        if ipv == 4 and check.count(':') == 1:  # IPv4 address with port?
+            if is_ip_address(check.split(':')[0]) == ipv:
+                found.append(check)
+        elif is_ip_address(check) == ipv:
+            found.append(check)
+    if not found:  # Nothing found for this ipv, don't generate rule
+        return None
+    if len(found) > 1:
+        fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(found)}')
+    return f' to {found[0]}'
 
 
 def match_rules(rule, cast, ipv, *, skip_options=True, skip_icmp=True,
