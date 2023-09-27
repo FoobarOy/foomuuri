@@ -121,7 +121,7 @@ def shell_expansion(content, fileline):
         prefix, postfix = content.split('$(shell ', 1)
         if ')' not in postfix:
             postfix = postfix.splitlines()[0]
-            fail(f'{fileline}$(shell without ) in command: {postfix}')
+            fail(f'{fileline}"$(shell" without ")" in command: {postfix}')
         shell, postfix = postfix.split(')', 1)
         content = f'{prefix}{run_shell(shell, fileline)}{postfix}'
     return content
@@ -184,7 +184,7 @@ def read_config():
             # "}" is end of section
             if len(tokens) == 1 and tokens[0] == '}':  # End of section
                 if not section:
-                    fail(f'{fileline}Extra }}')
+                    fail(f'{fileline}Extra "}}"')
                 section = None
 
             # "foo {" is section start
@@ -223,9 +223,9 @@ def read_config():
 
         # End of file checks
         if continuation:
-            fail(f'File {filename}: Continuation \\ at end of file')
+            fail(f'File {filename}: Continuation "\\" at end of file')
         if section:
-            fail(f'File {filename}: Section "{section}" is missing }} at '
+            fail(f'File {filename}: Section "{section}" is missing "}}" at '
                  f'end of file')
 
     # Include section_name -> filename_line to config for error messages
@@ -391,7 +391,7 @@ def parse_config_zonemap(config):
     for fileline, line in config.pop('zonemap', []):
         rule = parse_rule_line((fileline, line))
         if not rule['new_dzone'] and not rule['new_szone']:
-            fail(f'{fileline}Zonemap without new_dzone / new_szone '
+            fail(f'{fileline}Zonemap without "new_dzone" or "new_szone" '
                  f'is a no-op: {" ".join(line)}')
         zonemap.append(rule)
     return zonemap
@@ -520,7 +520,7 @@ def verify_rule_sanity(rule, fileline):
                 'helper', 'counter'):
         value = rule[key] or ''
         if ' ' in value:
-            fail(f'{fileline}{key} must be single word: {value}')
+            fail(f'{fileline}"{key}" must be single word: {value}')
 
     for key in ('global_rate', 'saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
         if not rule[key]:
@@ -532,7 +532,7 @@ def verify_rule_sanity(rule, fileline):
                          rule[key]) or
                 re.match(r'^ct count (over )?\d+$', rule[key])
         ):
-            fail(f'{fileline}Invalid {key} value: {rule[key]}')
+            fail(f'{fileline}Invalid "{key}" value: {rule[key]}')
 
     for basic, extra in (
             ('protocol', 'sport'),
@@ -545,10 +545,16 @@ def verify_rule_sanity(rule, fileline):
             ('saddr_daddr_rate', 'saddr_daddr_rate_mask'),
     ):
         if rule[extra] and not rule[basic]:
-            fail(f'{fileline}{extra} without {basic} is not valid')
+            fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
     if rule['policy'] == 'mark_set' and not rule['mark_set']:
-        fail(f'{fileline}{rule["policy"]} without value is not valid')
+        fail(f'{fileline}"{rule["policy"]}" without value is not valid')
+
+    if rule['policy'] in ('snat', 'dnat') and not rule['to']:
+        fail(f'{fileline}"{rule["policy"]}" without "to" is not valid')
+
+    if rule['policy'] == 'masquerade' and rule['to']:
+        fail(f'{fileline}"{rule["policy"]}" with "to" is not valid')
 
 
 def parse_rule_line(fileline_line):
@@ -597,7 +603,7 @@ def parse_rule_line(fileline_line):
         'new_szone': None,
         'new_dzone': None,
         # Misc rules
-        'to': None,  # snat to
+        'to': None,  # snat/dnat to
         'counter': None,
         'helper': None,
         'sipsec': None,
@@ -874,10 +880,11 @@ def single_or_set(data, fileline=''):
     for index, value in enumerate(values):
         if value.startswith('-'):
             if index and not neg:
-                fail(f'{fileline}Can\'t mix + and - items: {" ".join(values)}')
+                fail(f'{fileline}Can\'t mix "+" and "-" items: '
+                     f'{" ".join(values)}')
             neg = '!= '
         elif neg:
-            fail(f'{fileline}Can\'t mix + and - items: {" ".join(values)}')
+            fail(f'{fileline}Can\'t mix "+" and "-" items: {" ".join(values)}')
         if neg:
             values[index] = value[1:]
 
@@ -951,7 +958,7 @@ def mark_set_argument(rule):
     value = rule['mark_set']
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
+        fail(f'{rule["fileline"]}Invalid "mark_set" value: {value}')
     if len(x_y) == 1:
         return value
 
@@ -960,7 +967,7 @@ def mark_set_argument(rule):
     try:
         mask = int(x_y[1], 0)  # dec or hex
     except ValueError:
-        fail(f'{rule["fileline"]}Invalid mark_set value: {value}')
+        fail(f'{rule["fileline"]}Invalid "mark_set" value: {value}')
     return f'meta mark & {hex(0xffffffff ^ mask)} | {x_y[0]}'
 
 
@@ -978,7 +985,7 @@ def mark_match(rule):
         value = value[1:]
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(f'{rule["fileline"]}Invalid mark_match value: '
+        fail(f'{rule["fileline"]}Invalid "mark_match" value: '
              f'{rule["mark_match"]}')
     if len(x_y) == 1:
         return f'meta mark {check} {value} '
@@ -1149,23 +1156,26 @@ def parse_protocol_ports(rule):
 
 
 def parse_to(rule, ipv):
-    """Parse nat "to" rule to nft rule."""
+    """Parse snat/dnat "to" rule to nft rule."""
     if not rule['to']:
         return ''
 
     # "to" can be IPv4+IPv6, find correct one
-    found = []
+    target = []
     for check in rule['to'].split():
-        if ipv == 4 and check.count(':') == 1:  # IPv4 address with port?
-            if is_ip_address(check.split(':')[0]) == ipv:
-                found.append(check)
-        elif is_ip_address(check) == ipv:
-            found.append(check)
-    if not found:  # Nothing found for this ipv, don't generate rule
+        if check.count(':') == 1 and is_ip_address(check.split(':')[0]) == 4:
+            check_ipv = 4  # IPv4 address with port
+        else:
+            check_ipv = is_ip_address(check)
+        if check_ipv == 0:
+            fail(f'{rule["fileline"]}Invalid IP address in "to": {check}')
+        if check_ipv == ipv:
+            target.append(check)
+    if not target:  # Nothing found for this ipv, don't generate rule
         return None
-    if len(found) > 1:
-        fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(found)}')
-    return f' to {found[0]}'
+    if len(target) > 1:
+        fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(target)}')
+    return f' to {target[0]}'
 
 
 def match_rules(rule, cast, ipv, *, skip_options=True, skip_icmp=True,
