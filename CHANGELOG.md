@@ -4,12 +4,14 @@
 
 * Add support for `$(shell command)` in configuration file
 * Add support for named counters: `https counter web_traffic`
-* `foomuuri reload` restarts firewall and refreshes resolve+iplist
-* `foomuuri list counter` lists all named counters
-* `foomuuri iplist` subcommands manipulates and lists iplist entries
 * Add support for IPv6 suffix netmask: `::192:168:1:1/-64`
 * Add support for conntrack count rates: `saddr_rate "ct count 4"`
 * Add `chain_priority` to `foomuuri` section
+* Add lot of misconfiguration checks
+* `foomuuri reload` restarts firewall and refreshes resolve+iplist
+* `foomuuri list counter` lists all named counters
+* `foomuuri iplist` subcommands manipulates and lists iplist entries
+* Harden `dhcp`, `dhcpv6`, `mdns` and `ssdp` macros
 * Fix icmp to handle matchers correctly (`ping saddr 192.168.1.1 drop`)
 * Fix caching failed `resolve` section lookups for reboot
 
