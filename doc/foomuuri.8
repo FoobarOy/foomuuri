@@ -14,7 +14,7 @@
 . ftr VB CB
 . ftr VBI CBI
 .\}
-.TH "FOOMUURI" "8" "May 17, 2023" "Foomuuri 0.20" "User Manual"
+.TH "FOOMUURI" "8" "Oct 06, 2023" "Foomuuri 0.21" "User Manual"
 .hy
 .SH NAME
 .PP
@@ -49,17 +49,35 @@ if loading fails
 \f[B]stop\f[R]
 remove ruleset from kernel
 .TP
+\f[B]reload\f[R]
+same as \f[B]start\f[R], followed by resolve+iplist refresh
+.TP
 \f[B]check\f[R]
 load configuration files and verify syntax
 .TP
 \f[B]list\f[R]
 list active ruleset currently loaded to kernel
 .TP
-\f[B]list zone-zone\f[R]
+\f[B]list zone-zone {zone-zone\&...}\f[R]
 list active ruleset for \f[B]zone-zone\f[R] currently loaded to kernel
 .TP
 \f[B]list macro\f[R]
 list all known macros
+.TP
+\f[B]list counter\f[R]
+list all named counters
+.TP
+\f[B]iplist list\f[R]
+list entries in all configured iplists and resolves
+.TP
+\f[B]iplist list name {name\&...}\f[R]
+list entries in named iplist/resolve
+.TP
+\f[B]iplist add name {timeout} ipaddress {ipaddress\&...}\f[R]
+add or refresh IP address to iplist
+.TP
+\f[B]iplist del name ipaddress {ipaddress\&...}\f[R]
+delete IP address from iplist
 .SH FILES
 .PP
 \f[B]Foomuuri\f[R] reads configuration files from
