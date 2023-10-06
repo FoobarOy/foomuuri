@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.21 (xxxx-xx-xx)
+## 0.21 (2023-10-06)
 
 * Add support for `$(shell command)` in configuration file
 * Add support for named counters: `https counter web_traffic`
