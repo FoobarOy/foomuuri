@@ -1278,7 +1278,7 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         match = match_rules(rule, rule['cast'], ipv)
         if match is None:
             continue
-        out(f'{match}goto {new_szone}-{new_dzone}_{ipv}')
+        out(f'{match}jump {new_szone}-{new_dzone}_{ipv}')
 
 
 def output_options(rules, ipv):
@@ -1305,7 +1305,7 @@ def output_counter(rules, ipv):
 
 def output_zone(zonemap, szone, dzone, rules, ipv):
     """Output single zone-zone_ipv4 nft chain."""
-    # Header + zonemap gotos + options
+    # Header + zonemap jumps + options
     out(f'chain {szone}-{dzone}_{ipv} {{')
     output_zonemap(zonemap, szone, dzone, ipv)
     output_options(rules, ipv)
