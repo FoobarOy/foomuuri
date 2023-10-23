@@ -1,5 +1,10 @@
 # ChangeLog
 
+## 0.22 (xxxx-xx-xx)
+
+* Add support for `localhost-localhost` section and rules. If not defined,
+  it defaults to `accept`.
+
 ## 0.21 (2023-10-06)
 
 * Add support for `$(shell command)` in configuration file
@@ -18,7 +23,7 @@
 ## 0.20 (2023-08-15)
 
 * Multi-ISP support with internal network connectivity monitor.
-  See wiki's best practices for example configuration
+  See wiki's best practices for example configuration.
 * Add `mark_set`, `mark_restore` and `mark_save` statements
 * Add `mark_match` matcher
 * Add `prerouting`, `postrouting`, `output` and `forward` sections for marks

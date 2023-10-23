@@ -807,14 +807,16 @@ def verify_config(config, zones, rules):
     # Add missing zone-zone pairs, needed for "ct established" return packets
     # and for dynamic interface-to-zone binding via D-Bus.
     # They will have single rule "drop log".
+    # If localhost-localhost zone is missing it will be added as empty. Empty
+    # is handled as "accept" in output_zones vmap.
     for szone in zones:
         for dzone in zones:
-            if (
-                    (szone, dzone) not in rules and
-                    (szone, dzone) != (localhost, localhost)
-            ):
-                rules[(szone, dzone)] = [
-                    parse_rule_line(('', ['drop', 'log']))]
+            if (szone, dzone) not in rules:
+                if szone == dzone == localhost:
+                    rules[(szone, dzone)] = []
+                else:
+                    rules[(szone, dzone)] = [
+                        parse_rule_line(('', ['drop', 'log']))]
 
 
 def output_rate_names(rules):
@@ -1325,10 +1327,12 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
 
     # Broadcast and multicast
     output_cast('multicast', szone, dzone, rules, ipv)
+    local_local = szone == dzone == CONFIG['localhost_zone']
     if ipv == 4:
         output_cast('broadcast', szone, dzone, rules, ipv)
-        out('meta pkttype { broadcast, multicast } drop')
-    else:
+        if not local_local:
+            out('meta pkttype { broadcast, multicast } drop')
+    elif not local_local:
         out('meta pkttype multicast drop')
 
     # Unicast
@@ -1336,7 +1340,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     out('}')
 
 
-def output_zone_vmaps(zones):
+def output_zone_vmaps(zones, rules):
     """Output interface verdict maps to jump to correct zone-zone.
 
     Beware:
@@ -1347,6 +1351,7 @@ def output_zone_vmaps(zones):
     # pylint: disable=too-many-branches
 
     # Vmap must have interval-flag if there is wildcard-interface.
+    localhost = CONFIG["localhost_zone"]
     has_wildcard = False
     for value in zones.values():
         for interface in value['interface']:
@@ -1362,7 +1367,7 @@ def output_zone_vmaps(zones):
     out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {zone}-{CONFIG["localhost_zone"]},')
+            out(f'{interface} : jump {zone}-{localhost},')
     out('}')
     out('}')
 
@@ -1372,10 +1377,13 @@ def output_zone_vmaps(zones):
     if has_wildcard:
         out('flags interval')
     out('elements = {')
-    out('lo : accept,')
+    if rules[(localhost, localhost)]:  # Use lo-lo if it's not empty
+        out(f'lo : jump {localhost}-{localhost},')
+    else:
+        out('lo : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {CONFIG["localhost_zone"]}-{zone},')
+            out(f'{interface} : jump {localhost}-{zone},')
     out('}')
     out('}')
 
@@ -1922,7 +1930,7 @@ def command_start():
     # Generate output
     output_header()
     output_rate_names(rules)
-    output_zone_vmaps(zones)
+    output_zone_vmaps(zones, rules)
     output_zone2zone_rules(rules, zonemap)
     output_rule_section(snat, 'snat')
     output_rule_section(dnat, 'dnat')
