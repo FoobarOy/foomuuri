@@ -609,6 +609,7 @@ def parse_rule_line(fileline_line):
         'sipsec': None,
         'dipsec': None,
         'log': None,
+        'log_level': None,
         'nft': None,
         'mss': None,
         'template': None,
@@ -674,6 +675,7 @@ def parse_rule_line(fileline_line):
                       'counter',
                       'helper',
                       'log',
+                      'log_level',
                       'nft',
                       'mss',
                       'template',
@@ -1030,16 +1032,18 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
 
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone POLICY".
-    if rule['log'] is not None:
-        logtext = rule['log'] or (f'{szone}-{dzone} '
-                                  f'{policy.split()[0].upper()}')
+    if rule['log'] is not None or rule['log_level'] is not None:
+        log_text = rule['log'] or (f'{szone}-{dzone} '
+                                   f'{policy.split()[0].upper()}')
+        log_level = (CONFIG['log_level'] if rule['log_level'] is None else
+                     rule['log_level'])
         if do_lograte:
             # Limit logging to "foomuuri { log_rate }" entries. This is
             # important to avoid overlogging (DoS or filesystem full).
             logname = f'lograte_{len(LOGRATES) + 1}'
-            LOGRATES[logname] = (ipv, logtext, policy)
+            LOGRATES[logname] = (ipv, log_text, policy, log_level)
             return f'{ret}jump {logname}'
-        ret += f'log prefix "{logtext} " {CONFIG["log_level"]} '
+        ret += f'log prefix "{log_text} " {log_level} '
 
     # mark_set argument parser
     if policy == 'mark_set':
@@ -1618,29 +1622,27 @@ def optimize_jumps():
         line = OUT[linenum]
         if line.startswith('jump lograte_'):
             logname = line.split()[1]
-            ipv, logtext, policy = LOGRATES.pop(logname)
+            ipv, log_text, policy, log_level = LOGRATES.pop(logname)
             rate = ''
             if CONFIG['log_rate']:
                 rate = (f'update @_lograte_set_{ipv} '
                         f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                         f'limit rate {CONFIG["log_rate"]} }} ')
-            OUT[linenum] = (f'{rate}log prefix "{logtext} " '
-                            f'{CONFIG["log_level"]}')
+            OUT[linenum] = f'{rate}log prefix "{log_text} " {log_level}'
             OUT.insert(linenum + 1, policy)
         linenum += 1
 
 
 def output_logrates():
     """Output non-optimized lograte entries as chains."""
-    for logname, value in LOGRATES.items():
-        ipv, logtext, policy = value
+    for logname, (ipv, log_text, policy, log_level) in LOGRATES.items():
         out(f'chain {logname} {{')
         rate = ''
         if CONFIG['log_rate']:
             rate = (f'update @_lograte_set_{ipv} '
                     f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                     f'limit rate {CONFIG["log_rate"]} }} ')
-        out(f'{rate}log prefix "{logtext} " {CONFIG["log_level"]}')
+        out(f'{rate}log prefix "{log_text} " {log_level}')
         out(f'{policy}')
         out('}')
 
