@@ -1171,6 +1171,12 @@ def parse_to(rule, ipv):
     for check in rule['to'].split():
         if check.count(':') == 1 and is_ip_address(check.split(':')[0]) == 4:
             check_ipv = 4  # IPv4 address with port
+        elif (
+                check.startswith('[') and
+                ']:' in check and
+                is_ip_address(check[1:].split(']:')[0]) == 6
+        ):
+            check_ipv = 6  # IPv6 address with port
         else:
             check_ipv = is_ip_address(check)
         if check_ipv == 0:
