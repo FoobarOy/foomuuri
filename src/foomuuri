@@ -481,6 +481,15 @@ def is_ipv6_address(value):
         addr_from, addr_to = value.split('-')
         return is_ipv6_address(addr_from) and is_ipv6_address(addr_to)
 
+    # Python's ipaddress library doesn't handle "[ipv6]" notation.
+    # Strip [] before validating the address. nft handles [] fine, it will
+    # strip them.
+    if value.startswith('['):
+        if value.endswith(']'):  # "[ipv6]"
+            value = value[1:-1]
+        elif ']/' in value:      # "[ipv6]/56"
+            value = value[1:].replace(']/', '/')
+
     try:  # Address "IP"
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
     except ValueError:
