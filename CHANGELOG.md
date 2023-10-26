@@ -6,6 +6,7 @@
   it defaults to `accept`.
 * Rule's log level can be set with `log_level "level crit"`. This overrides
   global `foomuuri { log_level ... }` setting.
+* Fix handling "[ipv6]", "[ipv6]/mask" and "[ipv6]:port" notation
 
 ## 0.21 (2023-10-06)
 
