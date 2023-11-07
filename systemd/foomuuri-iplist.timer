@@ -6,4 +6,4 @@ PartOf=foomuuri.service
 
 [Timer]
 OnActiveSec=3m
-OnUnitActiveSec=24h
+OnUnitActiveSec=15m

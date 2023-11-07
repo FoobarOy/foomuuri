@@ -404,7 +404,7 @@ def parse_config_rule_section(config, section):
     return rules
 
 
-def parse_resolve(config, section, timeout):
+def parse_resolve(config, section, timeout=None, refresh=None):
     """Parse resolve{} and iplist{} from config.
 
     Line syntax:
@@ -413,10 +413,15 @@ def parse_resolve(config, section, timeout):
 
     Entry "timeout 10h 30m" (defaults to 24h if "resolve", 10d if "iplist")
     is how long found IP addresses are remembered.
+
+    Entry "refresh 3h" is how often iplist entries will be fetched.
     """
-    ret = {'timeout': timeout}
+    ret = {
+        'timeout': timeout,
+        'refresh': refresh,
+    }
     for fileline, line in config.pop(section, []):
-        if line[0] == 'timeout' and len(line) > 1:
+        if line[0] in ('timeout', 'refresh') and len(line) > 1:
             ret[line[0]] = ''.join(line[1:])
         else:
             if not line[0].startswith('@') or len(line[0]) == 1:
@@ -1674,7 +1679,7 @@ def output_logrates():
 def output_resolve_sets(resolve, flags):
     """Output empty resolve{} and iplist{} sets."""
     for name in resolve:
-        if name == 'timeout':
+        if not name.startswith('@'):
             continue
         out(f'set {name[1:]} {{')
         out(f'type ipv{name[-1]}_addr')
@@ -1928,8 +1933,8 @@ def command_start():
     config = minimal_config()
     zones = parse_config_zones(config)
     zonemap = parse_config_zonemap(config)
-    resolve = parse_resolve(config, 'resolve', '24h')
-    iplist = parse_resolve(config, 'iplist', '10d')
+    resolve = parse_resolve(config, 'resolve')
+    iplist = parse_resolve(config, 'iplist')
     snat = parse_config_rule_section(config, 'snat')
     dnat = parse_config_rule_section(config, 'dnat')
     prerouting = parse_config_rule_section(config, 'prerouting')
@@ -2301,6 +2306,7 @@ def config_resolve_to_iplist():
     config = minimal_config()
     resolve = parse_resolve(config, 'resolve', '24h')
     timeout = resolve.pop('timeout')
+    resolve.pop('refresh')
     hosts = resolve_all_hostnames(resolve)
 
     # Convert resolve "@setname_4 -> hostlist" to "setname_4 -> iplist"
@@ -2329,7 +2335,7 @@ def command_resolve():
     """Resolve hostnames."""
     # Read config and resolve
     current, timeout = config_resolve_to_iplist()
-    previous = read_previous_resolve_iplist('resolve_file')
+    previous = read_previous_resolve_iplist('resolve_file')[0]
     known = active_sets()
 
     # Output entries
@@ -2396,10 +2402,42 @@ def get_file(wildcard):
     return text
 
 
-def get_all_urls_and_files(namelist):
+def parse_hour_min(timespec, fallback):
+    """Parse 4h3m to seconds.
+
+    This is a dummy parser without any good error checking.
+    """
+    if not timespec:
+        return fallback
+    timespec = timespec.replace(' ', '')
+    hours = mins = 0
+    if 'h' in timespec:
+        hours, timespec = timespec.split('h', 1)
+    if 'm' in timespec:
+        mins, timespec = timespec.split('m', 1)
+    if timespec:
+        return fallback
+    try:
+        return int(hours) * 3600 + int(mins) * 60
+    except ValueError:
+        return fallback
+
+
+def get_all_urls_and_files(namelist, last_refresh_time, default_refresh):
     """Read all URLs and filename-wildcards and return them as text."""
+    # Is it time to update this list?
+    refresh = parse_hour_min(default_refresh, 0)
+    for item in namelist:
+        if item.startswith('refresh='):
+            refresh = parse_hour_min(item[8:], refresh)
+    if last_refresh_time + refresh > time.time():
+        return '_refresh'  # Not yet
+
+    # It's time. Fetch!
     text = ''
     for filename in namelist:
+        if filename.startswith('refresh='):
+            continue
         if filename.startswith(('https:', 'http:')):
             content = get_url(filename)
         else:
@@ -2422,19 +2460,23 @@ def read_previous_resolve_iplist(filename):
         fail(f'File {CONFIG["iplist_file"]}: Can\'t read: {error}')
 
     # Parse lines to setname->set(ipaddrs)
-    ret = {}
+    addrs = {}
+    last_refresh = {}
     for line in content.splitlines():
+        if line.startswith('# last_refresh'):
+            last_refresh[line.split()[2]] = int(line.split()[3])
+            continue
         tokens = line.replace('# ', '').split()
         if len(tokens) != 10 or tokens[7] != 'timeout':
             continue
         setname = tokens[4]
-        if setname not in ret:
-            ret[setname] = set()
-        ret[setname].add(tokens[6])
-    return ret
+        if setname not in addrs:
+            addrs[setname] = set()
+        addrs[setname].add(tokens[6])
+    return addrs, last_refresh
 
 
-def read_all_iplists(iplist):
+def read_all_iplists(iplist, last_refresh, default_refresh):
     """Read all iplist files and return dict setname_ipv->iplist."""
     ret = {}
     for setname, filenames in iplist.items():
@@ -2444,8 +2486,12 @@ def read_all_iplists(iplist):
         setname = setname[1:-2]  # Strip "@" and "_4"
 
         # Get content
-        text = get_all_urls_and_files(filenames)
-        if text is None:
+        text = get_all_urls_and_files(filenames, last_refresh.get(setname, 0),
+                                      default_refresh)
+        if text is None:  # Fetch failure
+            continue
+        if text == '_refresh':  # It wasn't time to refresh
+            ret[setname] = text
             continue
 
         # Parse each line to IPv4/IPv6 lists
@@ -2468,9 +2514,10 @@ def read_all_iplists(iplist):
                 print(f'Warning: Invalid content in iplist {{ @{setname} }}: '
                       f'{line}')
                 break
-        else:  # Include it to reply if all success
+        else:  # Include it to reply if all success, update it's timestamp
             ret[f'{setname}_4'] = addr_4
             ret[f'{setname}_6'] = addr_6
+            last_refresh[setname] = int(time.time())
     return ret
 
 
@@ -2518,8 +2565,8 @@ def command_iplist_list():
     config = minimal_config()
     known = set()
     for item in (
-            list(parse_resolve(config, 'iplist', None)) +
-            list(parse_resolve(config, 'resolve', None))
+            list(parse_resolve(config, 'iplist')) +
+            list(parse_resolve(config, 'resolve'))
     ):
         if item.startswith('@'):
             known.add(item[:-2])
@@ -2569,7 +2616,7 @@ def command_iplist_add():
 def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
-    iplist = parse_resolve(config, 'iplist', '10d')
+    iplist = parse_resolve(config, 'iplist')
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
@@ -2591,13 +2638,23 @@ def command_iplist_refresh():
     """Refresh iplist{} entries."""
     # Read minimal config and read iplist{} entries
     config = minimal_config()
-    iplist = parse_resolve(config, 'iplist', '10d')
+    iplist = parse_resolve(config, 'iplist', '10d', '24h')
     timeout = iplist.pop('timeout')
-    previous = read_previous_resolve_iplist('iplist_file')
-    current = read_all_iplists(iplist)
+    refresh = iplist.pop('refresh')
+    previous, last_refresh = read_previous_resolve_iplist('iplist_file')
+    for param in CONFIG['parameters'][1:]:  # Refresh parameters now
+        if param.startswith('@'):
+            param = param[1:]
+        last_refresh[param] = 0
+    current = read_all_iplists(iplist, last_refresh, refresh)
     known = active_sets()
 
-    # Output entries
+    # Output last_refresh entries
+    for setname, timestamp in last_refresh.items():
+        if f'@{setname}_4' in iplist:
+            out(f'# last_refresh {setname} {timestamp}')
+
+    # Output address entries
     warned = set()
     error = 0
     for setname, filenames in iplist.items():
@@ -2605,8 +2662,13 @@ def command_iplist_refresh():
             continue  # Don't touch sets without filenames
 
         setname = setname[1:]  # Strip "@"
-        if setname not in current:
-            # Fetch for this set failed, add previous fetch as comments
+        if current.get(setname[:-2]) == '_refresh':
+            # It wasn't time to refresh
+            comment = '# '
+            addrlist = previous.get(setname, [])
+        elif setname not in current:
+            # Fetch for this set failed, or it wasn't time to refresh yet.
+            # Add previous fetch as comments
             error = 1
             comment = '# '
             addrlist = previous.get(setname, [])
@@ -2615,8 +2677,8 @@ def command_iplist_refresh():
             # Not active in current ruleset, add items as comments
             comment = '# '
             addrlist = current[setname]
-            warn_resolve_iplist(setname, warned, 'Iplist', 'does not '
-                                'exist in currently active firewall')
+            warn_resolve_iplist(setname, warned, 'Iplist',
+                                'does not exist in currently active firewall')
         else:
             # Success, update elements to ruleset.
             comment = ''
@@ -2639,7 +2701,7 @@ def command_iplist():
         return command_iplist_add()
     if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'del':
         return command_iplist_del()
-    if len(CONFIG['parameters']) == 1 and CONFIG['parameters'][0] == 'refresh':
+    if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'refresh':
         return command_iplist_refresh()
     return command_help()
 
