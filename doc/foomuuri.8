@@ -35,8 +35,14 @@ emulation for NetworkManager\[cq]s zone support.
 \f[V]--help\f[R]
 display this help and exit
 .TP
+\f[V]--verbose\f[R]
+verbose output
+.TP
 \f[V]--version\f[R]
 output version information and exit
+.TP
+\f[V]--set=option=value\f[R]
+set config option to value
 .SH COMMANDS
 .TP
 \f[B]start\f[R]
@@ -78,6 +84,9 @@ add or refresh IP address to iplist
 .TP
 \f[B]iplist del name ipaddress {ipaddress\&...}\f[R]
 delete IP address from iplist
+.TP
+\f[B]iplist refresh name {name\&...}\f[R]
+refresh iplist \[at]name entries now
 .SH FILES
 .PP
 \f[B]Foomuuri\f[R] reads configuration files from

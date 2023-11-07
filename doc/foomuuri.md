@@ -30,9 +30,14 @@ emulation for NetworkManager's zone support.
 `--help`
 : display this help and exit
 
+`--verbose`
+: verbose output
+
 `--version`
 : output version information and exit
 
+`--set=option=value`
+: set config option to value
 
 # COMMANDS
 
@@ -75,6 +80,8 @@ emulation for NetworkManager's zone support.
 **iplist del name ipaddress {ipaddress...}**
 : delete IP address from iplist
 
+**iplist refresh name {name...}**
+: refresh iplist @name entries now
 
 # FILES
 

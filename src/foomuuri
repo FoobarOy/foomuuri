@@ -3117,8 +3117,8 @@ def command_help():
     print()
     print('  --verbose        Verbose output')
     print('  --version        Print version')
-    print('  --set=variable=value')
-    print('                   Set config variable to value')
+    print('  --set=option=value')
+    print('                   Set config option to value')
     print()
     print('Internally used commands:')
     print()
@@ -3147,11 +3147,11 @@ def parse_command_line():
             CONFIG['run_dir'] = '../foomuuri-devel'
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
-                fail(f'Invalid syntax for --set=variable=value: {arg}')
-            _dummy, variable, value = arg.split('=', 2)
-            if variable not in CONFIG:
+                fail(f'Invalid syntax for --set=option=value: {arg}')
+            _dummy, option, value = arg.split('=', 2)
+            if option not in CONFIG:
                 fail(f'Unknown foomuuri{{}} option: {arg}')
-            CONFIG[variable] = value
+            CONFIG[option] = value
         elif not CONFIG['command']:
             CONFIG['command'] = arg
         else:
