@@ -2653,6 +2653,8 @@ def command_iplist_del():
 
 def command_iplist_refresh():
     """Refresh iplist{} entries."""
+    # pylint: disable=too-many-locals
+
     # Read minimal config and read iplist{} entries
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist', '10d', '24h')
