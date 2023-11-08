@@ -2471,7 +2471,7 @@ def read_previous_resolve_iplist(filename):
         # pylint: disable=no-member
         content = CONFIG[filename].read_text(encoding='utf-8')
     except FileNotFoundError:
-        return {}
+        return {}, {}
     except PermissionError as error:
         fail(f'File {CONFIG["iplist_file"]}: Can\'t read: {error}')
 
