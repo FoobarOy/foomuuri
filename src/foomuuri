@@ -1713,7 +1713,7 @@ def output_resolve_elements(resolve, statefile):
 
     # Add previous result if resolve name is known
     out('')
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     for line in content.splitlines():
         if line.startswith('# '):  # Try "didn't exist in active ruleset" now
             line = line[2:]
@@ -1729,6 +1729,7 @@ def output_resolve_elements(resolve, statefile):
                 try:
                     expire = datetime.datetime.strptime(tokens[11],
                                                         '%Y-%m-%dT%H:%M:%S')
+                    expire = expire.replace(tzinfo=datetime.timezone.utc)
                 except ValueError:
                     continue
                 # Skip expired entries, update timeout for rest
@@ -2562,7 +2563,7 @@ def iplist_manual_state(iplist):
             continue
 
         # Collect IP addresses
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         for item in data['nftables']:
             for elem in item.get('set', {}).get('elem', []):
                 ipaddr = elem['elem']['val']
