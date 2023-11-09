@@ -2442,7 +2442,13 @@ def get_all_urls_and_files(setname, namelist, last_refresh_time,
     for item in namelist:
         if item.startswith('refresh='):
             refresh = parse_hour_min(item[8:], refresh)
-    time_left = last_refresh_time + refresh - int(time.time())
+    if not last_refresh_time:
+        time_left = 0
+    else:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        time_left = int((last_refresh_time +
+                         datetime.timedelta(seconds=refresh) -
+                         now).total_seconds())
     if time_left > 0:
         verbose(f'Iplist "@{setname}" refresh skipped, {time_left} seconds '
                 f'to next refresh')
@@ -2480,7 +2486,12 @@ def read_previous_resolve_iplist(filename):
     last_refresh = {}
     for line in content.splitlines():
         if line.startswith('# last_refresh'):
-            last_refresh[line.split()[2]] = int(line.split()[3])
+            try:
+                last_refresh[line.split()[2]] = datetime.datetime.strptime(
+                    line.split()[3], '%Y-%m-%dT%H:%M:%S').replace(
+                        tzinfo=datetime.timezone.utc)
+            except (IndexError, ValueError):
+                pass
             continue
         tokens = line.replace('# ', '').split()
         if len(tokens) != 10 or tokens[7] != 'timeout':
@@ -2503,7 +2514,7 @@ def read_all_iplists(iplist, last_refresh, default_refresh):
 
         # Get content
         text = get_all_urls_and_files(setname, filenames,
-                                      last_refresh.get(setname, 0),
+                                      last_refresh.get(setname),
                                       default_refresh)
         if text is None:  # Fetch failure
             continue
@@ -2534,7 +2545,8 @@ def read_all_iplists(iplist, last_refresh, default_refresh):
         else:  # Include it to reply if all success, update it's timestamp
             ret[f'{setname}_4'] = addr_4
             ret[f'{setname}_6'] = addr_6
-            last_refresh[setname] = int(time.time())
+            last_refresh[setname] = datetime.datetime.now(
+                datetime.timezone.utc)
     return ret
 
 
@@ -2664,14 +2676,14 @@ def command_iplist_refresh():
     for param in CONFIG['parameters'][1:]:  # Refresh parameters now
         if param.startswith('@'):
             param = param[1:]
-        last_refresh[param] = 0
+        last_refresh[param] = None
     current = read_all_iplists(iplist, last_refresh, refresh)
     known = active_sets()
 
     # Output last_refresh entries
     for setname, timestamp in last_refresh.items():
-        if f'@{setname}_4' in iplist:
-            out(f'# last_refresh {setname} {timestamp}')
+        if f'@{setname}_4' in iplist and timestamp:
+            out(f'# last_refresh {setname} {timestamp:%Y-%m-%dT%H:%M:%S}')
 
     # Output address entries
     warned = set()
