@@ -668,6 +668,7 @@ def parse_rule_line(fileline_line):
             ret['cast'] = item
             keyword = None
         elif item in ('tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'):
+            # "igmp" and "esp" are for backward compability (v0.21)
             ret['protocol'] = item
             keyword = None
         elif item in ('ipv4', 'ipv6'):
@@ -681,7 +682,8 @@ def parse_rule_line(fileline_line):
             keyword = None
 
         # Start keywords
-        elif item in ('saddr', 'sport',
+        elif item in ('protocol',
+                      'saddr', 'sport',
                       'daddr', 'dport',
                       'oifname', 'iifname',
                       'global_rate',
@@ -1164,12 +1166,17 @@ def parse_interface_names(rule):
     return iifname + oifname
 
 
-def parse_protocol_ports(rule):
+def parse_protocol_ports(rule, ipv):
     """Parse tcp/udp sport/dport to nft rule."""
     protocol = rule['protocol']
     if not protocol or protocol in ('icmp', 'icmpv6'):
-        # Port without protocol doesn't work, icmp doesn't have ports
+        # Port without protocol doesn't work
+        # icmp is handled in output_icmp()
         return ''
+    if ipv == 6 and protocol == 'igmp':
+        return None  # IPv6 uses Multicast Listener Discovery ICMP
+    if protocol not in ('tcp', 'udp'):
+        protocol = f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol}'
 
     ports = ''
     for key in ('sport', 'dport'):
@@ -1251,13 +1258,9 @@ def match_rules(rule, cast, ipv, *, skip_options=True, skip_icmp=True,
         addrlist = ('ip daddr 0.0.0.0/0 ' if ipv == 4 else
                     'ip6 daddr ::/0 ')
 
-    if rule['protocol'] in ('igmp', 'esp'):
-        if ipv == 6 and rule['protocol'] == 'igmp':
-            return None  # IPv6 uses Multicast Listener Discovery ICMP
-        proto_ports = (f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} '
-                       f'{rule["protocol"]} ')
-    else:
-        proto_ports = parse_protocol_ports(rule)
+    proto_ports = parse_protocol_ports(rule, ipv)
+    if proto_ports is None:
+        return None
 
     mark = mark_match(rule)
 
