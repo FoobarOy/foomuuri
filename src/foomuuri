@@ -654,6 +654,8 @@ def parse_rule_line(fileline_line):
         # defined. Counter without parameter will create anonymous counter.
         if keyword and not ret[keyword] and keyword not in ('log', 'counter'):
             ret[keyword] = item
+            if keyword == 'protocol':  # Single word only
+                keyword = None
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return',
@@ -1175,8 +1177,6 @@ def parse_protocol_ports(rule, ipv):
         return ''
     if ipv == 6 and protocol == 'igmp':
         return None  # IPv6 uses Multicast Listener Discovery ICMP
-    if protocol not in ('tcp', 'udp'):
-        protocol = f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol}'
 
     ports = ''
     for key in ('sport', 'dport'):
@@ -1186,7 +1186,7 @@ def parse_protocol_ports(rule, ipv):
                       f'{single_or_set(rule[key], rule["fileline"])} ')
     if ports:
         return ports
-    return f'{protocol} '
+    return f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol} '
 
 
 def parse_to(rule, ipv):
