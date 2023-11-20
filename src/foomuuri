@@ -103,8 +103,26 @@ def out(line):
     OUT.append(line)
 
 
-def run_shell(args, fileline, shell=True):
-    """Run external shell program and return it's output. Failure is fatal."""
+def run_program_rc(args, *, env=None):
+    """Run external program and return its errorcode. Print its output."""
+    if not args:
+        return 0
+    try:
+        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, encoding='utf-8',
+                              env=env, timeout=60)
+    except OSError as error:
+        print(f'Error: Failed to run command "{" ".join(args)}": {error}',
+              flush=True)
+        return 1
+    output = proc.stdout.rstrip()
+    if output:
+        print(output, flush=True)
+    return proc.returncode
+
+
+def run_program_output(args, fileline, shell=True):
+    """Run external program and return its output. Failure is fatal."""
     if not args:
         return ''
     try:
@@ -112,11 +130,29 @@ def run_shell(args, fileline, shell=True):
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               shell=shell, timeout=60)
     except OSError as error:
-        fail(f'{fileline}Failed to run command "{args}": {error}')
+        fail(f'{fileline}Failed to run command "{" ".join(args)}": {error}')
     if proc.returncode:
-        fail(f'{fileline}Failed to run command "{args}": '
+        fail(f'{fileline}Failed to run command "{" ".join(args)}": '
              f'return code {proc.returncode}')
     return proc.stdout.rstrip()
+
+
+def run_program_json(args):
+    """Quietly run external program and return its output as json."""
+    if not args:
+        return {}
+    try:
+        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, encoding='utf-8',
+                              timeout=60)
+    except OSError:
+        return None
+    if proc.returncode:
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except json.decoder.JSONDecodeError:
+        return None
 
 
 def shell_expansion(content, fileline):
@@ -130,7 +166,7 @@ def shell_expansion(content, fileline):
             postfix = postfix.splitlines()[0]
             fail(f'{fileline}"$(shell" without ")" in command: {postfix}')
         shell, postfix = postfix.split(')', 1)
-        content = f'{prefix}{run_shell(shell, fileline)}{postfix}'
+        content = f'{prefix}{run_program_output(shell, fileline)}{postfix}'
     return content
 
 
@@ -1430,7 +1466,7 @@ def output_zone_vmaps(zones, rules):
     if has_wildcard:
         out('flags interval')
     out('elements = {')
-    if rules[(localhost, localhost)]:  # Use lo-lo if it's not empty
+    if rules[(localhost, localhost)]:  # Use lo-lo if it is not empty
         out(f'lo : jump {localhost}-{localhost},')
     else:
         out('lo : accept,')
@@ -1744,7 +1780,7 @@ def output_resolve_elements(resolve, statefile):
                 line.startswith('add element inet foomuuri ') and
                 len(tokens) >= 10 and
                 tokens[7] == 'timeout' and
-                tokens[4] in known  # It's known name
+                tokens[4] in known  # It is known name
         ):
             # Check optional expire timestamp, used in iplist-manual.fw
             if len(tokens) == 12 and tokens[10] == '#':
@@ -1843,24 +1879,6 @@ def save_file(filename, lines):
         pass
 
 
-def run_program(args, *, env=None):
-    """Run external program and return it's errorcode."""
-    if not args:
-        return 0
-    try:
-        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding='utf-8',
-                              env=env, timeout=60)
-    except OSError as error:
-        print(f'Error: Failed to run command "{" ".join(args)}": {error}',
-              flush=True)
-        return 1
-    output = proc.stdout.rstrip()
-    if output:
-        print(output, flush=True)
-    return proc.returncode
-
-
 def env_cleanup(text):
     """Allow only letters and numbers in text for environment variable."""
     # Convert ä->a as isalpha('ä') is true
@@ -1914,8 +1932,8 @@ def apply_final():
     """Use final ruleset."""
     # Check config
     if CONFIG['command'] == 'check':
-        ret = run_program([CONFIG['nft_bin'], '--check', '--file',
-                           CONFIG['next_file']])
+        ret = run_program_rc([CONFIG['nft_bin'], '--check', '--file',
+                              CONFIG['next_file']])
         if ret:
             print(f'Error: Nftables failed to check ruleset, error code {ret}')
         else:
@@ -1923,10 +1941,10 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program(CONFIG.get(f'pre_{CONFIG["command"][:5]}'))
+    run_program_rc(CONFIG.get(f'pre_{CONFIG["command"][:5]}'))
 
     # Load "next"
-    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG['next_file']])
+    ret = run_program_rc([CONFIG['nft_bin'], '--file', CONFIG['next_file']])
 
     # Rename "next" to "good" if success and signal dbus to reload
     if ret == 0:
@@ -1935,7 +1953,7 @@ def apply_final():
             CONFIG['good_file'].unlink(missing_ok=True)
             CONFIG['next_file'].rename(CONFIG['good_file'])
         signal_childs()
-        run_program(CONFIG.get(f'post_{CONFIG["command"][:5]}'))
+        run_program_rc(CONFIG.get(f'post_{CONFIG["command"][:5]}'))
         print(f'{CONFIG["command"]} success')
         return 0
 
@@ -1943,14 +1961,14 @@ def apply_final():
     print(f'Error: Failed to load ruleset to nftables, error code {ret}')
     if CONFIG['command'] == 'start-or-good':
         if CONFIG['good_file'].exists():
-            ret = run_program([CONFIG['nft_bin'], '--file',
-                               CONFIG['good_file']])
+            ret = run_program_rc([CONFIG['nft_bin'], '--file',
+                                  CONFIG['good_file']])
             if ret:
                 print(f'Error: Failed to load \"good\" ruleset to nftables, '
                       f'error code {ret}')
             else:
                 signal_childs()  # Good success, signal dbus + monitor
-                run_program(CONFIG.get('post_start'))
+                run_program_rc(CONFIG.get('post_start'))
                 print('Warning: Fallbacked to previous \"good\" ruleset')
         else:
             print('Error: Failed to load \"good\" ruleset, no such file')
@@ -2028,15 +2046,9 @@ class DbusCommon:
     @staticmethod
     def parse_interface_zone():
         """Parse current interface->zone mapping from active nft ruleset."""
-        proc = subprocess.run([CONFIG['nft_bin'], '--json', 'list', 'map',
-                               'inet', 'foomuuri', 'input_zones'],
-                              check=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding='utf-8')
-        if proc.returncode:
-            return {}
-        try:
-            data = json.loads(proc.stdout)
-        except json.decoder.JSONDecodeError:
+        data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'map',
+                                 'inet', 'foomuuri', 'input_zones'])
+        if not data:
             return {}
         ret = {}
         for item in data['nftables']:
@@ -2056,7 +2068,7 @@ class DbusCommon:
     def apply_out():
         """Apply current OUT commands."""
         save_final(CONFIG['dbus_file'])
-        run_program([CONFIG['nft_bin'], '--file', CONFIG['dbus_file']])
+        run_program_rc([CONFIG['nft_bin'], '--file', CONFIG['dbus_file']])
 
     @staticmethod
     def remove_interface(interface_zone, interface):
@@ -2281,7 +2293,7 @@ def command_dbus():
 
 
 def resolve_one_hostname(hostname):
-    """Resolve hostname and return it's IP addresses."""
+    """Resolve hostname and return its IP addresses."""
     ret = set()
     try:
         for item in socket.getaddrinfo(hostname, None):
@@ -2305,14 +2317,8 @@ def resolve_all_hostnames(resolve):
 def active_sets():
     """Return list of set names in currently active firewall."""
     ret = set()
-    proc = subprocess.run([CONFIG['nft_bin'], '--json', 'list', 'ruleset'],
-                          check=False, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, encoding='utf-8')
-    if proc.returncode:
-        return ret
-    try:
-        data = json.loads(proc.stdout)
-    except json.decoder.JSONDecodeError:
+    data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'ruleset'])
+    if not data:
         return ret
     for item in data['nftables']:
         if 'set' in item and item['set']['table'] == 'foomuuri':
@@ -2325,7 +2331,7 @@ def apply_resolve_iplist(filename, error_txt, pending_error):
     if not OUT:
         return pending_error
     save_final(CONFIG[filename])
-    ret = run_program([CONFIG['nft_bin'], '--file', CONFIG[filename]])
+    ret = run_program_rc([CONFIG['nft_bin'], '--file', CONFIG[filename]])
     if ret:
         print(f'Error: Failed to update {error_txt}, error code {ret}')
     return ret or pending_error
@@ -2476,7 +2482,7 @@ def get_all_urls_and_files(setname, namelist, last_refresh_time,
                 f'to next refresh')
         return '_refresh'  # Not yet
 
-    # It's time. Fetch!
+    # It is time. Fetch!
     text = ''
     for filename in namelist:
         if filename.startswith('refresh='):
@@ -2564,12 +2570,25 @@ def read_all_iplists(iplist, last_refresh, default_refresh):
                 print(f'Warning: Invalid content in iplist {{ @{setname} }}: '
                       f'{line}')
                 break
-        else:  # Include it to reply if all success, update it's timestamp
+        else:  # Include it to reply if all success, update its timestamp
             ret[f'{setname}_4'] = addr_4
             ret[f'{setname}_6'] = addr_6
             last_refresh[setname] = datetime.datetime.now(
                 datetime.timezone.utc)
     return ret
+
+
+def iterate_set_elements(data):
+    """Iterate elements from "nft --json list set" output."""
+    for toplevel in (data or {}).get('nftables', []):
+        for elem in toplevel.get('set', {}).get('elem', []):
+            ipaddr = elem['elem']['val']
+            expire = elem['elem']['expires']
+            if isinstance(ipaddr, str):
+                yield ipaddr, expire
+            else:
+                yield (f'{ipaddr["prefix"]["addr"]}/'
+                       f'{ipaddr["prefix"]["len"]}', expire)
 
 
 def iplist_manual_state(iplist):
@@ -2589,23 +2608,16 @@ def iplist_manual_state(iplist):
             continue
 
         # Get set entries
-        output = run_shell([CONFIG['nft_bin'], '--json', 'list', 'set',
-                            'inet', 'foomuuri', setname], '', False)
-        try:
-            data = json.loads(output)
-        except json.decoder.JSONDecodeError:
-            continue
+        data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'set',
+                                 'inet', 'foomuuri', setname])
 
         # Collect IP addresses
         now = datetime.datetime.now(datetime.timezone.utc)
-        for item in data['nftables']:
-            for elem in item.get('set', {}).get('elem', []):
-                ipaddr = elem['elem']['val']
-                expire = elem['elem']['expires']
-                stamp = (now + datetime.timedelta(seconds=expire)).strftime(
-                    '%Y-%m-%dT%H:%M:%S')
-                manual.append(f'add element inet foomuuri {setname} '
-                              f'{{ {ipaddr} timeout {expire}s }} # {stamp}')
+        for ipaddr, expire in iterate_set_elements(data):
+            stamp = (now + datetime.timedelta(seconds=expire)).strftime(
+                '%Y-%m-%dT%H:%M:%S')
+            manual.append(f'add element inet foomuuri {setname} '
+                          f'{{ {ipaddr} timeout {expire}s }} # {stamp}')
 
     # Save manual list
     save_file(CONFIG['iplist_manual_file'], manual)
@@ -2622,18 +2634,30 @@ def command_iplist_list():
         if item.startswith('@'):
             known.add(item[:-2])
 
-    ret = 0
-    for setname in CONFIG['parameters'][1:] or known:
+    ret = 1  # Default to no output, failure
+    for setname in CONFIG['parameters'][1:] or sorted(known):
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
-            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
-                                'foomuuri', setname])
+            data4 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
+                                      'set', 'inet', 'foomuuri', setname])
+            data6 = {}
         else:
-            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
-                                'foomuuri', f'{setname}_4'])
-            ret += run_program([CONFIG['nft_bin'], 'list', 'set', 'inet',
-                                'foomuuri', f'{setname}_6'])
+            data4 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
+                                      'set', 'inet', 'foomuuri',
+                                      f'{setname}_4'])
+            data6 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
+                                      'set', 'inet', 'foomuuri',
+                                      f'{setname}_6'])
+        elem4 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data4)]
+        elem6 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data6)]
+        elems = sorted(elem4) + sorted(elem6)
+        if not elems:
+            print(f'@{setname}')
+        else:
+            ret = 0  # Outputted something, return ok
+            for elem in elems:
+                print(f'@{setname:20s}  {elem}')
     return ret
 
 
@@ -2655,11 +2679,11 @@ def command_iplist_add():
                 continue
             fail(f'Invalid IP address {address}')
         table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program([CONFIG['nft_bin'],
-                            f'add element {table_set} {{ {address} }}; '
-                            f'delete element {table_set} {{ {address} }}; '
-                            f'add element {table_set} {{ {address} '
-                            f'timeout {timeout} }};'])
+        ret += run_program_rc([CONFIG['nft_bin'],
+                               f'add element {table_set} {{ {address} }}; '
+                               f'delete element {table_set} {{ {address} }}; '
+                               f'add element {table_set} {{ {address} '
+                               f'timeout {timeout} }};'])
     iplist_manual_state(iplist)
     return ret
 
@@ -2678,9 +2702,9 @@ def command_iplist_del():
         if not ipv:
             fail(f'Invalid IP address {address}')
         table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program([CONFIG['nft_bin'],
-                            f'add element {table_set} {{ {address} }}; '
-                            f'delete element {table_set} {{ {address} }};'])
+        ret += run_program_rc([CONFIG['nft_bin'],
+                               f'add element {table_set} {{ {address} }}; '
+                               f'delete element {table_set} {{ {address} }};'])
     iplist_manual_state(iplist)
     return ret
 
@@ -2762,7 +2786,7 @@ def command_list():
     """List currently active ruleset."""
     # List all
     if not CONFIG['parameters']:
-        return run_program([CONFIG['nft_bin'], 'list', 'ruleset'])
+        return run_program_rc([CONFIG['nft_bin'], 'list', 'ruleset'])
 
     # Parse list of possible zone-zone pairs
     config = minimal_config()
@@ -2782,15 +2806,15 @@ def command_list():
             print('}')
         elif zone == 'counter':
             # List named counters
-            ret += run_program([CONFIG['nft_bin'], 'list', 'counters',
-                                'table', 'inet', 'foomuuri'])
+            ret += run_program_rc([CONFIG['nft_bin'], 'list', 'counters',
+                                   'table', 'inet', 'foomuuri'])
         else:
             # List zone-zone
             if zone not in zonepairs:
                 fail(f'Unknown zone-zone: {zone}')
             for ipv in (4, 6):
-                ret += run_program([CONFIG['nft_bin'], 'list', 'chain', 'inet',
-                                    'foomuuri', f'{zone}_{ipv}'])
+                ret += run_program_rc([CONFIG['nft_bin'], 'list', 'chain',
+                                       'inet', 'foomuuri', f'{zone}_{ipv}'])
     return ret
 
 
@@ -2806,7 +2830,7 @@ def command_reload():
     for sub, fatal in ((['start'], True),
                        (['resolve', 'refresh'], False),
                        (['iplist', 'refresh'], False)):
-        ret = run_program(args + sub)
+        ret = run_program_rc(args + sub)
         if ret and fatal:
             return ret
     return 0
@@ -2871,7 +2895,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     for group, icfg in groups.items():
         env[f'FOOMUURI_GROUP_{env_cleanup(group)}'] = (
             'up' if icfg.get('state', True) else 'down')
-    run_program(cfg[f'command_{updown}'], env=env)
+    run_program_rc(cfg[f'command_{updown}'], env=env)
 
 
 def monitor_update_groups(targets, groups):
@@ -2892,7 +2916,7 @@ def monitor_update_groups(targets, groups):
 
 
 def monitor_update_target(targets, groups, target, state):
-    """Add state to target's history and change it's state."""
+    """Add state to target's history and change its state."""
     # Add new state to end of history
     cfg = targets[target]
     startup_change = False
@@ -2954,7 +2978,7 @@ def monitor_start_targets(targets):
         if 'fping' in cmd[0] and '--loop' not in cmd:
             cmd = cmd[:1] + ['--loop'] + cmd[1:]
 
-        # Assume it's up on startup
+        # Assume it is up on startup
         cfg['state'] = True
 
         # Start command (pylint: disable=consider-using-with)
