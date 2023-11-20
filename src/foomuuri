@@ -1104,18 +1104,13 @@ def output_icmp(szone, dzone, rules, ipv):
             continue
         policy = rule_rate_log_policy(szone, dzone, rule, ipv)
 
-        if rule['dport']:  # Some specific icmp type
-            out(f'{icmp} type '
-                f'{single_or_set(rule["dport"], rule["fileline"])} '
-                f'{match}{policy}')
-            if ping not in rule['dport'].split():
-                continue  # Continue to next rule if this wasn't ping
-        else:  # All icmp types
-            out(f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} '
-                f'{icmp} {match}{policy}')
+        proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
+        out(f'{proto_ports}{match}{policy}')
+        if rule['dport'] and ping not in rule['dport'].split():
+            continue  # Continue to next rule if this wasn't ping or match all
 
         # This rule was for ping, usually accepting non-flood pings. Add
-        # explicit rule to drop all other pings.
+        # explicit rule to drop overflow and all other pings.
         has_ping_rule = True
         if (match + policy).startswith(('accept', 'drop', 'reject', 'jump')):
             has_match_all = True
@@ -1168,11 +1163,18 @@ def parse_interface_names(rule):
     return iifname + oifname
 
 
-def parse_protocol_ports(rule, ipv):
-    """Parse tcp/udp sport/dport to nft rule."""
+def parse_protocol_ports(rule, ipv, skip_icmp=True):
+    """Parse tcp/udp sport/dport to nft rule.
+
+    This can also handle rules like:
+    - "tcp" without dport to nft "protocol tcp"
+    - "protocol esp" to nft "protocol esp"
+    - "protocol esp 123" to nft "esp spi 123"
+    - "protocol vlan 123" to nft "vlan id 123"
+    """
     protocol = rule['protocol']
-    if not protocol or protocol in ('icmp', 'icmpv6'):
-        # Port without protocol doesn't work
+    if not protocol or (skip_icmp and protocol in ('icmp', 'icmpv6')):
+        # Protocol is empty for rules like "drop log" and "dnat"
         # icmp is handled in output_icmp()
         return ''
     if ipv == 6 and protocol == 'igmp':
@@ -1181,8 +1183,25 @@ def parse_protocol_ports(rule, ipv):
     ports = ''
     for key in ('sport', 'dport'):
         if rule[key]:
-            # "tcp daddr 22 "
-            ports += (f'{protocol} {key} '
+            protokey = key
+            if key == 'dport':  # Change "dport" to protocol-specific key
+                protokey = {
+                    'ip': 'protocol',
+                    'ip6': 'nexthdr',
+                    'ah': 'spi',
+                    'esp': 'spi',
+                    'comp': 'nexthdr',
+                    'icmp': 'type',
+                    'icmpv6': 'type',
+                    'dst': 'nexthdr',
+                    'frag': 'nexthdr',
+                    'hbh': 'nexthdr',
+                    'mh': 'nexthdr',
+                    'rt': 'nexthdr',
+                    'vlan': 'id',
+                    'arp': 'htype',
+                }.get(protocol, protokey)
+            ports += (f'{protocol} {protokey} '
                       f'{single_or_set(rule[key], rule["fileline"])} ')
     if ports:
         return ports
