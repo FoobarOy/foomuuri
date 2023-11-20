@@ -8,6 +8,7 @@
 * Rule's log level can be set with `log_level "level crit"`. This overrides
   global `foomuuri { log_level ... }` setting.
 * Iplist refresh interval can be configured globally and per-iplist.
+* Pretty output for `foomuuri iplist list` instead of raw nft output.
 * Fix handling "[ipv6]", "[ipv6]/mask" and "[ipv6]:port" notations.
 
 ## 0.21 (2023-10-06)
