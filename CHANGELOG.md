@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.22 (xxxx-xx-xx)
+## 0.22 (2023-12-12)
 
 * Add `protocol` matcher, for example `protocol gre` accepts GRE traffic.
 * Add support for `localhost-localhost` section and rules. If not defined,
