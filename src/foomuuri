@@ -1409,7 +1409,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     out('ct state vmap {')
     out('established : accept,')
     out('related : accept,')
-    out('invalid : goto invalid_drop,')
+    out('invalid : jump invalid_drop,')
     out(f'new : jump smurfs_{ipv},')
     out(f'untracked : jump smurfs_{ipv}')
     out('}')

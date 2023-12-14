@@ -36,9 +36,9 @@
 
 	chain smurfs_4 {
 		ip saddr 0.0.0.0 return
-		fib saddr type { broadcast, multicast } goto smurfs_drop
+		fib saddr type { broadcast, multicast } jump smurfs_drop
 	}
 
 	chain smurfs_6 {
-		fib saddr type multicast goto smurfs_drop
+		fib saddr type multicast jump smurfs_drop
 	}
