@@ -1,5 +1,10 @@
 # ChangeLog
 
+## 0.23 (2024-xx-xx)
+
+* Add `invalid`, `rpfilter` and `smurfs` sections to accept specific
+  traffic that is normally dropped.
+
 ## 0.22 (2023-12-12)
 
 * Add `protocol` matcher, for example `protocol gre` accepts GRE traffic.

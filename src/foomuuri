@@ -1509,24 +1509,10 @@ def output_zone2zone_rules(rules, zonemap):
         output_zone(zonemap, szone, dzone, rules[(szone, dzone)], 6)
 
 
-def output_rule_section(rules, section):
-    """Output snat, dnat, prerouting or postrouting rules."""
+def output_rule_section_no_header(rules, section):
+    """Output snat, dnat, prerouting, postrouting, etc. rules inside chain."""
     if not rules:
         return
-
-    hooktype = {
-        'snat': 'type nat hook postrouting priority srcnat',
-        'dnat': 'type nat hook prerouting priority dstnat',
-        'prerouting': 'type filter hook prerouting priority mangle',
-        'postrouting': 'type filter hook postrouting priority mangle',
-        'output': 'type route hook output priority mangle',
-        'forward': 'type filter hook forward priority mangle',
-    }.get(section)
-    hooktype += CONFIG['priority_offset']
-
-    chain_name = hooktype.split()
-    out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
-    out(hooktype)
 
     has_mark_set = False
     has_mark_match = False
@@ -1566,6 +1552,27 @@ def output_rule_section(rules, section):
     # are used in prerouting{} for multi-ISP support.
     if has_mark_set:
         out('ct mark set meta mark')
+
+
+def output_rule_section(rules, section):
+    """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
+    if not rules:
+        return
+
+    hooktype = {
+        'snat': 'type nat hook postrouting priority srcnat',
+        'dnat': 'type nat hook prerouting priority dstnat',
+        'prerouting': 'type filter hook prerouting priority mangle',
+        'postrouting': 'type filter hook postrouting priority mangle',
+        'output': 'type route hook output priority mangle',
+        'forward': 'type filter hook forward priority mangle',
+    }.get(section)
+    hooktype += CONFIG['priority_offset']
+
+    chain_name = hooktype.split()
+    out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
+    out(hooktype)
+    output_rule_section_no_header(rules, section)
     out('}')
 
 
@@ -1591,7 +1598,7 @@ def output_static_chain_logging(chain, policy):
         f'log prefix "{chain} {policy} "{flags}')
 
 
-def output_header():
+def output_header(chain_rules):
     """Output generic nft header."""
     command_stop(False)  # Stop previous foomuuri
     out('')
@@ -1614,6 +1621,7 @@ def output_header():
     # Logging chains
     for chain in ('invalid', 'smurfs', 'rpfilter'):
         out(f'chain {chain}_drop {{')
+        output_rule_section_no_header(chain_rules[chain], chain)
         if chain == 'rpfilter':
             out('udp sport 67 udp dport 68 return')
         output_static_chain_logging(chain, 'drop')
@@ -1983,12 +1991,12 @@ def command_start():
     zonemap = parse_config_zonemap(config)
     resolve = parse_resolve(config, 'resolve')
     iplist = parse_resolve(config, 'iplist')
-    snat = parse_config_rule_section(config, 'snat')
-    dnat = parse_config_rule_section(config, 'dnat')
-    prerouting = parse_config_rule_section(config, 'prerouting')
-    postrouting = parse_config_rule_section(config, 'postrouting')
-    output = parse_config_rule_section(config, 'output')
-    forward = parse_config_rule_section(config, 'forward')
+    chain_rules = {}
+    for name in ('snat', 'dnat',
+                 'prerouting', 'postrouting',
+                 'output', 'forward',
+                 'invalid', 'rpfilter', 'smurfs'):
+        chain_rules[name] = parse_config_rule_section(config, name)
     templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -1998,16 +2006,14 @@ def command_start():
     verify_config(config, zones, rules)
 
     # Generate output
-    output_header()
+    output_header(chain_rules)
     output_rate_names(rules)
     output_zone_vmaps(zones, rules)
     output_zone2zone_rules(rules, zonemap)
-    output_rule_section(snat, 'snat')
-    output_rule_section(dnat, 'dnat')
-    output_rule_section(prerouting, 'prerouting')
-    output_rule_section(postrouting, 'postrouting')
-    output_rule_section(output, 'output')
-    output_rule_section(forward, 'forward')
+    for name in ('snat', 'dnat',
+                 'prerouting', 'postrouting',
+                 'output', 'forward'):
+        output_rule_section(chain_rules[name], name)
     optimize_jumps()
     optimize_accepts()
     output_logrates()
