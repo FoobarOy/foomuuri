@@ -2123,9 +2123,13 @@ class DbusCommon:
         if new_zone and new_zone not in self.zones:
             print(f'Warning: Zone "{new_zone}" is unknown', flush=True)
             return '', ''
-        if new_zone == CONFIG['localhost_zone']:
-            print(f'Warning: Can\'t add to zone '
-                  f'"{CONFIG["localhost_zone"]}"', flush=True)
+        if interface == 'lo':
+            # Interface "lo" must stay in "localhost" zone.
+            # Other interfaces can be added to "localhost" only if
+            # "localhost-localhost" section is defined.
+            if new_zone != CONFIG['localhost_zone']:
+                print(f'Warning: Can\'t change interface "lo" to zone '
+                      f'"{new_zone}"', flush=True)
             return '', ''
         interface_zone = self.parse_interface_zone()
         self.clean_out()
