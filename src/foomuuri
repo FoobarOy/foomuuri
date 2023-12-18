@@ -277,15 +277,21 @@ def read_config():
     return config
 
 
-def config_to_pathlib():
+def config_to_pathlib(fix_files):
     """Convert str paths in CONFIG{} to pathlib.Paths."""
+    # "*_dir" are needed for reading config files
     keys = list(CONFIG)
     for key in keys:
         if key.endswith('_dir'):
             CONFIG[key] = pathlib.Path(CONFIG[key])
-    for key in keys:
-        if key.endswith('_file'):
-            CONFIG[key] = CONFIG['state_dir'] / CONFIG[key]
+
+    # "*_file" are needed to save current state. "state_dir" can be changed
+    # in command line and in foomuuri section in config. Fix "*_file" only
+    # after reading minimal config.
+    if fix_files:
+        for key in keys:
+            if key.endswith('_file'):
+                CONFIG[key] = CONFIG['state_dir'] / CONFIG[key]
 
 
 def parse_config_macros(config):
@@ -391,7 +397,7 @@ def parse_config_foomuuri(config):
             CONFIG[name] = f'{CONFIG[name]} {value[2:]}'
         else:
             CONFIG[name] = value  # overwrite
-    config_to_pathlib()
+    config_to_pathlib(True)  # Paths can be changed in foomuuri{}
 
     # Convert chain priority offset to nft. It is already converted on D-Bus
     # handler reload.
@@ -3232,7 +3238,7 @@ def parse_command_line():
             CONFIG['parameters'].append(arg)
     if not CONFIG['command']:
         CONFIG['command'] = 'help'
-    config_to_pathlib()
+    config_to_pathlib(False)  # Needed to read conf, and --set=x_dir=y
 
 
 def run_command():
