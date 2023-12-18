@@ -1,6 +1,6 @@
 # Foomuuri - Multizone bidirectional nftables firewall.
 
-.PHONY: all test clean distclean install sysupdate release tar
+.PHONY: all test devel clean distclean install sysupdate release tar
 
 CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }')
 SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
@@ -15,6 +15,11 @@ test:
 	flake8 src/foomuuri
 	pycodestyle src/foomuuri
 	pylint src/foomuuri
+
+# Generate firewall ruleset to file, used in development
+
+devel:
+	src/foomuuri --set=etc_dir=../devel --set=share_dir=/dev/null --set=state_dir=../devel --set=run_dir=../devel check
 
 # Delete created files
 

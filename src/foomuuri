@@ -77,7 +77,6 @@ CONFIG = {
     'command': '',
     'parameters': [],
     'root_power': True,
-    'devel': False,
     'verbose': 0,
 }
 
@@ -3219,12 +3218,6 @@ def parse_command_line():
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg == '--devel':
-            CONFIG['devel'] = True
-            CONFIG['etc_dir'] = '../foomuuri-devel'
-            CONFIG['share_dir'] = 'not-used-as-etc-finds-these'
-            CONFIG['state_dir'] = '../foomuuri-devel'
-            CONFIG['run_dir'] = '../foomuuri-devel'
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
@@ -3254,7 +3247,7 @@ def run_command():
 
     # Warning if not running as root
     CONFIG['root_power'] = not os.getuid()
-    if not CONFIG['root_power'] and not CONFIG['devel']:
+    if not CONFIG['root_power']:
         print('Warning: Foomuuri should be run as "root"', flush=True)
 
     # Run simple commands without ruleset output
