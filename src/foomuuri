@@ -1946,10 +1946,12 @@ def apply_final():
     """Use final ruleset."""
     # Check config
     if CONFIG['command'] == 'check':
-        ret = 0
         if CONFIG['root_power']:  # "nft check" requires root
             ret = run_program_rc([CONFIG['nft_bin'], '--check', '--file',
                                   CONFIG['next_file']])
+        else:
+            ret = 0
+            print('Warning: Not running as "root", skipping "nft check"')
         if ret:
             print(f'Error: Nftables failed to check ruleset, error code {ret}')
         else:
