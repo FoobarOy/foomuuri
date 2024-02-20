@@ -1420,9 +1420,16 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     out(f'untracked : jump smurfs_{ipv}')
     out('}')
 
+    # Allow outgoing IGMP multicast membership reports, incoming IGMP multicast
+    # query.
+    local_local = szone == dzone == CONFIG['localhost_zone']
+    if szone == CONFIG['localhost_zone'] and ipv == 4 and not local_local:
+        out('ip protocol igmp ip daddr 224.0.0.22 accept')  # membership report
+    if dzone == CONFIG['localhost_zone'] and ipv == 4 and not local_local:
+        out('ip protocol igmp ip daddr 224.0.0.1 accept')   # query
+
     # Broadcast and multicast
     output_cast('multicast', szone, dzone, rules, ipv)
-    local_local = szone == dzone == CONFIG['localhost_zone']
     if ipv == 4:
         output_cast('broadcast', szone, dzone, rules, ipv)
         if not local_local:
@@ -1645,6 +1652,10 @@ def output_header(chain_rules):
     out('chain output {')
     out(f'type filter hook output priority filter{CONFIG["priority_offset"]}')
     out('oifname vmap @output_zones')
+    # IGMP membership report and IPv6 equivalent must be allowed here too as
+    # D-Bus interface change event might not be processed yet.
+    out('ip protocol igmp ip daddr 224.0.0.22 accept')
+    out('ip6 saddr :: icmpv6 type mld2-listener-report accept')
     output_static_chain_logging('output', 'reject')
     out('reject with icmpx admin-prohibited')
     out('}')

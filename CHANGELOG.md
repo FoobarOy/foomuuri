@@ -2,11 +2,12 @@
 
 ## 0.23 (2024-xx-xx)
 
+* Allow outgoing IGMP multicast membership reports, incoming IGMP query.
 * Add `invalid`, `rpfilter` and `smurfs` sections to accept specific
   traffic that is normally dropped.
-* Add `ospf` macro to default services
-* Fix: Better output for `foomuuri check` if not running as root
-* Fix: Handle D-Bus change event for `lo` interface better
+* Add `ospf` macro to default services.
+* Fix: Better output for `foomuuri check` if not running as root.
+* Fix: Handle D-Bus change event for `lo` interface better.
 
 ## 0.22 (2023-12-12)
 
