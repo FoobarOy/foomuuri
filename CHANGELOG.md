@@ -5,6 +5,8 @@
 * Rework `multicast` and `broadcast` handling for incoming/outgoing traffic.
   This simplifies macros and results more optimal ruleset.
 * Allow outgoing IGMP multicast membership reports, incoming IGMP query.
+* Change default `log_level` to `level info flags skuid` to include UID/GID
+  for locally generated traffic.
 * Add `invalid`, `rpfilter` and `smurfs` sections to accept specific
   traffic that is normally dropped.
 * Add `ospf` macro to default services.

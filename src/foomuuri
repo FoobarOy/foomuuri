@@ -49,7 +49,7 @@ CONFIG = {
     'log_rpfilter': 'yes',
     'log_invalid': 'no',
     'log_smurfs': 'no',
-    'log_level': 'level info',
+    'log_level': 'level info flags skuid',
     'localhost_zone': 'localhost',
     'dbus_zone': 'public',
     'rpfilter': 'yes',
