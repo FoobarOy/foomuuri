@@ -2,6 +2,8 @@
 
 ## 0.23 (2024-xx-xx)
 
+* Rework `multicast` and `broadcast` handling for incoming/outgoing traffic.
+  This simplifies macros and results more optimal ruleset.
 * Allow outgoing IGMP multicast membership reports, incoming IGMP query.
 * Add `invalid`, `rpfilter` and `smurfs` sections to accept specific
   traffic that is normally dropped.
