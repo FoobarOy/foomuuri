@@ -1339,6 +1339,8 @@ def output_cast(cast, szone, dzone, rules, ipv):
         match = match_rules(rule, ipv, cast=cast)
         if match is None:
             continue
+        if match == '' and cast is None and rule['cast'] != 'unicast':
+            continue  # Don't convert "multicast accept" to nft "accept"
         policy = rule_rate_log_policy(szone, dzone, rule, ipv, rule['nft'])
         if re.match(r'^counter( name \w+)? accept$', match + policy):
             continue  # Plain "counter" is handled in output_counter()
