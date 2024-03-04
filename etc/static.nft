@@ -18,19 +18,19 @@
 			ind-neighbor-solicit,     # 141, Inverse Neighbor Discovery Solicitation Message
 			ind-neighbor-advert       # 142, Inverse Neighbor Discovery Advertisement Message
 		} accept
-		ip6 saddr fe80::/10 icmpv6 type {
-			nd-router-advert,         # 134, Router Advertisement
-			mld-listener-query,       # 130, Multicast Listener Query
-			mld-listener-report,      # 131, Multicast Listener Report
-			mld-listener-done,        # 132, Multicast Listener Done
-			149,                      # 149, Certification Path Advertisement Message
-			151,                      # 151, Multicast Router Advertisement
-			152,                      # 152, Multicast Router Solicitation
-			153                       # 153, Multicast Router Termination
-		} accept
-		ip6 saddr { ::, fe80::/10 } icmpv6 type {
-			mld2-listener-report,     # 143, Version 2 Multicast Listener Report
-			148                       # 148, Certification Path Solicitation Message
+		icmpv6 type . ip6 saddr {
+			nd-router-advert . fe80::/10,      # 134, Router Advertisement
+			mld-listener-query . fe80::/10,    # 130, Multicast Listener Query
+			mld-listener-report . fe80::/10,   # 131, Multicast Listener Report
+			mld-listener-done . fe80::/10,     # 132, Multicast Listener Done
+			149 . fe80::/10,                   # 149, Certification Path Advertisement Message
+			151 . fe80::/10,                   # 151, Multicast Router Advertisement
+			152 . fe80::/10,                   # 152, Multicast Router Solicitation
+			153 . fe80::/10,                   # 153, Multicast Router Termination
+			mld2-listener-report . fe80::/10,  # 143, Version 2 Multicast Listener Report
+			mld2-listener-report . ::,
+			148 . fe80::/10,                   # 148, Certification Path Solicitation Message
+			148 . ::
 		} accept
 	}
 
