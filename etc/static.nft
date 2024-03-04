@@ -1,36 +1,36 @@
 	chain allow_icmp_4 {
 		icmp type {
-			destination-unreachable,
-			time-exceeded,
-			parameter-problem
+			destination-unreachable,  # 3, Destination Unreachable
+			time-exceeded,            # 11, Time Exceeded
+			parameter-problem         # 12, Parameter Problem
 		} accept
 	}
 
 	chain allow_icmp_6 {
 		icmpv6 type {
-			destination-unreachable,
-			packet-too-big,
-			time-exceeded,
-			parameter-problem,
-			nd-router-solicit,
-			nd-neighbor-solicit,
-			nd-neighbor-advert,
-			ind-neighbor-solicit,
-			ind-neighbor-advert
+			destination-unreachable,  # 1, Destination Unreachable
+			packet-too-big,           # 2, Packet Too Big
+			time-exceeded,            # 3, Time Exceeded
+			parameter-problem,        # 4, Parameter Problem
+			nd-router-solicit,        # 133, Router Solicitation
+			nd-neighbor-solicit,      # 135, Neighbor Solicitation
+			nd-neighbor-advert,       # 136, Neighbor Advertisement
+			ind-neighbor-solicit,     # 141, Inverse Neighbor Discovery Solicitation Message
+			ind-neighbor-advert       # 142, Inverse Neighbor Discovery Advertisement Message
 		} accept
 		ip6 saddr fe80::/10 icmpv6 type {
-			nd-router-advert,
-			mld-listener-query,
-			mld-listener-report,
-			mld-listener-done,
-			149,  # Certification Path Advertisement
-			151,  # Multicast Router Advertisement
-			152,  # Multicast Router Solicitation
-			153   # Multicast Router Termination
+			nd-router-advert,         # 134, Router Advertisement
+			mld-listener-query,       # 130, Multicast Listener Query
+			mld-listener-report,      # 131, Multicast Listener Report
+			mld-listener-done,        # 132, Multicast Listener Done
+			149,                      # 149, Certification Path Advertisement Message
+			151,                      # 151, Multicast Router Advertisement
+			152,                      # 152, Multicast Router Solicitation
+			153                       # 153, Multicast Router Termination
 		} accept
 		ip6 saddr { ::, fe80::/10 } icmpv6 type {
-			mld2-listener-report,
-			148   # Certification Path Solicitation
+			mld2-listener-report,     # 143, Version 2 Multicast Listener Report
+			148                       # 148, Certification Path Solicitation Message
 		} accept
 	}
 
