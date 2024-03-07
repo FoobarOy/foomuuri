@@ -2449,7 +2449,7 @@ def command_resolve():
         # All lookups failed. Add previous entries as comments.
         if not addresses and setname in previous:
             warn_resolve_iplist(setname, warned, 'Resolve',
-                                'failed to resolve')
+                                f'failed to resolve IPv{setname[-1]}')
             error = 1
             for address in sorted(previous[setname]):
                 out(f'# add element inet foomuuri {setname} '
