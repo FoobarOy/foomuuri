@@ -631,6 +631,7 @@ def parse_rule_line(fileline_line):
       log tcp accept 22
     """
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     fileline, line = fileline_line
     ret = {
         # Basic rules
@@ -680,6 +681,7 @@ def parse_rule_line(fileline_line):
         'mark_match': None,
 
         # Internal housekeeping
+        'plain': True,  # Plain "log" or "counter" without anything else
         'fileline': fileline,  # For error messages
     }
 
@@ -688,6 +690,7 @@ def parse_rule_line(fileline_line):
         # "tcp 22" is shortcut for "tcp dport 22"
         if not keyword and is_port(item):
             keyword = 'dport'
+            ret['plain'] = False
             if ret[keyword] is None:
                 ret[keyword] = ''
 
@@ -704,25 +707,32 @@ def parse_rule_line(fileline_line):
                       'masquerade', 'snat', 'dnat',
                       'mark_save', 'mark_restore'):
             ret['policy'] = item
+            ret['plain'] = False
             keyword = None
         elif item == 'reject':
             ret['policy'] = 'reject with icmpx admin-prohibited'
+            ret['plain'] = False
             keyword = None
         elif item in ('multicast', 'broadcast'):
             ret['cast'] = item
+            ret['plain'] = False
             keyword = None
         elif item in ('tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'):
             # "igmp" and "esp" are for backward compability (v0.21)
             ret['protocol'] = item
+            ret['plain'] = False
             keyword = None
         elif item in ('ipv4', 'ipv6'):
             ret[item] = True
+            ret['plain'] = False
             keyword = None
         elif item in ('sipsec', 'dipsec'):
             ret[item] = 'exists'
+            ret['plain'] = False
             keyword = None
         elif item in ('-sipsec', '-dipsec'):
             ret[item[1:]] = 'missing'
+            ret['plain'] = False
             keyword = None
 
         # Start keywords
@@ -754,6 +764,8 @@ def parse_rule_line(fileline_line):
                 ret[keyword] = ''
             if item == 'mark_set':  # policy and start keyword
                 ret['policy'] = item
+            if item not in ('counter', 'log', 'log_level'):
+                ret['plain'] = False
 
         # More parameters for keyword
         elif keyword:
@@ -765,6 +777,10 @@ def parse_rule_line(fileline_line):
         else:
             fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
 
+    # Use no-op policy "continue" for plain "log" or "counter" rule,
+    # everything else defaults to "accept".
+    if ret['plain']:
+        ret['policy'] = 'continue'
     verify_rule_sanity(ret, fileline)
     return ret
 
@@ -1332,18 +1348,19 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True,
     return f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}{mark}'
 
 
-def output_cast(cast, szone, dzone, rules, ipv):
+def output_cast(cast, szone, dzone, rules, ipv, *, plain=False):
     """Output all uni/multi/broadcast rules for single zone-zone."""
+    # pylint: disable=too-many-arguments
     has_mark_match = False
     for rule in rules:
+        if rule['plain'] != plain:
+            continue
         match = match_rules(rule, ipv, cast=cast)
         if match is None:
             continue
         if match == '' and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
         policy = rule_rate_log_policy(szone, dzone, rule, ipv, rule['nft'])
-        if re.match(r'^counter( name \w+)? accept$', match + policy):
-            continue  # Plain "counter" is handled in output_counter()
 
         if match + policy == 'meta mark set ct mark':
             has_mark_match = True
@@ -1390,19 +1407,6 @@ def output_options(rules, ipv):
                 f'maxseg size set {rule["mss"]}')
 
 
-def output_counter(rules, ipv):
-    """Output plain "counter" without "accept"."""
-    for rule in rules:
-        if rule['counter'] is not None:
-            match = match_rules(rule, ipv)
-            if match != '':
-                continue
-            policy = rule_rate_log_policy('-', '-', rule, ipv,
-                                          do_lograte=False)
-            if re.match(r'^counter( name \w+)? accept$', policy):
-                out(policy[:-7])
-
-
 def output_zone(zonemap, szone, dzone, rules, ipv):
     """Output single zone-zone_ipv4 nft chain."""
     # Header + zonemap jumps + options
@@ -1410,8 +1414,8 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     output_zonemap(zonemap, szone, dzone, ipv)
     output_options(rules, ipv)
 
-    # Plain "counter" must count everything, before ct and icmp
-    output_counter(rules, ipv)
+    # Plain "log" or "counter" must see everything, before ct and icmp
+    output_cast(None, szone, dzone, rules, ipv, plain=True)
 
     # ICMP is special, keep it before ct
     output_icmp(szone, dzone, rules, ipv)
@@ -1733,7 +1737,9 @@ def optimize_accepts():
     linenum = 0
     while linenum < len(OUT):
         line = OUT[linenum]
-        if (
+        if line == 'continue':  # No-op line generated by plain "counter"
+            del OUT[linenum]
+        elif (
                 line.endswith(' accept') and
                 line.startswith(tuple(MERGES) + ('ip ', 'ip6 '))
         ):
@@ -1775,7 +1781,8 @@ def output_logrates():
                     f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                     f'limit rate {CONFIG["log_rate"]} }} ')
         out(f'{rate}log prefix "{log_text} " {log_level}')
-        out(f'{policy}')
+        if policy != 'continue':
+            out(f'{policy}')
         out('}')
 
     # Output empty lograte sets (optimized and non-optimized)
