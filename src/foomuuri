@@ -981,6 +981,10 @@ def single_or_set(data, fileline=''):
             return suffix_mask(values[0], neg)
         return neg + values[0]
 
+    # nft doesn't support "saddr { @foo, @bar }"
+    if any(value.startswith('@') for value in values):
+        fail(f'{fileline}Only single @list can be used: {" ".join(values)}')
+
     # Multiple, use "{set}"
     return f'{neg}{{ {", ".join(sorted(set(values)))} }}'
 
@@ -1191,7 +1195,7 @@ def parse_iplist(rule, direction, ipv):
 
     ips = []
     for item in iplist.split():
-        if item.startswith('@'):  # "@foo" to "@foo_4", used by resolve
+        if item.startswith(('@', '-@')):  # "@foo" to "@foo_4", used by resolve
             ips.append(f'{item}_{ipv}')
         else:
             ipv_addr = is_ip_address(item)
