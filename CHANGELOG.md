@@ -10,6 +10,7 @@
 * Add `invalid`, `rpfilter` and `smurfs` sections to accept specific
   traffic that is normally dropped.
 * Add `ospf` macro to default services.
+* Fix: Separate `counter` and `accept counter` rules.
 * Fix: Better output for `foomuuri check` if not running as root.
 * Fix: Handle D-Bus change event for `lo` interface better.
 

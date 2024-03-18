@@ -1292,13 +1292,11 @@ def parse_to(rule, ipv):
         return None
     if len(target) > 1:
         fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(target)}')
-    return f' to {target[0]}'
+    return f' {"ip" if ipv == 4 else "ip6"} to {target[0]}'
 
 
-def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True,
-                need_addrlist=False):
+def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     """Parse rule's matchers to nft rule."""
-    # pylint: disable=too-many-arguments
     # pylint: disable=too-many-return-statements
     if cast is not None and rule['cast'] != cast:
         return None  # multi/broadcast doesn't match
@@ -1334,9 +1332,6 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True,
         addrlist += parse_iplist(rule, 'daddr', ipv)
     except ValueError:
         return None
-    if not addrlist and need_addrlist:  # Needed in snat/dnat
-        addrlist = ('ip daddr 0.0.0.0/0 ' if ipv == 4 else
-                    'ip6 daddr ::/0 ')
 
     proto_ports = parse_protocol_ports(rule, ipv)
     if proto_ports is None:
@@ -1561,7 +1556,7 @@ def output_rule_section_no_header(rules, section):
             to_rule = parse_to(rule, ipv)
             if to_rule is None:
                 continue
-            match = match_rules(rule, ipv, need_addrlist=to_rule)
+            match = match_rules(rule, ipv)
             if match is None:
                 continue
             policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
