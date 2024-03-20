@@ -71,6 +71,7 @@ release:
 		echo "Current: $(CURRENT_VERSION)"; \
 		exit 1; \
 	fi
+	! grep -q 20..-xx-xx CHANGELOG.md
 	git diff --exit-code
 	git diff --cached --exit-code
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri

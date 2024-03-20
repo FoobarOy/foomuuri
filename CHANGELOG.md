@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.23 (2024-xx-xx)
+## 0.23 (2024-03-20)
 
 * Rework `multicast` and `broadcast` handling for incoming/outgoing traffic.
   This simplifies macros and results more optimal ruleset.
