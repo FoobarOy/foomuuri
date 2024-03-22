@@ -4,6 +4,8 @@
 
 * Add `continue` statement. Rule `saddr 192.168.1.1 counter log continue`
   counts and logs traffic from 192.168.1.1 and continues to next rules.
+* Add `mac_saddr` and `mac_daddr` matchers to match MAC address. This works
+  only for incoming traffic.
 
 ## 0.23 (2024-03-20)
 

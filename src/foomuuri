@@ -644,6 +644,8 @@ def parse_rule_line(fileline_line):
         'dport': None,
         'oifname': None,
         'iifname': None,
+        'mac_saddr': None,
+        'mac_daddr': None,
         # Is this IPv4/6 specific rule?
         'ipv4': False,
         'ipv6': False,
@@ -740,6 +742,7 @@ def parse_rule_line(fileline_line):
                       'saddr', 'sport',
                       'daddr', 'dport',
                       'oifname', 'iifname',
+                      'mac_saddr', 'mac_daddr',
                       'global_rate',
                       'saddr_rate', 'saddr_rate_mask', 'saddr_rate_name',
                       'daddr_rate', 'daddr_rate_mask', 'daddr_rate_name',
@@ -1214,6 +1217,25 @@ def parse_iplist(rule, direction, ipv):
             f'{single_or_set(ips, rule["fileline"])} ')
 
 
+def parse_maclist(rule, direction):
+    """Parse MAC address list in rule[direction] to nft rule."""
+    maclist = rule[direction]
+    if not maclist:
+        return ''
+
+    macs = []
+    for item in maclist.split():
+        item = item.lower()
+        if re.match(r'^(-)?([0-9a-f]{2}:){5}[0-9a-f]{2}$', item):
+            macs.append(item)
+        else:
+            fail(f'{rule["fileline"]}Invalid MAC address "{item}" in: '
+                 f'{maclist}')
+
+    # Return "ether saddr 0a:00:27:00:00:00 " string
+    return f'ether {direction[4:]} {single_or_set(macs, rule["fileline"])} '
+
+
 def parse_interface_names(rule):
     """Parse iifname/oifname to nft rule."""
     iifname = ''
@@ -1334,6 +1356,8 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     try:
         addrlist += parse_iplist(rule, 'saddr', ipv)
         addrlist += parse_iplist(rule, 'daddr', ipv)
+        addrlist += parse_maclist(rule, 'mac_saddr')
+        addrlist += parse_maclist(rule, 'mac_daddr')
     except ValueError:
         return None
 
