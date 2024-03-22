@@ -6,6 +6,7 @@
   counts and logs traffic from 192.168.1.1 and continues to next rules.
 * Add `mac_saddr` and `mac_daddr` matchers to match MAC address. This works
   only for incoming traffic.
+* Add `redis`, `redis-sentinel` and `vnc` macros to default services.
 
 ## 0.23 (2024-03-20)
 
