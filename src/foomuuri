@@ -703,7 +703,7 @@ def parse_rule_line(fileline_line):
                 keyword = None
 
         # Non-start keywords
-        elif item in ('accept', 'drop', 'return',
+        elif item in ('accept', 'drop', 'return', 'continue',
                       'masquerade', 'snat', 'dnat',
                       'mark_save', 'mark_restore'):
             ret['policy'] = item

@@ -1,5 +1,10 @@
 # ChangeLog
 
+## 0.24 (2024-xx-xx)
+
+* Add `continue` statement. Rule `saddr 192.168.1.1 counter log continue`
+  counts and logs traffic from 192.168.1.1 and continues to next rules.
+
 ## 0.23 (2024-03-20)
 
 * Rework `multicast` and `broadcast` handling for incoming/outgoing traffic.
