@@ -3089,7 +3089,8 @@ def monitor_start_targets(targets):
 def monitor_close_target(targets, groups, target):
     """Target monitoring command died. Mark it as down."""
     # Terminate proc and schedule restart
-    verbose(f'target {target} monitoring command died, restarting it in 30s')
+    print(f'target {target} monitoring command died, restarting it in 30s',
+          flush=True)
     cfg = targets[target]
     cfg['proc'].terminate()
     cfg['proc'].wait(timeout=0.1)
