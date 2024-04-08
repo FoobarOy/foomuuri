@@ -3055,14 +3055,20 @@ def monitor_parse_ping(targets, groups, target, line):
 
 def monitor_start_targets(targets):
     """Start pinging all targets."""
-    for cfg in targets.values():
+    started_something = False
+    for target, cfg in targets.items():
+        # Check if target is already running, or still waiting for restart
+        if cfg.get('proc') or cfg['proc_restart'] > time.time():
+            continue
+
         # fping requires --loop, add it if missing
         cmd = cfg['command']
         if 'fping' in cmd[0] and '--loop' not in cmd:
             cmd = cmd[:1] + ['--loop'] + cmd[1:]
 
-        # Assume it is up on startup
-        cfg['state'] = True
+        # Assume it is up on first startup
+        if 'state' not in cfg:
+            cfg['state'] = True
 
         # Start command (pylint: disable=consider-using-with)
         cfg['proc'] = subprocess.Popen(cmd,
@@ -3070,24 +3076,50 @@ def monitor_start_targets(targets):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
                                        encoding='utf-8')
+        verbose(f'target {target} monitoring command started')
+        started_something = True
 
     # Small initial sleep so that first read_target() will receive more
     # replies in one go. This helps to get more "target up" events before
     # "group up" events.
-    time.sleep(0.5)
+    if started_something:
+        time.sleep(0.5)
+
+
+def monitor_close_target(targets, groups, target):
+    """Target monitoring command died. Mark it as down."""
+    # Terminate proc and schedule restart
+    verbose(f'target {target} monitoring command died, restarting it in 30s')
+    cfg = targets[target]
+    cfg['proc'].terminate()
+    cfg['proc'].wait(timeout=0.1)
+    cfg['proc'] = None
+    cfg['proc_restart'] = time.time() + 30
+
+    # Mark it as down immediately
+    cfg['history'] = [False] * cfg['history_size']
+    monitor_update_target(targets, groups, target, False)
 
 
 def monitor_read_targets(targets, groups):
     """Read incoming lines from all targets."""
+    # (Re)Start targets if not running
+    monitor_start_targets(targets)
+
     # Wait for incoming lines from any client, up to 10 seconds
-    readfd = [item['proc'].stdout for item in targets.values()]
+    readfd = [item['proc'].stdout for item in targets.values()
+              if item['proc']]
     poll = select.select(readfd, [], [], 10.0)
 
     # Read all incoming lines
     for readfd in poll[0]:
         for target, cfg in targets.items():
-            if cfg['proc'].stdout == readfd:
-                monitor_parse_ping(targets, groups, target, readfd.readline())
+            if cfg['proc'] and cfg['proc'].stdout == readfd:
+                line = readfd.readline()
+                if line:
+                    monitor_parse_ping(targets, groups, target, line)
+                else:
+                    monitor_close_target(targets, groups, target)
                 break
 
     # Update all groups
@@ -3097,9 +3129,11 @@ def monitor_read_targets(targets, groups):
 def monitor_terminate_targets(targets):
     """Terminate all subprocesses."""
     for cfg in targets.values():
-        cfg['proc'].terminate()
+        if cfg['proc']:
+            cfg['proc'].terminate()
     for cfg in targets.values():
-        cfg['proc'].wait(timeout=0.1)
+        if cfg['proc']:
+            cfg['proc'].wait(timeout=0.1)
 
 
 def parse_config_targets(config):
@@ -3122,6 +3156,7 @@ def parse_config_targets(config):
             # 'state_time': time(),
             # 'history': [True] * history_size,
             # 'proc': Popen()
+            'proc_restart': 0,       # Start immediately
         }
         fileline = ''
         for fileline, line in config.pop(f'target {name}'):
@@ -3216,7 +3251,6 @@ def command_monitor():
                   [str(os.getpid())])
 
         # Start monitoring
-        monitor_start_targets(targets)
         print('Target monitor ready', flush=True)
         if HAVE_NOTIFY:
             notify('READY=1')
