@@ -3042,18 +3042,23 @@ def monitor_update_target(targets, groups, target, state):
             monitor_state_command(targets, groups, cfg, 'target', target)
 
 
-def monitor_parse_ping(targets, groups, target, line):
-    """Parse fping's result line."""
-    match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
-    if not match:
-        return
-    result = match.group(1)
-    state = ' bytes, ' in result and ' ms (' in result
+def monitor_parse_line(targets, groups, target, line):
+    """Parse result line from monitor's command."""
+    # Generic "OK" or "ERROR" reply
+    if line in ('OK', 'ERROR'):
+        state = line == 'OK'
+    else:
+        # fping reply
+        match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
+        if not match:
+            return  # No match, ignore line
+        result = match.group(1)
+        state = ' bytes, ' in result and ' ms (' in result
     # print(f'{target:10}: {state}, {result}', flush=True)
     monitor_update_target(targets, groups, target, state)
 
 
-def monitor_start_targets(targets):
+def monitor_start_targets(targets, groups):
     """Start pinging all targets."""
     started_something = False
     for target, cfg in targets.items():
@@ -3071,13 +3076,22 @@ def monitor_start_targets(targets):
             cfg['state'] = True
 
         # Start command (pylint: disable=consider-using-with)
-        cfg['proc'] = subprocess.Popen(cmd,
-                                       stdin=subprocess.DEVNULL,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT,
-                                       encoding='utf-8')
-        verbose(f'target {target} monitoring command started')
-        started_something = True
+        try:
+            cfg['proc'] = subprocess.Popen(cmd,
+                                           stdin=subprocess.DEVNULL,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.STDOUT,
+                                           encoding='utf-8')
+            verbose(f'target {target} monitoring command started')
+            started_something = True
+        except OSError as error:
+            print(f'target {target} monitoring command failed: {error}')
+            cfg['proc'] = None
+            cfg['proc_restart'] = time.time() + 30
+
+            # Mark it as down immediately
+            cfg['history'] = [False] * cfg['history_size']
+            monitor_update_target(targets, groups, target, False)
 
     # Small initial sleep so that first read_target() will receive more
     # replies in one go. This helps to get more "target up" events before
@@ -3105,7 +3119,7 @@ def monitor_close_target(targets, groups, target):
 def monitor_read_targets(targets, groups):
     """Read incoming lines from all targets."""
     # (Re)Start targets if not running
-    monitor_start_targets(targets)
+    monitor_start_targets(targets, groups)
 
     # Wait for incoming lines from any client, up to 10 seconds
     readfd = [item['proc'].stdout for item in targets.values()
@@ -3118,7 +3132,7 @@ def monitor_read_targets(targets, groups):
             if cfg['proc'] and cfg['proc'].stdout == readfd:
                 line = readfd.readline()
                 if line:
-                    monitor_parse_ping(targets, groups, target, line)
+                    monitor_parse_line(targets, groups, target, line.strip())
                 else:
                     monitor_close_target(targets, groups, target)
                 break

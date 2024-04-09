@@ -7,7 +7,10 @@
 * Add `mac_saddr` and `mac_daddr` matchers to match MAC address. This works
   only for incoming traffic.
 * Add `redis`, `redis-sentinel` and `vnc` macros to default services.
-* Fix: Restart network connectivity monitor `command` if it dies.
+* Allow using any command (`curl` example included) instead of `fping` in
+  network connectivity monitor.
+* Fix: Restart network connectivity monitor `command` if it fails to start
+  or dies.
 
 ## 0.23 (2024-03-20)
 
