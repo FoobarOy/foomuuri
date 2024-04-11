@@ -2491,17 +2491,19 @@ def command_resolve():
 
 def get_url(url, setname):
     """Download URL and return it as text, or None if failure."""
-    try:
-        response = requests.get(url, timeout=60)
-    except OSError as error:
-        print(f'Warning: Iplist "@{setname}", can\'t download {url}, '
-              f'error: {error}')
-        return None
-    if response.status_code != 200:
-        print(f'Warning: Iplist "@{setname}", can\'t download {url}, '
-              f'status code: {response.status_code}')
-        return None
-    return response.text
+    for retry in range(3):
+        if retry:
+            time.sleep(10)
+        try:
+            response = requests.get(url, timeout=60)
+        except OSError as error:
+            err = f'error: {error}'
+        else:
+            if response.status_code == 200:
+                return response.text
+            err = f'status code: {response.status_code}'
+    print(f'Warning: Iplist "@{setname}", can\'t download {url}, {err}')
+    return None
 
 
 def get_file(wildcard, setname):
