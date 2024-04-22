@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.25 (2024-xx-xx)
+
+* Add `domain-quic` (DoQ) and `domain-tls` (DoT) macros to default services.
+
 ## 0.24 (2024-xx-xx)
 
 * Add `continue` statement. Rule `saddr 192.168.1.1 counter log continue`
