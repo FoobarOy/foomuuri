@@ -1,0 +1,899 @@
+table inet foomuuri
+delete table inet foomuuri
+
+table inet foomuuri {
+
+	chain allow_icmp_4 {
+		icmp type {
+			destination-unreachable,  # 3, Destination Unreachable
+			time-exceeded,            # 11, Time Exceeded
+			parameter-problem         # 12, Parameter Problem
+		} accept
+	}
+
+	chain allow_icmp_6 {
+		icmpv6 type {
+			destination-unreachable,  # 1, Destination Unreachable
+			packet-too-big,           # 2, Packet Too Big
+			time-exceeded,            # 3, Time Exceeded
+			parameter-problem,        # 4, Parameter Problem
+			nd-router-solicit,        # 133, Router Solicitation
+			nd-neighbor-solicit,      # 135, Neighbor Solicitation
+			nd-neighbor-advert,       # 136, Neighbor Advertisement
+			ind-neighbor-solicit,     # 141, Inverse Neighbor Discovery Solicitation Message
+			ind-neighbor-advert       # 142, Inverse Neighbor Discovery Advertisement Message
+		} accept
+		icmpv6 type . ip6 saddr {
+			nd-router-advert . fe80::/10,      # 134, Router Advertisement
+			mld-listener-query . fe80::/10,    # 130, Multicast Listener Query
+			mld-listener-report . fe80::/10,   # 131, Multicast Listener Report
+			mld-listener-done . fe80::/10,     # 132, Multicast Listener Done
+			149 . fe80::/10,                   # 149, Certification Path Advertisement Message
+			151 . fe80::/10,                   # 151, Multicast Router Advertisement
+			152 . fe80::/10,                   # 152, Multicast Router Solicitation
+			153 . fe80::/10,                   # 153, Multicast Router Termination
+			mld2-listener-report . fe80::/10,  # 143, Version 2 Multicast Listener Report
+			mld2-listener-report . ::,
+			148 . fe80::/10,                   # 148, Certification Path Solicitation Message
+			148 . ::
+		} accept
+	}
+
+	chain smurfs_4 {
+		ip saddr 0.0.0.0 return
+		fib saddr type { broadcast, multicast } jump smurfs_drop
+	}
+
+	chain smurfs_6 {
+		fib saddr type multicast jump smurfs_drop
+	}
+
+	chain invalid_drop {
+		drop
+	}
+
+	chain smurfs_drop {
+		drop
+	}
+
+	chain rpfilter_drop {
+		udp sport 67 udp dport 68 return
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "RPFILTER DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "RPFILTER DROP " level info flags skuid
+		drop
+	}
+
+	chain input {
+		type filter hook input priority filter + 5
+		iifname vmap @input_zones
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
+		drop
+	}
+
+	chain output {
+		type filter hook output priority filter + 5
+		oifname vmap @output_zones
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		ip6 saddr :: icmpv6 type mld2-listener-report accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "OUTPUT REJECT " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "OUTPUT REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain forward {
+		type filter hook forward priority filter + 5
+		iifname . oifname vmap @forward_zones
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
+		drop
+	}
+
+	set _rate_set_1_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_1_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_2_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_2_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_3_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_3_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set http_limit_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set http_limit_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_4_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_4_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_5_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_5_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_6_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_6_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_7_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_7_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	map input_zones {
+		type ifname : verdict
+		elements = {
+			lo : accept,
+			eth0 : jump public-localhost,
+			eth1 : jump internal-localhost,
+			eth2 : jump dmz-localhost,
+		}
+	}
+
+	map output_zones {
+		type ifname : verdict
+		elements = {
+			lo : accept,
+			eth0 : jump localhost-public,
+			eth1 : jump localhost-internal,
+			eth2 : jump localhost-dmz,
+		}
+	}
+
+	map forward_zones {
+		type ifname . ifname : verdict
+		elements = {
+			lo . lo : accept,
+			eth0 . eth0 : jump public-public,
+			eth0 . eth1 : jump public-internal,
+			eth0 . eth2 : jump public-dmz,
+			eth1 . eth0 : jump internal-public,
+			eth1 . eth1 : jump internal-internal,
+			eth1 . eth2 : jump internal-dmz,
+			eth2 . eth0 : jump dmz-public,
+			eth2 . eth1 : jump dmz-internal,
+			eth2 . eth2 : jump dmz-dmz,
+		}
+	}
+
+	chain public-localhost {
+		meta nfproto vmap {
+			ipv4 : jump public-localhost_4,
+			ipv6 : jump public-localhost_6
+		}
+	}
+
+	chain public-localhost_4 {
+		icmp type 8 update @_rate_set_1_4 { ip saddr limit rate 5/second burst 20 packets } accept
+		icmp type 8 drop
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		meta pkttype { broadcast, multicast } drop
+		tcp dport 22 update @_rate_set_3_4 { ip saddr limit rate 5/minute burst 5 packets } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain public-localhost_6 {
+		icmpv6 type 128 update @_rate_set_2_6 { ip6 saddr limit rate 5/second burst 20 packets } accept
+		icmpv6 type 128 drop
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		tcp dport 22 update @_rate_set_3_6 { ip6 saddr limit rate 5/minute burst 5 packets } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain internal-localhost {
+		meta nfproto vmap {
+			ipv4 : jump internal-localhost_4,
+			ipv6 : jump internal-localhost_6
+		}
+	}
+
+	chain internal-localhost_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype broadcast udp dport 67 accept
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		meta pkttype { broadcast, multicast } drop
+		udp dport { 123, 53, 67, 853 } accept
+		tcp dport { 22, 53, 853 } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "internal-localhost REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain internal-localhost_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast ip6 daddr ff02::1:2 udp sport 546 udp dport 547 accept
+		meta pkttype multicast drop
+		udp dport { 123, 53, 853 } accept
+		tcp dport { 22, 53, 853 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "internal-localhost REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-localhost {
+		meta nfproto vmap {
+			ipv4 : jump dmz-localhost_4,
+			ipv6 : jump dmz-localhost_6
+		}
+	}
+
+	chain dmz-localhost_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype broadcast udp dport 67 accept
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		meta pkttype { broadcast, multicast } drop
+		udp dport { 123, 53, 67, 853 } accept
+		tcp dport { 22, 53, 853 } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "dmz-localhost REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-localhost_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast ip6 daddr ff02::1:2 udp sport 546 udp dport 547 accept
+		meta pkttype multicast drop
+		udp dport { 123, 53, 853 } accept
+		tcp dport { 22, 53, 853 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "dmz-localhost REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-public {
+		meta nfproto vmap {
+			ipv4 : jump localhost-public_4,
+			ipv6 : jump localhost-public_6
+		}
+	}
+
+	chain localhost-public_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		udp dport { 123, 443, 53, 853 } accept
+		tcp dport { 22, 443, 53, 80, 853 } accept
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-public_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		udp dport { 123, 443, 53, 853 } accept
+		tcp dport { 22, 443, 53, 80, 853 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain internal-public {
+		meta nfproto vmap {
+			ipv4 : jump internal-public_4,
+			ipv6 : jump internal-public_6
+		}
+	}
+
+	chain internal-public_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		udp dport { 123, 19302-19309, 3478, 443, 53, 853 } accept
+		tcp dport { 22, 443, 53, 80, 853 } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "internal-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain internal-public_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		udp dport { 123, 19302-19309, 3478, 443, 53, 853 } accept
+		tcp dport { 22, 443, 53, 80, 853 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "internal-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-public {
+		meta nfproto vmap {
+			ipv4 : jump dmz-public_4,
+			ipv6 : jump dmz-public_6
+		}
+	}
+
+	chain dmz-public_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		udp dport { 123, 443, 53, 853 } accept
+		tcp dport { 22, 25, 443, 53, 80, 853 } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "dmz-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-public_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		udp dport { 123, 443, 53, 853 } accept
+		tcp dport { 22, 25, 443, 53, 80, 853 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "dmz-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain public-internal {
+		meta nfproto vmap {
+			ipv4 : jump public-internal_4,
+			ipv6 : jump public-internal_6
+		}
+	}
+
+	chain public-internal_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-internal DROP " level info flags skuid
+		drop
+	}
+
+	chain public-internal_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-internal DROP " level info flags skuid
+		drop
+	}
+
+	chain localhost-internal {
+		meta nfproto vmap {
+			ipv4 : jump localhost-internal_4,
+			ipv6 : jump localhost-internal_6
+		}
+	}
+
+	chain localhost-internal_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		udp dport { 68 } accept
+		tcp dport 22 accept
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-internal REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-internal_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		tcp dport 22 accept
+		ip6 daddr fe80::/10 udp sport 547 udp dport 546 accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-internal REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-internal {
+		meta nfproto vmap {
+			ipv4 : jump dmz-internal_4,
+			ipv6 : jump dmz-internal_6
+		}
+	}
+
+	chain dmz-internal_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "dmz-internal REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain dmz-internal_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "dmz-internal REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-dmz {
+		meta nfproto vmap {
+			ipv4 : jump localhost-dmz_4,
+			ipv6 : jump localhost-dmz_6
+		}
+	}
+
+	chain localhost-dmz_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		udp dport { 443, 68 } accept
+		tcp dport { 22, 25, 443, 80 } accept
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-dmz REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-dmz_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		udp dport 443 accept
+		tcp dport { 22, 25, 443, 80 } accept
+		ip6 daddr fe80::/10 udp sport 547 udp dport 546 accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-dmz REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain public-dmz {
+		meta nfproto vmap {
+			ipv4 : jump public-dmz_4,
+			ipv6 : jump public-dmz_6
+		}
+	}
+
+	chain public-dmz_4 {
+		icmp type 8 update @_rate_set_5_4 { ip saddr limit rate 5/second burst 20 packets } accept
+		icmp type 8 drop
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		tcp dport 80 update @http_limit_4 { ip saddr limit rate 100/second burst 400 packets } accept
+		tcp dport 443 update @http_limit_4 { ip saddr limit rate 100/second burst 400 packets } accept
+		udp dport 443 update @http_limit_4 { ip saddr limit rate 100/second burst 400 packets } accept
+		tcp dport 25 update @_rate_set_4_4 { ip saddr limit rate 1/second burst 10 packets } accept
+		tcp dport 22 update @_rate_set_7_4 { ip saddr limit rate 5/minute burst 5 packets } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-dmz DROP " level info flags skuid
+		drop
+	}
+
+	chain public-dmz_6 {
+		icmpv6 type 128 update @_rate_set_6_6 { ip6 saddr limit rate 5/second burst 20 packets } accept
+		icmpv6 type 128 drop
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		tcp dport 80 update @http_limit_6 { ip6 saddr limit rate 100/second burst 400 packets } accept
+		tcp dport 443 update @http_limit_6 { ip6 saddr limit rate 100/second burst 400 packets } accept
+		udp dport 443 update @http_limit_6 { ip6 saddr limit rate 100/second burst 400 packets } accept
+		tcp dport 25 update @_rate_set_4_6 { ip6 saddr limit rate 1/second burst 10 packets } accept
+		tcp dport 22 update @_rate_set_7_6 { ip6 saddr limit rate 5/minute burst 5 packets } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-dmz DROP " level info flags skuid
+		drop
+	}
+
+	chain internal-dmz {
+		meta nfproto vmap {
+			ipv4 : jump internal-dmz_4,
+			ipv6 : jump internal-dmz_6
+		}
+	}
+
+	chain internal-dmz_4 {
+		icmp type 8 accept
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		udp dport 443 accept
+		tcp dport { 143, 22, 25, 443, 80 } accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "internal-dmz REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain internal-dmz_6 {
+		icmpv6 type 128 accept
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		udp dport 443 accept
+		tcp dport { 143, 22, 25, 443, 80 } accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "internal-dmz REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-localhost {
+		meta nfproto vmap {
+			ipv4 : jump localhost-localhost_4,
+			ipv6 : jump localhost-localhost_6
+		}
+	}
+
+	chain localhost-localhost_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+	}
+
+	chain localhost-localhost_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+	}
+
+	chain public-public {
+		meta nfproto vmap {
+			ipv4 : jump public-public_4,
+			ipv6 : jump public-public_6
+		}
+	}
+
+	chain public-public_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
+		drop
+	}
+
+	chain public-public_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
+		drop
+	}
+
+	chain internal-internal {
+		meta nfproto vmap {
+			ipv4 : jump internal-internal_4,
+			ipv6 : jump internal-internal_6
+		}
+	}
+
+	chain internal-internal_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "internal-internal DROP " level info flags skuid
+		drop
+	}
+
+	chain internal-internal_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "internal-internal DROP " level info flags skuid
+		drop
+	}
+
+	chain dmz-dmz {
+		meta nfproto vmap {
+			ipv4 : jump dmz-dmz_4,
+			ipv6 : jump dmz-dmz_6
+		}
+	}
+
+	chain dmz-dmz_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "dmz-dmz DROP " level info flags skuid
+		drop
+	}
+
+	chain dmz-dmz_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "dmz-dmz DROP " level info flags skuid
+		drop
+	}
+
+	chain nat_postrouting_srcnat {
+		type nat hook postrouting priority srcnat + 5
+		oifname eth0 ip saddr 10.0.0.0/8 masquerade
+	}
+
+	chain nat_prerouting_dstnat {
+		type nat hook prerouting priority dstnat + 5
+		iifname eth0 tcp dport { 25, 443, 80 } dnat ip to 10.1.0.2
+		iifname eth0 udp dport { 25, 443, 80 } dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 tcp dport { 25, 443, 80 } dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 udp dport { 25, 443, 80 } dnat ip to 10.1.0.2
+	}
+
+	set _lograte_set_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _lograte_set_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	chain rpfilter {
+		type filter hook prerouting priority filter + 5
+		fib saddr . mark . iif oif eq 0 meta ipsec missing jump rpfilter_drop
+	}
+
+}

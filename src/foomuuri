@@ -205,6 +205,9 @@ def read_config():
         # Parse single config file content
         continuation = ''
         for linenumber, line in enumerate(content.splitlines()):
+            if line == '# foomuuri: not-conf':
+                break  # sysctl's 50-foomuuri.conf is not my config
+
             # Combine lines if there is \ at end of line
             if line.endswith('\\'):
                 continuation += line[:-1] + ' '

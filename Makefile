@@ -12,19 +12,18 @@ all: test
 # Check source
 
 test:
-	flake8 src/foomuuri
-	pycodestyle src/foomuuri
-	pylint src/foomuuri
+	$(MAKE) -C test
 
 # Generate firewall ruleset to file, used in development
 
 devel:
-	src/foomuuri --set=etc_dir=../devel --set=share_dir=/dev/null --set=state_dir=../devel --set=run_dir=../devel check
+	src/foomuuri --set=etc_dir=../devel --set=share_dir=etc --set=state_dir=../devel --set=run_dir=../devel check
 
 # Delete created files
 
 clean distclean:
 	rm -f foomuuri-*.tar.gz
+	$(MAKE) -C test $@
 
 # Install current source to DESTDIR
 

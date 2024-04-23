@@ -1,1 +1,4 @@
 foomuuri-*.tar.gz
+
+test/*/*.fw
+test/*/zone
