@@ -684,6 +684,7 @@ def parse_rule_line(fileline_line):
         'template': None,
         'mark_set': None,
         'mark_match': None,
+        'after_conntrack': True,
 
         # Internal housekeeping
         'plain': True,  # Plain "log" or "counter" without anything else
@@ -739,6 +740,10 @@ def parse_rule_line(fileline_line):
             ret[item[1:]] = 'missing'
             ret['plain'] = False
             keyword = None
+        elif item in ('conntrack', '-conntrack'):
+            ret['after_conntrack'] = item == 'conntrack'
+            ret['plain'] = False
+            keyword = None
 
         # Start keywords
         elif item in ('protocol',
@@ -784,9 +789,11 @@ def parse_rule_line(fileline_line):
             fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
 
     # Use no-op policy "continue" for plain "log" or "counter" rule,
-    # everything else defaults to "accept".
+    # everything else defaults to "accept". Also mark them as -conntrack
+    # so that they really log/count everything.
     if ret['plain']:
         ret['policy'] = 'continue'
+        ret['after_conntrack'] = False
     verify_rule_sanity(ret, fileline)
     return ret
 
@@ -1374,12 +1381,12 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     return f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}{mark}'
 
 
-def output_cast(cast, szone, dzone, rules, ipv, *, plain=False):
+def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
     """Output all uni/multi/broadcast rules for single zone-zone."""
     # pylint: disable=too-many-arguments
     has_mark_match = False
     for rule in rules:
-        if rule['plain'] != plain:
+        if rule['after_conntrack'] != after_conntrack:
             continue
         match = match_rules(rule, ipv, cast=cast)
         if match is None:
@@ -1440,8 +1447,9 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     output_zonemap(zonemap, szone, dzone, ipv)
     output_options(rules, ipv)
 
-    # Plain "log" or "counter" must see everything, before ct and icmp
-    output_cast(None, szone, dzone, rules, ipv, plain=True)
+    # Rules with "-conntrack" or plain "log"/"counter" rule. Output these
+    # before conntrack and icmp so that they see all traffic.
+    output_cast(None, szone, dzone, rules, ipv, after_conntrack=False)
 
     # ICMP is special, keep it before ct
     output_icmp(szone, dzone, rules, ipv)
@@ -1889,7 +1897,7 @@ def output_named_counters(rules, chain_rules):
                 names.add(rule['counter'])
 
     # Output counters
-    for name in names:
+    for name in sorted(names):
         out(f'counter {name} {{')
         out('}')
 

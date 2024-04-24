@@ -2,6 +2,10 @@
 
 ## 0.25 (2024-xx-xx)
 
+* Add `-conntrack` flag to rule. This rule will be outputted before
+  conntrack. This can be used to count all specific traffic, or to accept
+  some traffic without adding it to conntrack (for example high load DNS
+  server).
 * Add `domain-quic` (DoQ) and `domain-tls` (DoT) macros to default services.
 * Fix: `counter myname` didn't work on `prerouting` section.
 
