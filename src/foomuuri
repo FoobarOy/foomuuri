@@ -1879,11 +1879,11 @@ def output_resolve_elements(resolve, statefile):
             out(line)
 
 
-def output_named_counters(rules):
+def output_named_counters(rules, chain_rules):
     """Output named counters."""
     # Collect all counter names
     names = set()
-    for rulelist in rules.values():
+    for rulelist in list(rules.values()) + list(chain_rules.values()):
         for rule in rulelist:
             if rule['counter']:
                 names.add(rule['counter'])
@@ -2095,7 +2095,7 @@ def command_start():
     output_logrates()
     output_resolve_sets(resolve, '')
     output_resolve_sets(iplist, 'interval,')
-    output_named_counters(rules)
+    output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
     output_footer()

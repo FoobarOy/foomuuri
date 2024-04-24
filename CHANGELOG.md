@@ -3,6 +3,7 @@
 ## 0.25 (2024-xx-xx)
 
 * Add `domain-quic` (DoQ) and `domain-tls` (DoT) macros to default services.
+* Fix: `counter myname` didn't work on `prerouting` section.
 
 ## 0.24 (2024-xx-xx)
 
