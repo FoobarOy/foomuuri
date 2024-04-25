@@ -112,7 +112,7 @@ def run_program_rc(args, *, env=None):
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               env=env, timeout=60)
     except OSError as error:
-        print(f'Error: Failed to run command "{" ".join(args)}": {error}',
+        print(f'Error: Failed to run command "{shlex.join(args)}": {error}',
               flush=True)
         return 1
     output = proc.stdout.rstrip()
