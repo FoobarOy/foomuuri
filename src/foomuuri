@@ -121,18 +121,21 @@ def run_program_rc(args, *, env=None):
     return proc.returncode
 
 
-def run_program_output(args, fileline, shell=True):
-    """Run external program and return its output. Failure is fatal."""
+def run_program_output(args, fileline):
+    """Run external program as shell command and return its output.
+
+    Command failure is fatal. Parameter args must be a string, not list.
+    """
     if not args:
         return ''
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
-                              shell=shell, timeout=60)
+                              shell=True, timeout=60)
     except OSError as error:
-        fail(f'{fileline}Failed to run command "{" ".join(args)}": {error}')
+        fail(f'{fileline}Failed to run command "{args}": {error}')
     if proc.returncode:
-        fail(f'{fileline}Failed to run command "{" ".join(args)}": '
+        fail(f'{fileline}Failed to run command "{args}": '
              f'return code {proc.returncode}')
     return proc.stdout.rstrip()
 
