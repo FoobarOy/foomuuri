@@ -103,7 +103,7 @@ def out(line):
     OUT.append(line)
 
 
-def run_program_rc(args, *, env=None):
+def run_program_rc(args, *, env=None, print_output=True):
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
@@ -116,7 +116,7 @@ def run_program_rc(args, *, env=None):
               flush=True)
         return 1
     output = proc.stdout.rstrip()
-    if output:
+    if output and (proc.returncode or print_output or CONFIG['verbose']):
         print(output, flush=True)
     return proc.returncode
 
@@ -297,6 +297,11 @@ def config_to_pathlib(fix_files):
         for key in keys:
             if key.endswith('_file'):
                 CONFIG[key] = CONFIG['state_dir'] / CONFIG[key]
+
+    # "*_bin" are binaries with optional arguments
+    for key in keys:
+        if key.endswith('_bin') and isinstance(CONFIG[key], str):
+            CONFIG[key] = shlex.split(CONFIG[key])
 
 
 def parse_config_macros(config):
@@ -2024,8 +2029,8 @@ def apply_final():
     # Check config
     if CONFIG['command'] == 'check':
         if CONFIG['root_power']:  # "nft check" requires root
-            ret = run_program_rc([CONFIG['nft_bin'], '--check', '--file',
-                                  CONFIG['next_file']])
+            ret = run_program_rc(CONFIG['nft_bin'] + ['--check', '--file',
+                                                      CONFIG['next_file']])
         else:
             ret = 0
             print('Warning: Not running as "root", skipping "nft check"')
@@ -2039,7 +2044,8 @@ def apply_final():
     run_program_rc(CONFIG.get(f'pre_{CONFIG["command"][:5]}'))
 
     # Load "next"
-    ret = run_program_rc([CONFIG['nft_bin'], '--file', CONFIG['next_file']])
+    ret = run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG['next_file']],
+                         print_output=False)
 
     # Rename "next" to "good" if success and signal dbus to reload
     if ret == 0:
@@ -2056,8 +2062,8 @@ def apply_final():
     print(f'Error: Failed to load ruleset to nftables, error code {ret}')
     if CONFIG['command'] == 'start-or-good':
         if CONFIG['good_file'].exists():
-            ret = run_program_rc([CONFIG['nft_bin'], '--file',
-                                  CONFIG['good_file']])
+            ret = run_program_rc(CONFIG['nft_bin'] + ['--file',
+                                                      CONFIG['good_file']])
             if ret:
                 print(f'Error: Failed to load \"good\" ruleset to nftables, '
                       f'error code {ret}')
@@ -2139,8 +2145,8 @@ class DbusCommon:
     @staticmethod
     def parse_interface_zone():
         """Parse current interface->zone mapping from active nft ruleset."""
-        data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'map',
-                                 'inet', 'foomuuri', 'input_zones'])
+        data = run_program_json(CONFIG['nft_bin'] + [
+            '--json', 'list', 'map', 'inet', 'foomuuri', 'input_zones'])
         if not data:
             return {}
         ret = {}
@@ -2161,7 +2167,7 @@ class DbusCommon:
     def apply_out():
         """Apply current OUT commands."""
         save_final(CONFIG['dbus_file'])
-        run_program_rc([CONFIG['nft_bin'], '--file', CONFIG['dbus_file']])
+        run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG['dbus_file']])
 
     @staticmethod
     def remove_interface(interface_zone, interface):
@@ -2414,7 +2420,7 @@ def resolve_all_hostnames(resolve):
 def active_sets():
     """Return list of set names in currently active firewall."""
     ret = set()
-    data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'ruleset'])
+    data = run_program_json(CONFIG['nft_bin'] + ['--json', 'list', 'ruleset'])
     if not data:
         return ret
     for item in data['nftables']:
@@ -2428,7 +2434,7 @@ def apply_resolve_iplist(filename, error_txt, pending_error):
     if not OUT:
         return pending_error
     save_final(CONFIG[filename])
-    ret = run_program_rc([CONFIG['nft_bin'], '--file', CONFIG[filename]])
+    ret = run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG[filename]])
     if ret:
         print(f'Error: Failed to update {error_txt}, error code {ret}')
     return ret or pending_error
@@ -2707,8 +2713,8 @@ def iplist_manual_state(iplist):
             continue
 
         # Get set entries
-        data = run_program_json([CONFIG['nft_bin'], '--json', 'list', 'set',
-                                 'inet', 'foomuuri', setname])
+        data = run_program_json(CONFIG['nft_bin'] + [
+            '--json', 'list', 'set', 'inet', 'foomuuri', setname])
 
         # Collect IP addresses
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -2738,16 +2744,14 @@ def command_iplist_list():
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
-            data4 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
-                                      'set', 'inet', 'foomuuri', setname])
+            data4 = run_program_json(CONFIG['nft_bin'] + [
+                '--json', 'list', 'set', 'inet', 'foomuuri', setname])
             data6 = {}
         else:
-            data4 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
-                                      'set', 'inet', 'foomuuri',
-                                      f'{setname}_4'])
-            data6 = run_program_json([CONFIG['nft_bin'], '--json', 'list',
-                                      'set', 'inet', 'foomuuri',
-                                      f'{setname}_6'])
+            data4 = run_program_json(CONFIG['nft_bin'] + [
+                '--json', 'list', 'set', 'inet', 'foomuuri', f'{setname}_4'])
+            data6 = run_program_json(CONFIG['nft_bin'] + [
+                '--json', 'list', 'set', 'inet', 'foomuuri', f'{setname}_6'])
         elem4 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data4)]
         elem6 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data6)]
         elems = sorted(elem4) + sorted(elem6)
@@ -2778,11 +2782,11 @@ def command_iplist_add():
                 continue
             fail(f'Invalid IP address {address}')
         table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program_rc([CONFIG['nft_bin'],
-                               f'add element {table_set} {{ {address} }}; '
-                               f'delete element {table_set} {{ {address} }}; '
-                               f'add element {table_set} {{ {address} '
-                               f'timeout {timeout} }};'])
+        ret += run_program_rc(CONFIG['nft_bin'] + [
+            f'add element {table_set} {{ {address} }}; '
+            f'delete element {table_set} {{ {address} }}; '
+            f'add element {table_set} {{ {address} '
+            f'timeout {timeout} }};'])
     iplist_manual_state(iplist)
     return ret
 
@@ -2801,9 +2805,9 @@ def command_iplist_del():
         if not ipv:
             fail(f'Invalid IP address {address}')
         table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program_rc([CONFIG['nft_bin'],
-                               f'add element {table_set} {{ {address} }}; '
-                               f'delete element {table_set} {{ {address} }};'])
+        ret += run_program_rc(CONFIG['nft_bin'] + [
+            f'add element {table_set} {{ {address} }}; '
+            f'delete element {table_set} {{ {address} }};'])
     iplist_manual_state(iplist)
     return ret
 
@@ -2885,7 +2889,7 @@ def command_list():
     """List currently active ruleset."""
     # List all
     if not CONFIG['parameters']:
-        return run_program_rc([CONFIG['nft_bin'], 'list', 'ruleset'])
+        return run_program_rc(CONFIG['nft_bin'] + ['list', 'ruleset'])
 
     # Parse list of possible zone-zone pairs
     config = minimal_config()
@@ -2905,15 +2909,15 @@ def command_list():
             print('}')
         elif zone == 'counter':
             # List named counters
-            ret += run_program_rc([CONFIG['nft_bin'], 'list', 'counters',
-                                   'table', 'inet', 'foomuuri'])
+            ret += run_program_rc(CONFIG['nft_bin'] + [
+                'list', 'counters', 'table', 'inet', 'foomuuri'])
         else:
             # List zone-zone
             if zone not in zonepairs:
                 fail(f'Unknown zone-zone: {zone}')
             for ipv in (4, 6):
-                ret += run_program_rc([CONFIG['nft_bin'], 'list', 'chain',
-                                       'inet', 'foomuuri', f'{zone}_{ipv}'])
+                ret += run_program_rc(CONFIG['nft_bin'] + [
+                    'list', 'chain', 'inet', 'foomuuri', f'{zone}_{ipv}'])
     return ret
 
 

@@ -7,6 +7,7 @@
   some traffic without adding it to conntrack (for example high load DNS
   server).
 * Add `domain-quic` (DoQ) and `domain-tls` (DoT) macros to default services.
+* Allow `foomuuri { nft_bin nft --optimize }` to specify options.
 * Fix: `counter myname` didn't work on `prerouting` section.
 
 ## 0.24 (2024-xx-xx)
