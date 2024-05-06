@@ -692,6 +692,7 @@ def parse_rule_line(fileline_line):
         'template': None,
         'mark_set': None,
         'mark_match': None,
+        'time': None,
         'after_conntrack': True,
 
         # Internal housekeeping
@@ -777,6 +778,7 @@ def parse_rule_line(fileline_line):
                       'template',
                       'mark_set',
                       'mark_match',
+                      'time',
                       ):
             keyword = item
             if ret[keyword] is None:
@@ -1104,6 +1106,72 @@ def mark_match(rule):
     return f'meta mark & {x_y[1]} {check} {x_y[0]} '
 
 
+def time_only_one(rule, oldvalue, newvalue):
+    """Return newvalue if oldvalue is not set, else fail."""
+    if oldvalue or not newvalue:
+        fail(f'{rule["fileline"]}Invalid "time" value: {rule["time"]}')
+    return newvalue
+
+
+def time_match_single(rule, compare, value):
+    """Return single time compare+value as nft."""
+    if not compare and not value:
+        return ''
+    time_only_one(rule, None, value)  # Check that value is set
+
+    # Parse value to day/hour/time
+    wday = None
+    hour = None
+    date = None
+    for item in value:
+        if item.lower() in ('monday', 'tuesday', 'wednesday', 'thursday',
+                            'friday', 'saturday', 'sunday'):
+            wday = time_only_one(rule, wday, item.capitalize())
+        elif (
+                re.fullmatch(r'\d\d:\d\d(:\d\d)?', item) or  # hh:mm:ss, hh:mm
+                re.fullmatch(r'\d\d:\d\d-\d\d:\d\d', item)   # hh:mm-hh:mm
+        ):
+            hour = time_only_one(rule, hour, item)
+        elif re.fullmatch(r'\d\d\d\d-\d\d-\d\d', item):  # yyyy-mm-dd
+            date = time_only_one(rule, date, item)
+        else:
+            fail(f'{rule["fileline"]}Invalid "time" value: {rule["time"]}')
+
+    # Output as nft
+    if date and hour:  # Combine if both set
+        date += f' {hour}'
+        hour = None
+    ret = ''
+    if wday:
+        ret += f'day {compare}"{wday}" '
+    if date:
+        ret += f'time {compare}"{date}" '
+    if hour:
+        if '-' in hour:  # hh:mm-hh:mm may not be in ", others must
+            ret += f'hour {compare}{hour} '
+        else:
+            ret += f'hour {compare}"{hour}" '
+    return ret
+
+
+def time_match(rule):
+    """Convert "time Saturday" to nft, supporting time/day/hour."""
+    if not rule['time']:
+        return ''
+    compare = ''
+    value = []
+    ret = ''
+    for item in rule['time'].split():
+        if item in ('==', '!=', '<', '>', '<=', '>='):
+            ret += time_match_single(rule, compare, value)
+            compare = '' if item == '==' else f'{item} '
+            value = []
+        else:
+            value.append(item)
+    ret += time_match_single(rule, compare, value)
+    return ret
+
+
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
                          do_lograte=True):
     """Return rule's user, rate, log and policy as nft command."""
@@ -1383,10 +1451,9 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     if proto_ports is None:
         return None
 
-    mark = mark_match(rule)
-
     # Return matcher string
-    return f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}{mark}'
+    return (f'{ipsecmeta}{castmeta}{ifname}{addrlist}{proto_ports}'
+            f'{time_match(rule)}{mark_match(rule)}')
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
