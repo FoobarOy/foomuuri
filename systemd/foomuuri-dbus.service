@@ -10,5 +10,5 @@ Conflicts=firewalld.service
 
 [Service]
 Type=notify
-ExecStart=/usr/sbin/foomuuri dbus
+ExecStart=foomuuri dbus
 ExecReload=kill -HUP $MAINPID

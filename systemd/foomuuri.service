@@ -12,9 +12,9 @@ Wants=foomuuri-resolve.timer
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/sbin/foomuuri start-or-good
-ExecReload=/usr/sbin/foomuuri reload
-ExecStop=/usr/sbin/foomuuri stop
+ExecStart=foomuuri start-or-good
+ExecReload=foomuuri reload
+ExecStop=foomuuri stop
 
 [Install]
 WantedBy=multi-user.target
