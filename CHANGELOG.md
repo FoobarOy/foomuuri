@@ -1,25 +1,22 @@
 # ChangeLog
 
-## 0.25 (2024-xx-xx)
-
-* Add `time` matcher to check hour, date and weekday.
-* Add `-conntrack` flag to rule. This rule will be outputted before
-  conntrack. This can be used to count all specific traffic, or to accept
-  some traffic without adding it to conntrack (for example high load DNS
-  server).
-* Add `domain-quic` (DoQ) and `domain-tls` (DoT) macros to default services.
-* Allow `foomuuri { nft_bin nft --optimize }` to specify options.
-* Fix: `counter myname` didn't work on `prerouting` section.
-
 ## 0.24 (2024-xx-xx)
 
 * Add `continue` statement. Rule `saddr 192.168.1.1 counter log continue`
   counts and logs traffic from 192.168.1.1 and continues to next rules.
+* Add `time` matcher to check hour, date and weekday.
 * Add `mac_saddr` and `mac_daddr` matchers to match MAC address. This works
   only for incoming traffic.
-* Add `redis`, `redis-sentinel` and `vnc` macros to default services.
+* Add `-conntrack` flag to rule. This rule will be outputted before
+  conntrack. This can be used to count all specific traffic, or to accept
+  some traffic without adding it to conntrack (for example high load DNS
+  server).
+* Add `redis`, `redis-sentinel`, `vnc`, `domain-quic` (DoQ) and `domain-tls`
+  (DoT) macros to default services.
 * Allow using any command (`curl` example included) instead of `fping` in
   network connectivity monitor.
+* Allow `foomuuri { nft_bin nft --optimize }` to specify options.
+* Fix: `counter myname` didn't work on `prerouting` section.
 * Fix: Restart network connectivity monitor `command` if it fails to start
   or dies.
 
