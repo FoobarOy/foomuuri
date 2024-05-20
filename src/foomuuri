@@ -2108,39 +2108,26 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program_rc(CONFIG.get(f'pre_{CONFIG["command"][:5]}'))
+    run_program_rc(CONFIG.get(f'pre_{CONFIG["command"]}'))
 
     # Load "next"
     ret = run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG['next_file']],
                          print_output=False)
 
-    # Rename "next" to "good" if success and signal dbus to reload
-    if ret == 0:
-        if CONFIG['command'].startswith('start'):
-            # pylint: disable=no-member
-            CONFIG['good_file'].unlink(missing_ok=True)
-            CONFIG['next_file'].rename(CONFIG['good_file'])
-        signal_childs()
-        run_program_rc(CONFIG.get(f'post_{CONFIG["command"][:5]}'))
-        print(f'{CONFIG["command"]} success')
-        return 0
+    # Check failure
+    if ret:
+        print(f'Error: Failed to load ruleset to nftables, error code {ret}')
+        return 1
 
-    # Failure. Exit or fallback to good if "start-or-good".
-    print(f'Error: Failed to load ruleset to nftables, error code {ret}')
-    if CONFIG['command'] == 'start-or-good':
-        if CONFIG['good_file'].exists():
-            ret = run_program_rc(CONFIG['nft_bin'] + ['--file',
-                                                      CONFIG['good_file']])
-            if ret:
-                print(f'Error: Failed to load \"good\" ruleset to nftables, '
-                      f'error code {ret}')
-            else:
-                signal_childs()  # Good success, signal dbus + monitor
-                run_program_rc(CONFIG.get('post_start'))
-                print('Warning: Fallbacked to previous \"good\" ruleset')
-        else:
-            print('Error: Failed to load \"good\" ruleset, no such file')
-    return 1
+    # Success. Rename "next" to "good", signal dbus to reload and run hook
+    if CONFIG['command'] == 'start':
+        # pylint: disable=no-member
+        CONFIG['good_file'].unlink(missing_ok=True)
+        CONFIG['next_file'].rename(CONFIG['good_file'])
+    signal_childs()
+    run_program_rc(CONFIG.get(f'post_{CONFIG["command"]}'))
+    print(f'{CONFIG["command"]} success')
+    return 0
 
 
 def command_start():
@@ -3372,7 +3359,6 @@ def command_help():
     print('Available commands:')
     print()
     print('  start            Load configuration files and generate ruleset')
-    print('  start-or-good    Same as start with fallback to previous "good"')
     print('  stop             Remove ruleset')
     print('  reload           Same as start, followed by resolve+iplist '
           'refresh')
@@ -3464,7 +3450,7 @@ def run_command():
         return handler()
 
     # Run commands with ruleset output
-    if CONFIG['command'] in ('start', 'start-or-good', 'check'):
+    if CONFIG['command'] in ('start', 'check'):
         command_start()
     elif CONFIG['command'] == 'stop':
         command_stop()

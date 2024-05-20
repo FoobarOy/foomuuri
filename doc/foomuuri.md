@@ -44,9 +44,6 @@ emulation for NetworkManager's zone support.
 **start**
 : load configuration files, generate new ruleset and load it to kernel
 
-**start-or-good**
-: same as **start** but fallback to previous "good" ruleset if loading fails
-
 **stop**
 : remove ruleset from kernel
 

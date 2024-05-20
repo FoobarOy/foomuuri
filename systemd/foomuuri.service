@@ -14,7 +14,7 @@ Wants=foomuuri-resolve.timer
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=foomuuri start-or-good
+ExecStart=foomuuri start
 ExecReload=foomuuri reload
 ExecStop=foomuuri stop
 
