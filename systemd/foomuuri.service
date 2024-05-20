@@ -2,8 +2,10 @@
 Description=Multizone bidirectional nftables firewall
 Documentation=https://github.com/FoobarOy/foomuuri/wiki
 After=local-fs.target
+After=foomuuri-boot.service
 Before=network-pre.target
 Wants=network-pre.target
+Wants=foomuuri-boot.service
 Wants=foomuuri-dbus.service
 Wants=foomuuri-iplist.timer
 Wants=foomuuri-monitor.service

@@ -38,6 +38,7 @@ install:
 	cp etc/static.nft $(DESTDIR)/usr/share/foomuuri/
 	mkdir -p $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cp systemd/foomuuri-boot.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-dbus.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-iplist.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-iplist.timer $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/

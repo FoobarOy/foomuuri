@@ -1,0 +1,10 @@
+[Unit]
+Description=Multizone bidirectional nftables firewall - Early boot
+Documentation=https://github.com/FoobarOy/foomuuri/wiki
+After=local-fs.target
+ConditionPathExists=/var/lib/foomuuri/good.fw
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'cat /var/lib/foomuuri/good.fw | nft -f -'
