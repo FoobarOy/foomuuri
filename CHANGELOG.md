@@ -2,6 +2,8 @@
 
 ## 0.24 (2024-xx-xx)
 
+* Remove `start-or-good` command line option. Add systemd
+  `foomuuri-boot.service` to implement same functionality safer.
 * Add `continue` statement. Rule `saddr 192.168.1.1 counter log continue`
   counts and logs traffic from 192.168.1.1 and continues to next rules.
 * Add `time` matcher to check hour, date and weekday.
