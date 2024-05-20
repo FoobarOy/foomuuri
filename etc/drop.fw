@@ -1,0 +1,25 @@
+# Example "drop everything" ruleset that can be used in foomuuri-boot.service
+# instead of "good.fw".
+#
+# Use command "systemctl edit --full foomuuri-boot.service" to switch to this
+# file.
+
+table inet foomuuri
+delete table inet foomuuri
+
+table inet foomuuri {
+	chain input {
+		type filter hook input priority filter
+		drop
+	}
+
+	chain output {
+		type filter hook output priority filter
+		drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter
+		drop
+	}
+}

@@ -36,6 +36,7 @@ install:
 	mkdir -p $(DESTDIR)/usr/share/foomuuri/
 	cp etc/default.services.conf $(DESTDIR)/usr/share/foomuuri/
 	cp etc/static.nft $(DESTDIR)/usr/share/foomuuri/
+	cp etc/drop.fw $(DESTDIR)/usr/share/foomuuri/
 	mkdir -p $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-boot.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
