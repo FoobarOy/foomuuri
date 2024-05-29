@@ -836,11 +836,47 @@ def parse_config_rules(config):
     return rules
 
 
+def filter_any_zonelist(rule, srcdst):
+    """Parse rule[szone] list and return pos/neg boolean + zonelist."""
+    if not rule[srcdst]:
+        return False, []   # "not in empty list" == everything
+
+    inside = True
+    zonelist = []
+    for item in rule[srcdst].split():
+        if item.startswith('-'):
+            if inside and zonelist:
+                fail(f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                     f'{rule[srcdst]}')
+            inside = False
+            zonelist.append(item[1:])
+        else:
+            if not inside:
+                fail(f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                     f'{rule[srcdst]}')
+            zonelist.append(item)
+    return inside, zonelist
+
+
 def insert_single_any(any_rules, rules, szone, dzone):
     """Insert single any_rules to rules[(szone, dzone)]."""
-    if not any_rules or szone == dzone:
+    if szone == dzone:
         return
-    rules[(szone, dzone)] = any_rules + rules.get((szone, dzone), [])
+
+    # Filter out "szone -public" when adding to zone "public-xxx"
+    filtered = []
+    for rule in any_rules:
+        inside, zonelist = filter_any_zonelist(rule, 'szone')
+        if (szone in zonelist) != inside:
+            continue
+        inside, zonelist = filter_any_zonelist(rule, 'dzone')
+        if (dzone in zonelist) != inside:
+            continue
+        filtered.append(rule)
+
+    # Insert filtered rules to beginning
+    if filtered:
+        rules[(szone, dzone)] = filtered + rules.get((szone, dzone), [])
 
 
 def insert_any_zones(zones, rules):
