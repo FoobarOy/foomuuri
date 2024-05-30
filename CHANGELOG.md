@@ -15,11 +15,11 @@
   server).
 * Add `redis`, `redis-sentinel`, `vnc`, `domain-quic` (DoQ) and `domain-tls`
   (DoT) macros to default services.
+* Matcher `szone -public` in `any-localhost` (or `dzone` in `localhost-any`)
+  section can be used to skip adding rule to `public-localhost`.
 * Allow using any command (`curl` example included) instead of `fping` in
   network connectivity monitor.
 * Allow `foomuuri { nft_bin nft --optimize }` to specify options.
-* Matcher `szone -public` in `any-localhost` (or `dzone` in `localhost-any`)
-  section can be used to skip adding rule to `public-localhost`.
 * Fix: `counter myname` didn't work on `prerouting` section.
 * Fix: Restart network connectivity monitor `command` if it fails to start
   or dies.
