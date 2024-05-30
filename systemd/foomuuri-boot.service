@@ -8,3 +8,4 @@ ConditionPathExists=/var/lib/foomuuri/good.fw
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c 'cat /var/lib/foomuuri/good.fw | nft -f -'
+# Above "sh 'cat | nft'" is a SELinux workaround
