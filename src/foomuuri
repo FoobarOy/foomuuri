@@ -2223,6 +2223,13 @@ def command_stop(parse_config=True):
     out('delete table inet foomuuri')
 
 
+def command_block():
+    """Load "block all traffic" ruleset."""
+    minimal_config()
+    return run_program_rc(CONFIG['nft_bin'] + [
+        '--file', CONFIG['share_dir'] / 'block.fw'])
+
+
 class DbusCommon:
     """D-Bus server - Common Functions."""
 
@@ -3396,8 +3403,9 @@ def command_help():
     print()
     print('  start            Load configuration files and generate ruleset')
     print('  stop             Remove ruleset')
-    print('  reload           Same as start, followed by resolve+iplist '
+    print('  reload           Same as start, followed by resolve and iplist '
           'refresh')
+    print('  block            Load "block all traffic" ruleset')
     print('  check            Verify configuration files')
     print('  list             List active ruleset')
     print('  list zone-zone {zone-zone...}')
@@ -3476,6 +3484,7 @@ def run_command():
     # Run simple commands without ruleset output
     handler = {
         'reload': command_reload,
+        'block': command_block,
         'list': command_list,
         'resolve': command_resolve,
         'iplist': command_iplist,

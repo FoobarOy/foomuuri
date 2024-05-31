@@ -1,8 +1,8 @@
-# Example "drop everything" ruleset that can be used in foomuuri-boot.service
-# instead of "good.fw".
+# "Block all traffic" ruleset that can be used in foomuuri-boot.service
+# instead of "good.fw". This file is also used by "foomuuri block" command.
 #
 # Use command "systemctl edit --full foomuuri-boot.service" to switch to this
-# file.
+# file instead of "good.fw".
 
 table inet foomuuri
 delete table inet foomuuri

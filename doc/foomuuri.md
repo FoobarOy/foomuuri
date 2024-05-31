@@ -48,7 +48,10 @@ emulation for NetworkManager's zone support.
 : remove ruleset from kernel
 
 **reload**
-: same as **start**, followed by resolve+iplist refresh
+: same as **start**, followed by resolve and iplist refresh
+
+**block**
+: load "block all traffic" ruleset
 
 **check**
 : load configuration files and verify syntax
