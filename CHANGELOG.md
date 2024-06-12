@@ -10,6 +10,8 @@
 * Add `time` matcher to check hour, date and weekday.
 * Add `mac_saddr` and `mac_daddr` matchers to match MAC address. This works
   only for incoming traffic.
+* Add `ct_status` matcher to match conntrack status, for example `dnat` or
+  `snat`.
 * Add `-conntrack` flag to rule. This rule will be outputted before
   conntrack. This can be used to count all specific traffic, or to accept
   some traffic without adding it to conntrack (for example high load DNS
