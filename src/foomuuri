@@ -636,6 +636,7 @@ def verify_rule_sanity(rule, fileline):
     ):
         fail(f'{fileline}"Invalid "ct_status" value: {rule["ct_status"]}')
 
+
 def parse_rule_line(fileline_line):
     """Parse single config section line to rule dict.
 
@@ -697,6 +698,7 @@ def parse_rule_line(fileline_line):
         'template': None,
         'mark_set': None,
         'mark_match': None,
+        'cgroup': None,
         'ct_status': None,
         'time': None,
         'after_conntrack': True,
@@ -784,6 +786,7 @@ def parse_rule_line(fileline_line):
                       'template',
                       'mark_set',
                       'mark_match',
+                      'cgroup',
                       'ct_status',
                       'time',
                       ):
@@ -1215,6 +1218,21 @@ def time_match(rule):
     return ret
 
 
+def cgroup_match(rule):
+    """Parse cgroup to nft."""
+    cgroup = rule['cgroup']
+    if not cgroup:
+        return ''
+
+    # cgroupv2: non-numeric, single value only
+    if not re.match(r'[-0-9]', cgroup[0]) and ' ' not in cgroup:
+        level = cgroup.count('/') + 1
+        return f'socket cgroupv2 level {level} "{cgroup}" '
+
+    # cgroup
+    return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
+
+
 def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
                          do_lograte=True):
     """Return rule's user, rate, log and policy as nft command."""
@@ -1500,7 +1518,7 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
 
     # Return matcher string
     return (f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
-            f'{time_match(rule)}{mark_match(rule)}')
+            f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}')
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):

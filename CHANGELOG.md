@@ -12,6 +12,7 @@
   only for incoming traffic.
 * Add `ct_status` matcher to match conntrack status, for example `dnat` or
   `snat`.
+* Add `cgroup` matcher to match cgroup id or cgroupv2 name.
 * Add `-conntrack` flag to rule. This rule will be outputted before
   conntrack. This can be used to count all specific traffic, or to accept
   some traffic without adding it to conntrack (for example high load DNS
