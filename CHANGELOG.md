@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.24 (2024-xx-xx)
+## 0.24 (2024-06-19)
 
 * Remove `start-or-good` command line option. Add systemd
   `foomuuri-boot.service` to implement same functionality safer.
