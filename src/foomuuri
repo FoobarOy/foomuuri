@@ -435,10 +435,17 @@ def parse_config_foomuuri(config):
             CONFIG[key] += ' packets'
 
 
+def check_name(name, fileline, prefix=''):
+    """Check that name starts with letter, not number."""
+    if not re.fullmatch(r'[a-zA-Z_]', name[:1]):
+        fail(f'{fileline}Invalid name: {prefix}{name}')
+
+
 def parse_config_zones(config):
     """Parse zone{} from config."""
     zones = {}
     for fileline, line in config.pop('zone', []):
+        check_name(line[0], fileline)
         if line[0] in zones:
             fail(f'{fileline}Zone is already defined: {line[0]}')
         zones[line[0]] = {'interface': line[1:]}
@@ -485,7 +492,8 @@ def parse_resolve(config, section, timeout=None, refresh=None):
             ret[line[0]] = ''.join(line[1:])
         else:
             if not line[0].startswith('@') or len(line[0]) == 1:
-                fail(f'{fileline}Bad {section} name: {" ".join(line)}')
+                fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
+            check_name(line[0][1:], fileline, '@')
             for ipv in (4, 6):  # "@foo" to "@foo_4" and "@foo_6"
                 name = f'{line[0]}_{ipv}'
                 if len(line) == 1 or line[1:] == ['-']:
