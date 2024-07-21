@@ -2800,6 +2800,8 @@ def read_all_iplists(iplist, last_refresh, default_refresh):
             # Strip comments and empty lines
             if '#' in line:
                 line = line.split('#')[0]
+            if ';' in line:
+                line = line.split(';')[0]
             line = line.strip()
             if not line:
                 continue
