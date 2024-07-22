@@ -50,11 +50,14 @@ emulation for NetworkManager's zone support.
 **reload**
 : same as **start**, followed by resolve and iplist refresh
 
-**block**
-: load "block all traffic" ruleset
+**status**
+: show current status: running, zone-interface mapping
 
 **check**
 : load configuration files and verify syntax
+
+**block**
+: load "block all traffic" ruleset
 
 **list**
 : list active ruleset currently loaded to kernel

@@ -2,6 +2,8 @@
 
 ## 0.25 (2024-xx-xx)
 
+* Add `status` command to show if Foomuuri is running, current zone-interface
+  mapping.
 * More relaxed import for external `iplist` lists: handle `;` as comment,
   allow overlapping IP ranges.
 * Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`

@@ -2271,6 +2271,55 @@ def command_block():
         '--file', CONFIG['share_dir'] / 'block.fw'])
 
 
+def parse_active_interface_zone():
+    """Parse current interface->zone mapping from active nft ruleset."""
+    data = run_program_json(CONFIG['nft_bin'] + [
+        '--json', 'list', 'map', 'inet', 'foomuuri', 'input_zones'])
+    if not data:
+        return {}
+    ret = {}
+    for item in data['nftables']:
+        if 'map' in item:
+            for interface, rule in item['map']['elem']:
+                if interface != 'lo':
+                    ret[interface] = rule['jump']['target'].split('-')[0]
+    return ret
+
+
+def command_status():
+    """Print if Foomuuri is running, zone<->mapping, etc."""
+    # Get minimal config and interface status
+    config = minimal_config()
+    zones = parse_config_zones(config)
+    zone_interface = parse_active_interface_zone()
+
+    # Running
+    if not zone_interface:
+        fail('Foomuuri is not running')
+    print('Foomuuri is running')
+
+    # D-Bus, Monitor
+    for child in ('dbus', 'monitor'):
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        try:
+            pid = int(filename.read_text(encoding='utf-8'))
+            os.kill(pid, 0)
+            print(f'Foomuuri-{child} is running, PID {pid}')
+        except (FileNotFoundError, ValueError, PermissionError,
+                ProcessLookupError):
+            print(f'Foomuuri-{child} is not running')
+
+    # Zones
+    print()
+    print('Zones:')
+    for zone in zones:
+        interfaces = [interface
+                      for interface, int_zones in zone_interface.items()
+                      if zone in int_zones]
+        print(f'  {zone:15s} {" ".join(interfaces)}')
+    return 0
+
+
 class DbusCommon:
     """D-Bus server - Common Functions."""
 
@@ -2279,21 +2328,6 @@ class DbusCommon:
     def set_data(self, zones):
         """Save config data: zone list is static."""
         self.zones = zones
-
-    @staticmethod
-    def parse_interface_zone():
-        """Parse current interface->zone mapping from active nft ruleset."""
-        data = run_program_json(CONFIG['nft_bin'] + [
-            '--json', 'list', 'map', 'inet', 'foomuuri', 'input_zones'])
-        if not data:
-            return {}
-        ret = {}
-        for item in data['nftables']:
-            if 'map' in item:
-                for interface, rule in item['map']['elem']:
-                    if interface != 'lo':
-                        ret[interface] = rule['jump']['target'].split('-')[0]
-        return ret
 
     @staticmethod
     def clean_out():
@@ -2362,7 +2396,7 @@ class DbusCommon:
                 print(f'Warning: Can\'t change interface "lo" to zone '
                       f'"{new_zone}"', flush=True)
             return '', ''
-        interface_zone = self.parse_interface_zone()
+        interface_zone = parse_active_interface_zone()
         self.clean_out()
         old_zone = self.remove_interface(interface_zone, interface)
         if new_zone:
@@ -3448,8 +3482,10 @@ def command_help():
     print('  stop             Remove ruleset')
     print('  reload           Same as start, followed by resolve and iplist '
           'refresh')
-    print('  block            Load "block all traffic" ruleset')
+    print('  status           Show current status: running, zone-interface '
+          'mapping')
     print('  check            Verify configuration files')
+    print('  block            Load "block all traffic" ruleset')
     print('  list             List active ruleset')
     print('  list zone-zone {zone-zone...}')
     print('                   List active ruleset for zone-zone')
@@ -3527,6 +3563,7 @@ def run_command():
     # Run simple commands without ruleset output
     handler = {
         'reload': command_reload,
+        'status': command_status,
         'block': command_block,
         'list': command_list,
         'resolve': command_resolve,
