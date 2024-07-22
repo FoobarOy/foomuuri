@@ -1,5 +1,12 @@
 # ChangeLog
 
+## 0.25 (2024-xx-xx)
+
+* More relaxed import for external `iplist` lists: handle `;` as comment,
+  allow overlapping IP ranges.
+* Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`
+  and `snmptrap` macros to default services.
+
 ## 0.24 (2024-06-19)
 
 * Remove `start-or-good` command line option. Add systemd
