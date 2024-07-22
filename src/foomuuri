@@ -2317,12 +2317,13 @@ def command_status():
         print('Warning: There are no interfaces assigned to any zones')
 
     print()
-    print('Zones:')
+    print('zone {')
     for zone in zones:
         interfaces = [interface
                       for interface, int_zones in zone_interface.items()
                       if zone == int_zones]
         print(f'  {zone:15s} {" ".join(interfaces)}')
+    print('}')
     return 0
 
 
