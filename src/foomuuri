@@ -2294,7 +2294,9 @@ def command_status():
     zone_interface = parse_active_interface_zone()
 
     # Running
-    if not zone_interface:
+    ruleset = run_program_json(CONFIG['nft_bin'] + [
+        '--json', 'list', 'table', 'inet', 'foomuuri'])
+    if not ruleset:
         fail('Foomuuri is not running')
     print('Foomuuri is running')
 
@@ -2310,12 +2312,16 @@ def command_status():
             print(f'Foomuuri-{child} is not running')
 
     # Zones
+    if not zone_interface:
+        print()
+        print('Warning: There are no interfaces assigned to any zones')
+
     print()
     print('Zones:')
     for zone in zones:
         interfaces = [interface
                       for interface, int_zones in zone_interface.items()
-                      if zone in int_zones]
+                      if zone == int_zones]
         print(f'  {zone:15s} {" ".join(interfaces)}')
     return 0
 
