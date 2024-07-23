@@ -6,6 +6,7 @@
   mapping.
 * More relaxed import for external `iplist` lists: handle `;` as comment,
   allow overlapping IP ranges.
+* IP address with or without netmask can be used in `iplist` entry.
 * Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`
   and `snmptrap` macros to default services.
 
