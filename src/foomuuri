@@ -476,7 +476,7 @@ def parse_resolve(config, section, timeout=None, refresh=None):
 
     Line syntax:
       @name fqdn fqdn2 fqdn3               # resolve
-      @name url url2 filename filename2    # iplist
+      @name url filename ipv4 ipv6 ip/mask # iplist
 
     Entry "timeout 10h 30m" (defaults to 24h if "resolve", 10d if "iplist")
     is how long found IP addresses are remembered.
@@ -2773,6 +2773,8 @@ def get_all_urls_and_files(setname, namelist, last_refresh_time,
             continue
         if filename.startswith(('https:', 'http:')):
             content = get_url(filename, setname)
+        elif is_ip_address(filename):
+            content = filename
         else:
             content = get_file(filename, setname)
         if content is None:
