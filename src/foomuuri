@@ -2587,7 +2587,7 @@ def resolve_one_hostname(hostname):
 
 
 def resolve_all_hostnames(resolve):
-    """Return dict of hostname->iplist."""
+    """Return dict of hostname -> set of IP addresses."""
     hosts = {}
     for hostlist in resolve.values():
         for hostname in hostlist:
@@ -2620,19 +2620,25 @@ def apply_resolve_iplist(filename, error_txt, pending_error):
 
 
 def config_resolve_to_iplist():
-    """Parse config's resolve{} and return "setname_4" -> iplist dict."""
+    """Parse config's resolve{} and return "setname_4 -> iplist" dict."""
     config = minimal_config()
     resolve = parse_resolve(config, 'resolve', '24h')
     timeout = resolve.pop('timeout')
     resolve.pop('refresh')
     hosts = resolve_all_hostnames(resolve)
 
-    # Convert resolve "@setname_4 -> hostlist" to "setname_4 -> iplist"
+    # Convert resolve "@setname_4 -> list of hostnames" to
+    # "setname_4 -> list of IP addresses"
     current = {}
+    warned = set()
     for setname, hostlist in resolve.items():
         iplist = set()
         ipv = int(setname[-1])
         for hostname in hostlist:
+            if not hosts[hostname] and hostname not in warned:
+                warned.add(hostname)
+                print(f'Warning: No IP address found for hostname '
+                      f'"{hostname}" in resolve "{setname[:-2]}"', flush=True)
             for ipaddr in hosts[hostname]:
                 if is_ip_address(ipaddr) == ipv:
                     iplist.add(ipaddr)
