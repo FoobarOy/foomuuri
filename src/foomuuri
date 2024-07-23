@@ -2597,14 +2597,17 @@ def resolve_all_hostnames(resolve):
 
 
 def active_sets():
-    """Return list of set names in currently active firewall."""
-    ret = set()
+    """Return set names in currently active firewall.
+
+    Return value is dict of "setname -> entries".
+    """
+    ret = {}
     data = run_program_json(CONFIG['nft_bin'] + ['--json', 'list', 'ruleset'])
     if not data:
         return ret
     for item in data['nftables']:
         if 'set' in item and item['set']['table'] == 'foomuuri':
-            ret.add(item['set']['name'])
+            ret[item['set']['name']] = item['set'].get('elem')
     return ret
 
 
@@ -2664,7 +2667,6 @@ def command_resolve():
 
     # Output entries
     warned = set()
-    error = 0
     for setname, addresses in current.items():
         for address in addresses:
             # Is this set active in current ruleset? If not, add entry as
@@ -2683,12 +2685,21 @@ def command_resolve():
 
         # All lookups failed. Add previous entries as comments.
         if not addresses and setname in previous:
-            warn_resolve_iplist(setname, warned, 'Resolve',
-                                f'failed to resolve IPv{setname[-1]}')
-            error = 1
             for address in sorted(previous[setname]):
                 out(f'# add element inet foomuuri {setname} '
                     f'{{ {address} timeout {timeout} }}')
+
+    # Error if set in currently active firewall is / will be empty
+    has_entries = set()
+    for setname, addresses in current.items():
+        if addresses or known.get(setname):
+            has_entries.add(setname[:-2])
+    error = 0
+    warned = set()
+    for setname in current:
+        if setname[:-2] not in has_entries:
+            error = 1
+            warn_resolve_iplist(setname, warned, 'Resolve', 'is empty')
 
     # Apply update
     return apply_resolve_iplist('resolve_file', 'resolve', error)
