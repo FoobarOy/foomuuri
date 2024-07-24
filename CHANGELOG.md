@@ -10,6 +10,8 @@
 * Add warning if `resolve` hostname doesn't resolve or whole set is empty.
 * Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`
   and `snmptrap` macros to default services.
+* Fix: Don't traceback if `resolve` or `iplist` refresh takes over 60 second
+  on `foomuuri reload`.
 
 ## 0.24 (2024-06-19)
 
