@@ -871,10 +871,14 @@ table inet foomuuri {
 
 	chain nat_prerouting_dstnat {
 		type nat hook prerouting priority dstnat + 5
-		iifname eth0 tcp dport { 25, 443, 80 } dnat ip to 10.1.0.2
-		iifname eth0 udp dport { 25, 443, 80 } dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 tcp dport { 25, 443, 80 } dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 udp dport { 25, 443, 80 } dnat ip to 10.1.0.2
+		iifname eth0 tcp dport 25 dnat ip to 10.1.0.2
+		iifname eth0 tcp dport 80 dnat ip to 10.1.0.2
+		iifname eth0 tcp dport 443 dnat ip to 10.1.0.2
+		iifname eth0 udp dport 443 dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 tcp dport 25 dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 tcp dport 80 dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 tcp dport 443 dnat ip to 10.1.0.2
+		iifname eth1 ip daddr 192.0.2.32 udp dport 443 dnat ip to 10.1.0.2
 	}
 
 	set _lograte_set_4 {
