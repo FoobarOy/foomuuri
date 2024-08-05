@@ -718,6 +718,10 @@ def parse_rule_line(fileline_line):
 
     keyword = None
     for item in line:
+        if item == ';':
+            fail(f'{fileline}";" is not supported in rule, split it to '
+                 f'separate lines: {" ".join(line)}')
+
         # "tcp 22" is shortcut for "tcp dport 22"
         if not keyword and is_port(item):
             keyword = 'dport'

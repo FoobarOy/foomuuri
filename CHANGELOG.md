@@ -4,6 +4,7 @@
 
 * Add `status` command to show if Foomuuri is running, current zone-interface
   mapping.
+* Check more syntax errors in rule.
 * More relaxed import for external `iplist` lists: handle `;` as comment,
   allow overlapping IP ranges.
 * IP address with or without netmask can be used in `iplist` entry.
