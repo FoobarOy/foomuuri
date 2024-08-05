@@ -875,6 +875,7 @@ table inet foomuuri {
 		iifname eth0 tcp dport 80 dnat ip to 10.1.0.2
 		iifname eth0 tcp dport 443 dnat ip to 10.1.0.2
 		iifname eth0 udp dport 443 dnat ip to 10.1.0.2
+		iifname eth0 tcp dport { 111, 112, 113 } dnat ip to 10.1.0.2
 		iifname eth1 ip daddr 192.0.2.32 tcp dport 25 dnat ip to 10.1.0.2
 		iifname eth1 ip daddr 192.0.2.32 tcp dport 80 dnat ip to 10.1.0.2
 		iifname eth1 ip daddr 192.0.2.32 tcp dport 443 dnat ip to 10.1.0.2
