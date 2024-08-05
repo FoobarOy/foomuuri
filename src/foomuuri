@@ -596,12 +596,13 @@ def is_port(value):
     return True
 
 
-def rule_item_only_one(rule, keyword):
-    """Verify that keyword is set only once."""
-    if keyword in rule['only_one']:
-        fail(f'{rule["fileline"]}Rule\'s {keyword} is already set: '
-             f'{" ".join(rule["line"])}')
-    rule['only_one'].add(keyword)
+def rule_item_only_one(rule, keyword, value):
+    """Verify that keyword is set only once, or set to same value."""
+    old = rule.get(f'_only_one_{keyword}', value)
+    if old != value:
+        fail(f'{rule["fileline"]}Rule\'s {keyword} is already set to '
+             f'"{old}": {" ".join(rule["line"])}')
+    rule[f'_only_one_{keyword}'] = value
 
 
 def verify_rule_sanity(rule, fileline):
@@ -723,7 +724,6 @@ def parse_rule_line(fileline_line):
         'plain': True,  # Plain "log" or "counter" without anything else
         'fileline': fileline,  # For error messages
         'line': line,  # Original line for error messages
-        'only_one': set(),  # Is policy already set? There can be only one!
     }
 
     keyword = None
@@ -751,23 +751,23 @@ def parse_rule_line(fileline_line):
         elif item in ('accept', 'drop', 'return', 'continue',
                       'masquerade', 'snat', 'dnat',
                       'mark_save', 'mark_restore'):
-            rule_item_only_one(ret, 'policy')
+            rule_item_only_one(ret, 'policy', item)
             ret['policy'] = item
             ret['plain'] = False
             keyword = None
         elif item == 'reject':
-            rule_item_only_one(ret, 'policy')
+            rule_item_only_one(ret, 'policy', item)
             ret['policy'] = 'reject with icmpx admin-prohibited'
             ret['plain'] = False
             keyword = None
         elif item in ('multicast', 'broadcast'):
-            rule_item_only_one(ret, 'cast')
+            rule_item_only_one(ret, 'cast', item)
             ret['cast'] = item
             ret['plain'] = False
             keyword = None
         elif item in ('tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'):
             # "igmp" and "esp" are for backward compability (v0.21)
-            rule_item_only_one(ret, 'protocol')
+            rule_item_only_one(ret, 'protocol', item)
             ret['protocol'] = item
             ret['plain'] = False
             keyword = None
@@ -784,7 +784,7 @@ def parse_rule_line(fileline_line):
             ret['plain'] = False
             keyword = None
         elif item in ('conntrack', '-conntrack'):
-            rule_item_only_one(ret, 'conntrack')
+            rule_item_only_one(ret, 'conntrack', item)
             ret['after_conntrack'] = item == 'conntrack'
             ret['plain'] = False
             keyword = None
@@ -821,7 +821,7 @@ def parse_rule_line(fileline_line):
             if ret[keyword] is None:
                 ret[keyword] = ''
             if item == 'mark_set':  # policy and start keyword
-                rule_item_only_one(ret, 'policy')
+                rule_item_only_one(ret, 'policy', item)
                 ret['policy'] = item
             if item not in ('counter', 'log', 'log_level'):
                 ret['plain'] = False
