@@ -142,6 +142,39 @@ table inet foomuuri {
 		tcp dport { 1000, 1002, 1003, 3000 } accept
 	}
 
+	chain public-public {
+		meta nfproto vmap {
+			ipv4 : jump public-public_4,
+			ipv6 : jump public-public_6
+		}
+	}
+
+	chain public-public_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		tcp dport { 1000, 1002, 1003, 2000, 2002, 2003, 3000 } accept
+	}
+
+	chain public-public_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		tcp dport { 1000, 1002, 1003, 2000, 2002, 2003, 3000 } accept
+	}
+
 	chain foo-public {
 		meta nfproto vmap {
 			ipv4 : jump foo-public_4,
@@ -406,6 +439,39 @@ table inet foomuuri {
 		tcp dport 3000 accept
 	}
 
+	chain foo-foo {
+		meta nfproto vmap {
+			ipv4 : jump foo-foo_4,
+			ipv6 : jump foo-foo_6
+		}
+	}
+
+	chain foo-foo_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		tcp dport { 3000, 3001, 3002 } accept
+	}
+
+	chain foo-foo_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		tcp dport { 3000, 3001, 3002 } accept
+	}
+
 	chain foo-bar {
 		meta nfproto vmap {
 			ipv4 : jump foo-bar_4,
@@ -506,6 +572,39 @@ table inet foomuuri {
 		tcp dport { 3000, 3001 } accept
 	}
 
+	chain bar-bar {
+		meta nfproto vmap {
+			ipv4 : jump bar-bar_4,
+			ipv6 : jump bar-bar_6
+		}
+	}
+
+	chain bar-bar_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		tcp dport 3000 accept
+	}
+
+	chain bar-bar_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		tcp dport 3000 accept
+	}
+
 	chain localhost-localhost {
 		meta nfproto vmap {
 			ipv4 : jump localhost-localhost_4,
@@ -533,111 +632,6 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-	}
-
-	chain public-public {
-		meta nfproto vmap {
-			ipv4 : jump public-public_4,
-			ipv6 : jump public-public_6
-		}
-	}
-
-	chain public-public_4 {
-		jump allow_icmp_4
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_4,
-			untracked : jump smurfs_4
-		}
-		meta pkttype { broadcast, multicast } drop
-		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
-		drop
-	}
-
-	chain public-public_6 {
-		jump allow_icmp_6
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_6,
-			untracked : jump smurfs_6
-		}
-		meta pkttype multicast drop
-		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
-		drop
-	}
-
-	chain foo-foo {
-		meta nfproto vmap {
-			ipv4 : jump foo-foo_4,
-			ipv6 : jump foo-foo_6
-		}
-	}
-
-	chain foo-foo_4 {
-		jump allow_icmp_4
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_4,
-			untracked : jump smurfs_4
-		}
-		meta pkttype { broadcast, multicast } drop
-		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "foo-foo DROP " level info flags skuid
-		drop
-	}
-
-	chain foo-foo_6 {
-		jump allow_icmp_6
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_6,
-			untracked : jump smurfs_6
-		}
-		meta pkttype multicast drop
-		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "foo-foo DROP " level info flags skuid
-		drop
-	}
-
-	chain bar-bar {
-		meta nfproto vmap {
-			ipv4 : jump bar-bar_4,
-			ipv6 : jump bar-bar_6
-		}
-	}
-
-	chain bar-bar_4 {
-		jump allow_icmp_4
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_4,
-			untracked : jump smurfs_4
-		}
-		meta pkttype { broadcast, multicast } drop
-		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "bar-bar DROP " level info flags skuid
-		drop
-	}
-
-	chain bar-bar_6 {
-		jump allow_icmp_6
-		ct state vmap {
-			established : accept,
-			related : accept,
-			invalid : jump invalid_drop,
-			new : jump smurfs_6,
-			untracked : jump smurfs_6
-		}
-		meta pkttype multicast drop
-		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "bar-bar DROP " level info flags skuid
-		drop
 	}
 
 	set _lograte_set_4 {

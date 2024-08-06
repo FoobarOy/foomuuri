@@ -898,8 +898,8 @@ def filter_any_zonelist(rule, srcdst):
 
 def insert_single_any(any_rules, rules, szone, dzone):
     """Insert single any_rules to rules[(szone, dzone)]."""
-    if szone == dzone:
-        return
+    if szone == dzone == CONFIG['localhost_zone']:
+        return  # Don't insert to localhost-localhost
 
     # Filter out "szone -public" when adding to zone "public-xxx"
     filtered = []
