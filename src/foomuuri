@@ -2669,12 +2669,12 @@ def config_resolve_to_iplist():
     return current, timeout
 
 
-def warn_resolve_iplist(setname, warned, error1, error2):
+def warn_resolve_iplist(setname, warned, error_pre, error_post):
     """Print warning that setname does not exist."""
     if setname[:-2] in warned:
         return  # Already warned
 
-    print(f'Warning: {error1} "@{setname[:-2]}" {error2}', flush=True)
+    print(f'{error_pre} "@{setname[:-2]}" {error_post}', flush=True)
     warned.add(setname[:-2])
 
 
@@ -2693,8 +2693,9 @@ def command_resolve():
             # comment
             if setname not in known:
                 comment = '# '
-                warn_resolve_iplist(setname, warned, 'Resolve', 'does not '
-                                    'exist in currently active firewall')
+                warn_resolve_iplist(setname, warned, 'Warning: Resolve',
+                                    'does not exist in currently active '
+                                    'firewall')
             else:
                 # Success, update elements to ruleset.
                 comment = ''
@@ -2719,7 +2720,7 @@ def command_resolve():
     for setname in current:
         if setname[:-2] not in has_entries:
             error = 1
-            warn_resolve_iplist(setname, warned, 'Resolve', 'is empty')
+            warn_resolve_iplist(setname, warned, 'Error: Resolve', 'is empty')
 
     # Apply update
     return apply_resolve_iplist('resolve_file', 'resolve', error)
@@ -3071,12 +3072,13 @@ def command_iplist_refresh():
             error = 1
             comment = '# '
             addrlist = previous.get(setname, [])
-            warn_resolve_iplist(setname, warned, 'Iplist', 'failed to refresh')
+            warn_resolve_iplist(setname, warned, 'Error: Iplist',
+                                'failed to refresh')
         elif setname not in known:
             # Not active in current ruleset, add items as comments
             comment = '# '
             addrlist = current[setname]
-            warn_resolve_iplist(setname, warned, 'Iplist',
+            warn_resolve_iplist(setname, warned, 'Warning: Iplist',
                                 'does not exist in currently active firewall')
         else:
             # Success, update elements to ruleset.
