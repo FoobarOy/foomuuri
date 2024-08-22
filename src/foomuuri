@@ -986,19 +986,22 @@ def verify_config(config, zones, rules):
             fileline = config['_section_line'][f'{szone}-{dzone}']
             fail(f'{fileline}Unknown zone-zone: {szone}-{dzone}')
 
-    # Add missing zone-zone pairs, needed for "ct established" return packets
-    # and for dynamic interface-to-zone binding via D-Bus.
-    # They will have single rule "drop log".
-    # If localhost-localhost zone is missing it will be added as empty. Empty
-    # is handled as "accept" in output_zones vmap.
+    # Make sure all zone-zone pairs are defined. They are needed for
+    # "ct established" return packets and for dynamic interface-to-zone
+    # binding via D-Bus.
+    # Add final rule to all zone-zone pairs, even if there already is
+    # one. It will be optimized out later.
     for szone in zones:
         for dzone in zones:
             if (szone, dzone) not in rules:
-                if szone == dzone == localhost:
-                    rules[(szone, dzone)] = []
-                else:
-                    rules[(szone, dzone)] = [
-                        parse_rule_line(('', ['drop', 'log']))]
+                rules[(szone, dzone)] = []
+            if szone == dzone == localhost:
+                rule = ['accept']  # localhost-localhost is accept
+            elif szone == localhost:
+                rule = ['reject', 'log']  # localhost-foo is reject
+            else:
+                rule = ['drop', 'log']  # everything else is drop
+            rules[(szone, dzone)].append(parse_rule_line(('', rule)))
 
 
 def output_rate_names(rules):
@@ -1681,7 +1684,7 @@ def output_zone_vmaps(zones, rules):
     # pylint: disable=too-many-branches
 
     # Vmap must have interval-flag if there is wildcard-interface.
-    localhost = CONFIG["localhost_zone"]
+    localhost = CONFIG['localhost_zone']
     has_wildcard = False
     for value in zones.values():
         for interface in value['interface']:
@@ -1707,7 +1710,7 @@ def output_zone_vmaps(zones, rules):
     if has_wildcard:
         out('flags interval')
     out('elements = {')
-    if rules[(localhost, localhost)]:  # Use lo-lo if it is not empty
+    if len(rules[(localhost, localhost)]) > 1:  # Jump to lo-lo if it has rules
         out(f'lo : jump {localhost}-{localhost},')
     else:
         out('lo : accept,')
@@ -1970,6 +1973,16 @@ def optimize_jumps():
                         f'limit rate {CONFIG["log_rate"]} }} ')
             OUT[linenum] = f'{rate}log prefix "{log_text} " {log_level}'
             OUT.insert(linenum + 1, policy)
+        linenum += 1
+
+
+def optimize_final_rules():
+    """Remove unreachable rules from chain after "drop" without matcher."""
+    linenum = 0
+    while linenum < len(OUT):
+        if OUT[linenum].startswith(('accept', 'drop', 'reject')):
+            while OUT[linenum + 1] != '}':
+                del OUT[linenum + 1]
         linenum += 1
 
 
@@ -2259,6 +2272,7 @@ def command_start():
                  'output', 'forward'):
         output_rule_section(chain_rules[name], name)
     optimize_jumps()
+    optimize_final_rules()
     optimize_accepts()
     output_logrates()
     output_resolve_sets(resolve)

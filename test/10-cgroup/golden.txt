@@ -134,6 +134,8 @@ table inet foomuuri {
 		meta cgroup != { 41, 42 } accept
 		meta cgroup != { 43, 50-60 } accept
 		socket cgroupv2 level 1 "user.slice" accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
 	}
 
 	chain localhost-public_6 {
@@ -152,6 +154,8 @@ table inet foomuuri {
 		meta cgroup != { 41, 42 } accept
 		meta cgroup != { 43, 50-60 } accept
 		socket cgroupv2 level 1 "user.slice" accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
 	}
 
 	chain public-localhost {
@@ -173,6 +177,8 @@ table inet foomuuri {
 		ip protocol igmp ip daddr 224.0.0.1 accept
 		meta pkttype { broadcast, multicast } drop
 		socket cgroupv2 level 2 "system.slice/sshd.service" accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
 	}
 
 	chain public-localhost_6 {
@@ -186,6 +192,8 @@ table inet foomuuri {
 		}
 		meta pkttype multicast drop
 		socket cgroupv2 level 2 "system.slice/sshd.service" accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
 	}
 
 	chain localhost-localhost {
@@ -204,6 +212,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
+		accept
 	}
 
 	chain localhost-localhost_6 {
@@ -215,6 +224,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
+		accept
 	}
 
 	chain public-public {

@@ -12,6 +12,8 @@
 * Add warning if `resolve` hostname doesn't resolve or whole set is empty.
 * Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`
   and `snmptrap` macros to default services.
+* Automatically add final `drop log` rule to zone-zone section if it is
+  missing for improved logging.
 * Fix: Don't traceback if `resolve` or `iplist` refresh takes over 60 second
   on `foomuuri reload`.
 

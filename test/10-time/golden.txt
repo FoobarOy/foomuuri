@@ -143,6 +143,8 @@ table inet foomuuri {
 		tcp dport 5002 time > "2025-01-02" day != "Tuesday" accept
 		tcp dport 5003 day != "Tuesday" time > "2025-01-02" accept
 		tcp dport 5004 day "Friday" hour > "21:00" accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
 	}
 
 	chain localhost-public_6 {
@@ -170,6 +172,8 @@ table inet foomuuri {
 		tcp dport 5002 time > "2025-01-02" day != "Tuesday" accept
 		tcp dport 5003 day != "Tuesday" time > "2025-01-02" accept
 		tcp dport 5004 day "Friday" hour > "21:00" accept
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
 	}
 
 	chain localhost-localhost {
@@ -188,6 +192,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
+		accept
 	}
 
 	chain localhost-localhost_6 {
@@ -199,6 +204,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
+		accept
 	}
 
 	chain public-localhost {

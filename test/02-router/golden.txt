@@ -746,6 +746,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
+		accept
 	}
 
 	chain localhost-localhost_6 {
@@ -757,6 +758,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
+		accept
 	}
 
 	chain public-public {
