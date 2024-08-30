@@ -8,7 +8,8 @@
 * Improve syntax error checks for rules.
 * More relaxed import for external `iplist` lists: handle `;` as comment,
   allow overlapping IP ranges.
-* IP address with or without netmask can be used in `iplist` entry.
+* IP address with or without netmask can be used as `resolve` or `iplist`
+  entry.
 * Add warning if `resolve` hostname doesn't resolve or whole set is empty.
 * Add `ipsec-nat`, `pop3s`, `gluster-client`, `gluster-management`, `amqp`
   and `snmptrap` macros to default services.

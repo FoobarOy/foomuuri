@@ -2010,18 +2010,15 @@ def output_logrates():
         out('}')
 
 
-def output_resolve_sets(resolve, interval=False):
+def output_resolve_sets(resolve):
     """Output empty resolve{} and iplist{} sets."""
     for name in resolve:
         if not name.startswith('@'):
             continue
         out(f'set {name[1:]} {{')
         out(f'type ipv{name[-1]}_addr')
-        if interval:
-            out('flags interval,timeout')
-            out('auto-merge')
-        else:
-            out('flags timeout')
+        out('flags interval,timeout')
+        out('auto-merge')
         out('}')
 
 
@@ -2276,7 +2273,7 @@ def command_start():
     optimize_accepts()
     output_logrates()
     output_resolve_sets(resolve)
-    output_resolve_sets(iplist, interval=True)
+    output_resolve_sets(iplist)
     output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
@@ -2610,6 +2607,8 @@ def command_dbus():
 
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
+    if is_ip_address(hostname):  # Return as is if already IP or IP/mask
+        return (hostname,)
     ret = set()
     try:
         for item in socket.getaddrinfo(hostname, None):
