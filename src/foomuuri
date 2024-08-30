@@ -474,9 +474,11 @@ def parse_config_rule_section(config, section):
 def parse_resolve(config, section, timeout=None, refresh=None):
     """Parse resolve{} and iplist{} from config.
 
-    Line syntax:
-      @name fqdn fqdn2 fqdn3               # resolve
-      @name url filename ipv4 ipv6 ip/mask # iplist
+    Line syntax for resolve:
+      @name fqdn fqdn2 fqdn3 ipv4 ipv6 ip/mask
+
+    Line syntax for iplist:
+      @name url filename ipv4 ipv6 ip/mask
 
     Entry "timeout 10h 30m" (defaults to 24h if "resolve", 10d if "iplist")
     is how long found IP addresses are remembered.
