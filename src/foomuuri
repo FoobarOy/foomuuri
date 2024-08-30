@@ -2012,7 +2012,7 @@ def output_logrates():
         out('}')
 
 
-def output_resolve_sets(resolve):
+def output_resolve_sets(resolve, automerge=False):
     """Output empty resolve{} and iplist{} sets."""
     for name in resolve:
         if not name.startswith('@'):
@@ -2020,7 +2020,8 @@ def output_resolve_sets(resolve):
         out(f'set {name[1:]} {{')
         out(f'type ipv{name[-1]}_addr')
         out('flags interval,timeout')
-        out('auto-merge')
+        if automerge:
+            out('auto-merge')
         out('}')
 
 
@@ -2275,7 +2276,7 @@ def command_start():
     optimize_accepts()
     output_logrates()
     output_resolve_sets(resolve)
-    output_resolve_sets(iplist)
+    output_resolve_sets(iplist, automerge=True)
     output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
