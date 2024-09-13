@@ -1056,7 +1056,7 @@ def suffix_mask(value, compare):
     return f'& :{splitted} {compare}{addr}'
 
 
-def single_or_set(data, fileline=''):
+def single_or_set(data, fileline='', quote=False):
     """Convert data to single item or set if multiple values."""
     # Convert to list
     if isinstance(data, list):
@@ -1076,6 +1076,12 @@ def single_or_set(data, fileline=''):
             fail(f'{fileline}Can\'t mix "+" and "-" items: {" ".join(values)}')
         if neg:
             values[index] = value[1:]
+
+    # Quote interface names and similar items. "inet" is a reserved word
+    # but can also be an interface name. It must be quoted.
+    if quote:
+        values = [value if value.isnumeric() else f'"{value}"'
+                  for value in values]
 
     # Single item
     if len(values) == 1 and ' ' not in values[0]:
@@ -1274,9 +1280,11 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     policy = force_policy or rule['policy']
 
     if rule['uid']:
-        ret += f'meta skuid {single_or_set(rule["uid"], rule["fileline"])} '
+        ret += (f'meta skuid '
+                f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} ')
     if rule['gid']:
-        ret += f'meta skgid {single_or_set(rule["gid"], rule["fileline"])} '
+        ret += (f'meta skgid '
+                f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} ')
 
     ret += rule_rate_limit(rule, ipv)
 
@@ -1298,7 +1306,7 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     ):
         ret += 'counter '
         if rule['counter']:
-            ret += f'name {rule["counter"]} '
+            ret += f'name "{rule["counter"]}" '
 
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone POLICY".
@@ -1420,10 +1428,10 @@ def parse_interface_names(rule):
     """Parse iifname/oifname to nft rule."""
     iifname = ''
     if rule['iifname']:
-        iifname = f'iifname {rule["iifname"]} '
+        iifname = f'iifname "{rule["iifname"]}" '
     oifname = ''
     if rule['oifname']:
-        oifname = f'oifname {rule["oifname"]} '
+        oifname = f'oifname "{rule["oifname"]}" '
     return iifname + oifname
 
 
@@ -1699,10 +1707,10 @@ def output_zone_vmaps(zones, rules):
     if has_wildcard:
         out('flags interval')
     out('elements = {')
-    out('lo : accept,')
+    out('"lo" : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {zone}-{localhost},')
+            out(f'"{interface}" : jump {zone}-{localhost},')
     out('}')
     out('}')
 
@@ -1713,12 +1721,12 @@ def output_zone_vmaps(zones, rules):
         out('flags interval')
     out('elements = {')
     if len(rules[(localhost, localhost)]) > 1:  # Jump to lo-lo if it has rules
-        out(f'lo : jump {localhost}-{localhost},')
+        out(f'"lo" : jump {localhost}-{localhost},')
     else:
-        out('lo : accept,')
+        out('"lo" : accept,')
     for zone, value in zones.items():
         for interface in value['interface']:
-            out(f'{interface} : jump {localhost}-{zone},')
+            out(f'"{interface}" : jump {localhost}-{zone},')
     out('}')
     out('}')
 
@@ -1728,12 +1736,12 @@ def output_zone_vmaps(zones, rules):
     if has_wildcard:
         out('flags interval')
     out('elements = {')
-    out('lo . lo : accept,')
+    out('"lo" . "lo" : accept,')
     for szone, svalue in zones.items():
         for dzone, dvalue in zones.items():
             for sinterface in svalue['interface']:
                 for dinterface in dvalue['interface']:
-                    out(f'{sinterface} . {dinterface} : '
+                    out(f'"{sinterface}" . "{dinterface}" : '
                         f'jump {szone}-{dzone},')
     out('}')
     out('}')
@@ -2129,8 +2137,9 @@ def output_rpfilter():
         f'{CONFIG["priority_offset"]}')
     interfaces = ''
     if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
-        interfaces = f'iifname {single_or_set(CONFIG["rpfilter"])} '
-    out(f'{interfaces}fib saddr . mark . iif oif eq 0 meta ipsec missing '
+        interfaces = (f'iifname '
+                      f'{single_or_set(CONFIG["rpfilter"], quote=True)} ')
+    out(f'{interfaces}fib saddr . mark . iif oif 0 meta ipsec missing '
         f'jump rpfilter_drop')
     out('}')
 
@@ -2391,17 +2400,18 @@ class DbusCommon:
 
         # input, output
         out(f'delete element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-{CONFIG["localhost_zone"]} }}')
+            f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'delete element inet foomuuri output_zones '
-            f'{{ {interface} : jump {CONFIG["localhost_zone"]}-{zone} }}')
+            f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
             out(f'delete element inet foomuuri forward_zones '
-                f'{{ {other} . {interface} : jump {otherzone}-{zone} }}')
+                f'{{ "{other}" . "{interface}" : jump {otherzone}-{zone} }}')
             if other != interface:
                 out(f'delete element inet foomuuri forward_zones '
-                    f'{{ {interface} . {other} : jump {zone}-{otherzone} }}')
+                    f'{{ "{interface}" . "{other}" : '
+                    f'jump {zone}-{otherzone} }}')
         return zone
 
     @staticmethod
@@ -2409,19 +2419,21 @@ class DbusCommon:
         """Add interface to zone."""
         # input, output
         out(f'add element inet foomuuri input_zones '
-            f'{{ {interface} : jump {zone}-{CONFIG["localhost_zone"]} }}')
+            f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'add element inet foomuuri output_zones '
-            f'{{ {interface} : jump {CONFIG["localhost_zone"]}-{zone} }}')
+            f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
         # forward
         for other, otherzone in interface_zone.items():
             if other != interface:
                 out(f'add element inet foomuuri forward_zones '
-                    f'{{ {other} . {interface} : jump {otherzone}-{zone} }}')
+                    f'{{ "{other}" . "{interface}" : '
+                    f'jump {otherzone}-{zone} }}')
                 out(f'add element inet foomuuri forward_zones '
-                    f'{{ {interface} . {other} : jump {zone}-{otherzone} }}')
+                    f'{{ "{interface}" . "{other}" : '
+                    f'jump {zone}-{otherzone} }}')
         out(f'add element inet foomuuri forward_zones '
-            f'{{ {interface} . {interface} : jump {zone}-{zone} }}')
+            f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}')
 
     def change_interface_zone(self, interface, new_zone):
         """Change interface to zone, or delete if zone is empty."""

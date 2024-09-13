@@ -92,21 +92,21 @@ table inet foomuuri {
 	map input_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
+			"lo" : accept,
 		}
 	}
 
 	map output_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
+			"lo" : accept,
 		}
 	}
 
 	map forward_zones {
 		type ifname . ifname : verdict
 		elements = {
-			lo . lo : accept,
+			"lo" . "lo" : accept,
 		}
 	}
 
@@ -120,9 +120,9 @@ table inet foomuuri {
 	chain localhost-public_4 {
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "outgoing " level info flags skuid
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "outgoing_2 " level info flags skuid
-		counter name all_out continue
-		counter name all_out_2 continue
-		tcp sport 22 counter name ssh_out continue
+		counter name "all_out" continue
+		counter name "all_out_2" continue
+		tcp sport 22 counter name "ssh_out" continue
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -133,8 +133,8 @@ table inet foomuuri {
 		}
 		tcp dport 22 accept
 		ip protocol igmp ip daddr 224.0.0.22 accept
-		tcp dport 443 counter name new_https accept
-		udp dport 443 counter name new_https accept
+		tcp dport 443 counter name "new_https" accept
+		udp dport 443 counter name "new_https" accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "post-ct,pre-reject " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
@@ -142,9 +142,9 @@ table inet foomuuri {
 	chain localhost-public_6 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "outgoing " level info flags skuid
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "outgoing_2 " level info flags skuid
-		counter name all_out continue
-		counter name all_out_2 continue
-		tcp sport 22 counter name ssh_out continue
+		counter name "all_out" continue
+		counter name "all_out_2" continue
+		tcp sport 22 counter name "ssh_out" continue
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -154,8 +154,8 @@ table inet foomuuri {
 			untracked : jump smurfs_6
 		}
 		tcp dport 22 accept
-		tcp dport 443 counter name new_https accept
-		udp dport 443 counter name new_https accept
+		tcp dport 443 counter name "new_https" accept
+		udp dport 443 counter name "new_https" accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "post-ct,pre-reject " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
@@ -170,9 +170,9 @@ table inet foomuuri {
 	chain public-localhost_4 {
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "incoming " level info flags skuid
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "incoming_2 " level info flags skuid
-		counter name all_in continue
-		counter name all_in_2 continue
-		tcp dport 22 counter name ssh_in continue
+		counter name "all_in" continue
+		counter name "all_in_2" continue
+		tcp dport 22 counter name "ssh_in" continue
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -190,9 +190,9 @@ table inet foomuuri {
 	chain public-localhost_6 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "incoming " level info flags skuid
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "incoming_2 " level info flags skuid
-		counter name all_in continue
-		counter name all_in_2 continue
-		tcp dport 22 counter name ssh_in continue
+		counter name "all_in" continue
+		counter name "all_in_2" continue
+		tcp dport 22 counter name "ssh_in" continue
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -309,7 +309,7 @@ table inet foomuuri {
 
 	chain rpfilter {
 		type filter hook prerouting priority filter + 5
-		fib saddr . mark . iif oif eq 0 meta ipsec missing jump rpfilter_drop
+		fib saddr . mark . iif oif 0 meta ipsec missing jump rpfilter_drop
 	}
 
 }

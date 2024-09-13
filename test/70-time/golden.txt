@@ -92,21 +92,21 @@ table inet foomuuri {
 	map input_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
+			"lo" : accept,
 		}
 	}
 
 	map output_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
+			"lo" : accept,
 		}
 	}
 
 	map forward_zones {
 		type ifname . ifname : verdict
 		elements = {
-			lo . lo : accept,
+			"lo" . "lo" : accept,
 		}
 	}
 
@@ -294,7 +294,7 @@ table inet foomuuri {
 
 	chain rpfilter {
 		type filter hook prerouting priority filter + 5
-		fib saddr . mark . iif oif eq 0 meta ipsec missing jump rpfilter_drop
+		fib saddr . mark . iif oif 0 meta ipsec missing jump rpfilter_drop
 	}
 
 }

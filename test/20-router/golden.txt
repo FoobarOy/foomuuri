@@ -204,36 +204,36 @@ table inet foomuuri {
 	map input_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
-			eth0 : jump public-localhost,
-			eth1 : jump internal-localhost,
-			eth2 : jump dmz-localhost,
+			"lo" : accept,
+			"eth0" : jump public-localhost,
+			"eth1" : jump internal-localhost,
+			"eth2" : jump dmz-localhost,
 		}
 	}
 
 	map output_zones {
 		type ifname : verdict
 		elements = {
-			lo : accept,
-			eth0 : jump localhost-public,
-			eth1 : jump localhost-internal,
-			eth2 : jump localhost-dmz,
+			"lo" : accept,
+			"eth0" : jump localhost-public,
+			"eth1" : jump localhost-internal,
+			"eth2" : jump localhost-dmz,
 		}
 	}
 
 	map forward_zones {
 		type ifname . ifname : verdict
 		elements = {
-			lo . lo : accept,
-			eth0 . eth0 : jump public-public,
-			eth0 . eth1 : jump public-internal,
-			eth0 . eth2 : jump public-dmz,
-			eth1 . eth0 : jump internal-public,
-			eth1 . eth1 : jump internal-internal,
-			eth1 . eth2 : jump internal-dmz,
-			eth2 . eth0 : jump dmz-public,
-			eth2 . eth1 : jump dmz-internal,
-			eth2 . eth2 : jump dmz-dmz,
+			"lo" . "lo" : accept,
+			"eth0" . "eth0" : jump public-public,
+			"eth0" . "eth1" : jump public-internal,
+			"eth0" . "eth2" : jump public-dmz,
+			"eth1" . "eth0" : jump internal-public,
+			"eth1" . "eth1" : jump internal-internal,
+			"eth1" . "eth2" : jump internal-dmz,
+			"eth2" . "eth0" : jump dmz-public,
+			"eth2" . "eth1" : jump dmz-internal,
+			"eth2" . "eth2" : jump dmz-dmz,
 		}
 	}
 
@@ -868,20 +868,20 @@ table inet foomuuri {
 
 	chain nat_postrouting_srcnat {
 		type nat hook postrouting priority srcnat + 5
-		oifname eth0 ip saddr 10.0.0.0/8 masquerade
+		oifname "eth0" ip saddr 10.0.0.0/8 masquerade
 	}
 
 	chain nat_prerouting_dstnat {
 		type nat hook prerouting priority dstnat + 5
-		iifname eth0 tcp dport 25 dnat ip to 10.1.0.2
-		iifname eth0 tcp dport 80 dnat ip to 10.1.0.2
-		iifname eth0 tcp dport 443 dnat ip to 10.1.0.2
-		iifname eth0 udp dport 443 dnat ip to 10.1.0.2
-		iifname eth0 tcp dport { 111, 112, 113 } dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 tcp dport 25 dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 tcp dport 80 dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 tcp dport 443 dnat ip to 10.1.0.2
-		iifname eth1 ip daddr 192.0.2.32 udp dport 443 dnat ip to 10.1.0.2
+		iifname "eth0" tcp dport 25 dnat ip to 10.1.0.2
+		iifname "eth0" tcp dport 80 dnat ip to 10.1.0.2
+		iifname "eth0" tcp dport 443 dnat ip to 10.1.0.2
+		iifname "eth0" udp dport 443 dnat ip to 10.1.0.2
+		iifname "eth0" tcp dport { 111, 112, 113 } dnat ip to 10.1.0.2
+		iifname "eth1" ip daddr 192.0.2.32 tcp dport 25 dnat ip to 10.1.0.2
+		iifname "eth1" ip daddr 192.0.2.32 tcp dport 80 dnat ip to 10.1.0.2
+		iifname "eth1" ip daddr 192.0.2.32 tcp dport 443 dnat ip to 10.1.0.2
+		iifname "eth1" ip daddr 192.0.2.32 udp dport 443 dnat ip to 10.1.0.2
 	}
 
 	set _lograte_set_4 {
@@ -900,7 +900,7 @@ table inet foomuuri {
 
 	chain rpfilter {
 		type filter hook prerouting priority filter + 5
-		fib saddr . mark . iif oif eq 0 meta ipsec missing jump rpfilter_drop
+		fib saddr . mark . iif oif 0 meta ipsec missing jump rpfilter_drop
 	}
 
 }
