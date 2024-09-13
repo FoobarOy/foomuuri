@@ -15,8 +15,7 @@
   `snmptrap` and `activedirectory` macros to default services.
 * Automatically add final `drop log` rule to zone-zone section if it is
   missing for improved logging.
-* Fix: Allow using reserved words like `inet` as interface name, counter
-  name or uid/gid.
+* Fix: Allow using reserved words like `inet` as interface name or uid/gid.
 * Fix: Don't traceback if `resolve` or `iplist` refresh takes over 60 second
   on `foomuuri reload`.
 
