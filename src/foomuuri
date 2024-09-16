@@ -706,6 +706,7 @@ def parse_rule_line(fileline_line):
         'new_dzone': None,
         # Misc rules
         'to': None,  # snat/dnat to
+        'queue': None,  # queue flags
         'counter': None,
         'helper': None,
         'sipsec': None,
@@ -813,6 +814,7 @@ def parse_rule_line(fileline_line):
                       'nft',
                       'mss',
                       'template',
+                      'queue',
                       'mark_set',
                       'mark_match',
                       'cgroup',
@@ -822,7 +824,7 @@ def parse_rule_line(fileline_line):
             keyword = item
             if ret[keyword] is None:
                 ret[keyword] = ''
-            if item == 'mark_set':  # policy and start keyword
+            if item in ('queue', 'mark_set'):  # policy and start keyword
                 rule_item_only_one(ret, 'policy', item)
                 ret['policy'] = item
             if item not in ('counter', 'log', 'log_level'):
@@ -1331,6 +1333,10 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
     elif policy == 'mark_restore':  # ct -> packet
         policy = 'meta mark set ct mark'
 
+    # queue can have optional flags
+    if policy == 'queue' and rule[policy]:
+        policy = f'{policy} {rule[policy]}'
+
     return ret + policy
 
 
@@ -1484,6 +1490,8 @@ def parse_to(rule, ipv):
     """Parse snat/dnat "to" rule to nft rule."""
     if not rule['to']:
         return ''
+    if rule['policy'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
+        return f' to {rule["to"]}'
 
     # "to" can be IPv4+IPv6, find correct one
     target = []

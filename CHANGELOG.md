@@ -4,6 +4,8 @@
 
 * Add `status` command to show if Foomuuri is running, current zone-interface
   mapping.
+* Add `queue` statement. It forwards packet to userspace, used for example
+  for IPS/IDS.
 * Rules in `any-public` section will be added to `public-public` too.
 * Improve syntax error checks for rules.
 * More relaxed import for external `iplist` lists: handle `;` as comment,
