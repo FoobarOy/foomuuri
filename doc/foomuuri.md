@@ -90,7 +90,7 @@ emulation for NetworkManager's zone support.
 : change interface to zone
 
 **set interface {interface} zone -**
-: remove interface from all zones')
+: remove interface from all zones
 
 # FILES
 
