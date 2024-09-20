@@ -86,6 +86,12 @@ emulation for NetworkManager's zone support.
 **iplist refresh name {name...}**
 : refresh iplist @name entries now
 
+**set interface {interface} zone {zone}**
+: change interface to zone
+
+**set interface {interface} zone -**
+: remove interface from all zones')
+
 # FILES
 
 **Foomuuri** reads configuration files from */etc/foomuuri/\*.conf*.

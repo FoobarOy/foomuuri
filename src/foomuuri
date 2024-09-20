@@ -2378,6 +2378,12 @@ def command_status():
     return 0
 
 
+class FoomuuriDbusException(dbus.DBusException):
+    """Exception class for D-Bus interface."""
+
+    _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
+
+
 class DbusCommon:
     """D-Bus server - Common Functions."""
 
@@ -2402,17 +2408,18 @@ class DbusCommon:
     @staticmethod
     def remove_interface(interface_zone, interface):
         """Remove interface from all zones."""
+        # Get interface's current zone
         zone = interface_zone.get(interface)
         if not zone:
             return ''
 
-        # input, output
+        # Remove from input and output
         out(f'delete element inet foomuuri input_zones '
             f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'delete element inet foomuuri output_zones '
             f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
-        # forward
+        # Remove from forward
         for other, otherzone in interface_zone.items():
             out(f'delete element inet foomuuri forward_zones '
                 f'{{ "{other}" . "{interface}" : jump {otherzone}-{zone} }}')
@@ -2424,14 +2431,14 @@ class DbusCommon:
 
     @staticmethod
     def add_interface(interface_zone, interface, zone):
-        """Add interface to zone."""
-        # input, output
+        """Add interface to zone. It must be already removed from others."""
+        # Add to input and output
         out(f'add element inet foomuuri input_zones '
             f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
         out(f'add element inet foomuuri output_zones '
             f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
 
-        # forward
+        # Add to forward
         for other, otherzone in interface_zone.items():
             if other != interface:
                 out(f'add element inet foomuuri forward_zones '
@@ -2444,11 +2451,11 @@ class DbusCommon:
             f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}')
 
     def change_interface_zone(self, interface, new_zone):
-        """Change interface to zone, or delete if zone is empty."""
+        """Change interface to new_zone, or delete if new_zone is empty."""
         interface, new_zone = str(interface), str(new_zone)
         if new_zone and new_zone not in self.zones:
             print(f'Warning: Zone "{new_zone}" is unknown', flush=True)
-            return '', ''
+            raise FoomuuriDbusException(f'Zone "{new_zone}" is unknown')
         if interface == 'lo':
             # Interface "lo" must stay in "localhost" zone.
             # Other interfaces can be added to "localhost" only if
@@ -2456,6 +2463,8 @@ class DbusCommon:
             if new_zone != CONFIG['localhost_zone']:
                 print(f'Warning: Can\'t change interface "lo" to zone '
                       f'"{new_zone}"', flush=True)
+                raise FoomuuriDbusException(f'Can\'t change interface "lo" '
+                                            f'to zone "{new_zone}"')
             return '', ''
         interface_zone = parse_active_interface_zone()
         self.clean_out()
@@ -2478,23 +2487,33 @@ class DbusCommon:
         return CONFIG['dbus_zone']
 
     def method_get_zones(self):
-        """Get available zones. "localhost" can't have interfaces."""
+        """Get list of available zones.
+
+        "localhost" can't have any interfaces so don't include it.
+        """
         return [name for name in self.zones
                 if name != CONFIG['localhost_zone']]
 
     def method_remove_interface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty."""
+        """Remove interface from zone, or from all if zone is empty.
+
+        This is currently always handled as "from all".
+        """
         print(f'Interface "{interface}" remove from zone "{zone}"', flush=True)
         return self.change_interface_zone(interface, '')[0]
 
     def method_add_interface(self, zone, interface):
-        """Add interface to zone. There can be only one zone per interface."""
+        """Add interface to zone.
+
+        There can be only one zone per interface so it will be removed
+        from previous zone if needed.
+        """
         zone = self.parse_default_zone(interface, zone)
         print(f'Interface "{interface}" add to zone "{zone}"', flush=True)
         return self.change_interface_zone(interface, zone)[1]
 
     def method_change_zone_of_interface(self, zone, interface):
-        """Change interface's zone."""
+        """Change interface to zone."""
         zone = self.parse_default_zone(interface, zone)
         print(f'Interface "{interface}" change to zone "{zone}"', flush=True)
         return self.change_interface_zone(interface, zone)[0]
@@ -2508,25 +2527,34 @@ class DbusFoomuuri(dbus.service.Object, DbusCommon):
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
                          in_signature='', out_signature='as')
     def getZones(self):
-        """Get available zones. "localhost" can't have interfaces."""
+        """Get list of available zones."""
         return self.method_get_zones()
 
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
                          in_signature='ss', out_signature='s')
     def removeInterface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty."""
+        """Remove interface from zone, or from all if zone is empty.
+
+        Return: previous zone
+        """
         return self.method_remove_interface(zone, interface)
 
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
                          in_signature='ss', out_signature='s')
     def addInterface(self, zone, interface):
-        """Add interface to zone. There can be only one zone per interface."""
+        """Add interface to zone.
+
+        Return: new zone
+        """
         return self.method_add_interface(zone, interface)
 
     @dbus.service.method('fi.foobar.Foomuuri1.zone',
                          in_signature='ss', out_signature='s')
     def changeZoneOfInterface(self, zone, interface):
-        """Change interface's zone."""
+        """Change interface to zone.
+
+        Return: previous zone
+        """
         return self.method_change_zone_of_interface(zone, interface)
 
 
@@ -2538,25 +2566,34 @@ class DbusFirewallD(dbus.service.Object, DbusCommon):
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
                          in_signature='', out_signature='as')
     def getZones(self):
-        """Get available zones. "localhost" can't have interfaces."""
+        """Get list of available zones."""
         return self.method_get_zones()
 
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
                          in_signature='ss', out_signature='s')
     def removeInterface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty."""
+        """Remove interface from zone, or from all if zone is empty.
+
+        Return: previous zone
+        """
         return self.method_remove_interface(zone, interface)
 
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
                          in_signature='ss', out_signature='s')
     def addInterface(self, zone, interface):
-        """Add interface to zone. There can be only one zone per interface."""
+        """Add interface to zone.
+
+        Return: new zone
+        """
         return self.method_add_interface(zone, interface)
 
     @dbus.service.method('org.fedoraproject.FirewallD1.zone',
                          in_signature='ss', out_signature='s')
     def changeZoneOfInterface(self, zone, interface):
-        """Change interface's zone."""
+        """Change interface to zone.
+
+        Return: previous zone
+        """
         return self.method_change_zone_of_interface(zone, interface)
 
 
@@ -2626,6 +2663,25 @@ def command_dbus():
             del firewalld_object
             del firewalld_name
         del bus
+
+
+def command_set():
+    """Modify runtime config by calling D-Bus methods."""
+    if (
+            len(sys.argv) != 6 or
+            sys.argv[2] != 'interface' or
+            sys.argv[4] != 'zone'
+    ):
+        command_help()
+    try:
+        bus = dbus.SystemBus()
+        obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
+        if sys.argv[5] in ('', '-'):
+            obj.removeInterface('', sys.argv[3])
+        else:
+            obj.changeZoneOfInterface(sys.argv[5], sys.argv[3])
+    except dbus.exceptions.DBusException as error:
+        fail(error)
 
 
 def resolve_one_hostname(hostname):
@@ -3554,7 +3610,7 @@ def command_monitor():
     return 0
 
 
-def command_help():
+def command_help(error=True):
     """Print command line help."""
     print(f'Foomuuri {VERSION}')
     print()
@@ -3585,6 +3641,10 @@ def command_help():
     print('                   Delete IP address from iplist')
     print('  iplist refresh name {name...}')
     print('                   Refresh iplist @name now')
+    print('  set interface {interface} zone {zone}')
+    print('                   Change interface to zone')
+    print('  set interface {interface} zone -')
+    print('                   Remove interface from all zones')
     print()
     print('Available options:')
     print()
@@ -3595,10 +3655,12 @@ def command_help():
     print()
     print('Internally used commands:')
     print()
-    print('  resolve refresh  Refresh resolve hostnames')
     print('  iplist refresh   Refresh iplist entries')
+    print('  resolve refresh  Refresh resolve hostnames')
     print('  dbus             Start D-Bus daemon')
     print('  monitor          Start target monitor daemon')
+    if error:
+        fail()
     return 0
 
 
@@ -3632,12 +3694,12 @@ def run_command():
     """Run CONFIG[command]."""
     # Only some commands can take arguments
     if CONFIG['parameters'] and CONFIG['command'] not in (
-            'list', 'resolve', 'iplist', 'help'):
+            'list', 'iplist', 'set', 'resolve', 'help'):
         return command_help()
 
     # Help doesn't need root
     if CONFIG['command'] == 'help':
-        return command_help()
+        return command_help(error=False)
 
     # Warning if not running as root
     CONFIG['root_power'] = not os.getuid()
@@ -3650,8 +3712,9 @@ def run_command():
         'status': command_status,
         'block': command_block,
         'list': command_list,
-        'resolve': command_resolve,
+        'set': command_set,
         'iplist': command_iplist,
+        'resolve': command_resolve,
         'dbus': command_dbus,
         'monitor': command_monitor,
     }.get(CONFIG['command'])

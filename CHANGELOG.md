@@ -4,6 +4,8 @@
 
 * Add `status` command to show if Foomuuri is running, current zone-interface
   mapping.
+* Add `set interface eth0 zone public` command to change interface to zone.
+* Add `set interface eth0 zone -` command to remove interface from all zones.
 * Add `queue` statement. It forwards packet to userspace, used for example
   for IPS/IDS.
 * Rules in `any-public` section will be added to `public-public` too.
