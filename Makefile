@@ -9,7 +9,7 @@ SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
 
 all: test
 
-# Check source
+# Run testsuite and check source
 
 test:
 	$(MAKE) -C test
@@ -65,7 +65,7 @@ sysupdate:
 
 # Make new release
 
-release:
+release: test clean
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Usage: make release VERSION=x.xx"; \
 		echo; \
