@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.25 (2024-xx-xx)
+## 0.25 (2024-10-01)
 
 * Add `status` command to show if Foomuuri is running, current zone-interface
   mapping.
