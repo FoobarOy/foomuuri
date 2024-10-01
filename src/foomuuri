@@ -1274,7 +1274,7 @@ def cgroup_match(rule):
     return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
 
 
-def rule_rate_log_policy(szone, dzone, rule, ipv, force_policy=None,
+def rule_rate_log_policy(szone, dzone, rule, ipv, *, force_policy=None,
                          do_lograte=True):
     """Return rule's user, rate, log and policy as nft command."""
     # pylint: disable=too-many-arguments
@@ -1582,7 +1582,8 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             continue
         if match == '' and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
-        policy = rule_rate_log_policy(szone, dzone, rule, ipv, rule['nft'])
+        policy = rule_rate_log_policy(szone, dzone, rule, ipv,
+                                      force_policy=rule['nft'])
 
         if match + policy == 'meta mark set ct mark':
             has_mark_match = True
@@ -1788,7 +1789,8 @@ def output_rule_section_no_header(rules, section):
             if match is None:
                 continue
             policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
-                                          rule['nft'], do_lograte=False)
+                                          force_policy=rule['nft'],
+                                          do_lograte=False)
 
             # Mark match/set requires restoring/saving mark. Add it if not
             # already added.
