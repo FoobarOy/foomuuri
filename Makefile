@@ -72,14 +72,15 @@ release:
 		echo "Current: $(CURRENT_VERSION)"; \
 		exit 1; \
 	fi
-	! grep -q 20..-xx-xx CHANGELOG.md
 	git diff --exit-code
 	git diff --cached --exit-code
+	sed -i -e "s@^\(## ${VERSION} .\)20..-xx-xx.@\1$(shell date +'%Y-%m-%d')\)@" CHANGELOG.md
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
 	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
 	sed -i -e "s@^\(date: \).*@\1$(shell date +'%b %d, %Y')@" doc/foomuuri.md
 	make --directory=doc
-	git add src/foomuuri doc/foomuuri.md doc/foomuuri.8
+	git diff
+	git add CHANGELOG.md src/foomuuri doc/foomuuri.md doc/foomuuri.8
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
 	@echo
