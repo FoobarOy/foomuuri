@@ -1693,13 +1693,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
 
 
 def output_zone_vmaps(zones, rules):
-    """Output interface verdict maps to jump to correct zone-zone.
-
-    Beware:
-
-    Wildcard matching coredumps in RHEL / nft v1.0.4. Do not use!
-    It works fine on Fedora / nft v1.0.5.
-    """
+    """Output interface verdict maps to jump to correct zone-zone."""
     # pylint: disable=too-many-branches
 
     # Vmap must have interval-flag if there is wildcard-interface.
