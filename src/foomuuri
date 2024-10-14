@@ -72,6 +72,7 @@ CONFIG = {
     'iplist_file': 'iplist.fw',
     'iplist_manual_file': 'iplist-manual.fw',
     'zone_file': 'zone',
+    'monitor_statistics_file': 'monitor.statistics',
 
     # Parsed command line parameters - used internally
     'command': '',
@@ -3375,8 +3376,11 @@ def monitor_update_target(targets, groups, target, state):
 def monitor_parse_line(targets, groups, target, line):
     """Parse result line from monitor's command."""
     # Generic "OK" or "ERROR" reply
+    stat_ms = None  # Value for statistics, assume error
     if line in ('OK', 'ERROR'):
         state = line == 'OK'
+        if state:
+            stat_ms = 1  # There is no time, use 1
     else:
         # fping reply
         match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
@@ -3384,8 +3388,18 @@ def monitor_parse_line(targets, groups, target, line):
             return  # No match, ignore line
         result = match.group(1)
         state = ' bytes, ' in result and ' ms (' in result
-    # print(f'{target:10}: {state}, {result}', flush=True)
+        if state:
+            try:
+                stat_ms = float(result.split()[2])
+            except ValueError:
+                pass
+
+    # Update target state
     monitor_update_target(targets, groups, target, state)
+
+    # Add result to statistics
+    cfg = targets[target]
+    cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size']:]
 
 
 def monitor_start_targets(targets, groups):
@@ -3440,6 +3454,7 @@ def monitor_close_target(targets, groups, target):
     cfg['proc'].wait(timeout=0.1)
     cfg['proc'] = None
     cfg['proc_restart'] = time.time() + 30
+    cfg['time'] = []
 
     # Mark it as down immediately
     cfg['history'] = [False] * cfg['history_size']
@@ -3496,12 +3511,15 @@ def parse_config_targets(config):
             'history_up': 80,        # count of UPs => n     => UP
             'history_down': 30,      # count of DOWNs >= n   => DOWN
             'history_size': 100,
+            'statistics_size': 300,     # Keep last 300 results
+            'statistics_interval': 60,  # Write it once a minute
             # Internal items:
             # 'state': True,
             # 'state_time': time(),
             # 'history': [True] * history_size,
             # 'proc': Popen()
             'proc_restart': 0,       # Start immediately
+            'time': [],              # Statistics
         }
         fileline = ''
         for fileline, line in config.pop(f'target {name}'):
@@ -3562,6 +3580,27 @@ def parse_config_groups(config, targets):
     return groups
 
 
+def monitor_write_statistics(targets):
+    """Write statistics file."""
+    stats = {
+        target: {
+            # Config
+            'consecutive_up': cfg['consecutive_up'],
+            'consecutive_down': cfg['consecutive_down'],
+            'history_up': cfg['history_up'],
+            'history_down': cfg['history_down'],
+            # State
+            'state': cfg['state'],
+            'history': cfg['history'],
+            # fping time
+            'time': cfg['time'],
+        }
+        for target, cfg in targets.items()
+    }
+    save_file(CONFIG['monitor_statistics_file'],
+              [json.dumps(stats, indent=2, sort_keys=True)])
+
+
 def command_monitor():
     """Monitor targets and run command when their state changes up or down."""
     CONFIG['keep_going'] = 1
@@ -3599,8 +3638,17 @@ def command_monitor():
         print('Target monitor ready', flush=True)
         if HAVE_NOTIFY:
             notify('READY=1')
+        stat_interval = min(cfg['statistics_interval']
+                            for cfg in targets.values())
+        next_stat = time.time() + stat_interval / 5
         while CONFIG['keep_going'] == 1:
             monitor_read_targets(targets, groups)
+
+            # Periodic statistics file update
+            if stat_interval and time.time() >= next_stat:
+                next_stat += stat_interval
+                monitor_write_statistics(targets)
+
         monitor_terminate_targets(targets)
 
     return 0

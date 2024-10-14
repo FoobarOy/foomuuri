@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.26 (20xx-xx-xx)
+
+* Write `foomuuri-monitor` states and statistics to a file once a minute.
+
 ## 0.25 (2024-10-01)
 
 * Add `status` command to show if Foomuuri is running, current zone-interface
