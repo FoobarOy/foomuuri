@@ -8,6 +8,7 @@ Copyright 2023, Kim B. Heino, Foobar Oy <b@bbbs.net>
 License: GPL-2.0-or-later
 """
 
+import concurrent.futures
 import datetime
 import ipaddress
 import itertools
@@ -2728,11 +2729,18 @@ def resolve_one_hostname(hostname):
 
 def resolve_all_hostnames(resolve):
     """Return dict of hostname -> set of IP addresses."""
-    hosts = {}
+    # Collect list of hostnames to resolve
+    todo = set()
     for hostlist in resolve.values():
-        for hostname in hostlist:
-            if hostname not in hosts:
-                hosts[hostname] = resolve_one_hostname(hostname)
+        todo.update(hostlist)
+
+    # Resolve them
+    hosts = {}
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        jobs = {executor.submit(resolve_one_hostname, hostname): hostname
+                for hostname in todo}
+        for future in concurrent.futures.as_completed(jobs):
+            hosts[jobs[future]] = future.result()
     return hosts
 
 
