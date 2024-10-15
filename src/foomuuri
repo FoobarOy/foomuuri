@@ -324,16 +324,16 @@ def parse_config_macros(config):
     while True:
         found = False
         for check, cvalue in macros.items():
-            for macro, value in macros.items():
+            for macro, mvalue in macros.items():
                 try:
-                    pos = value.index(check)
+                    pos = mvalue.index(check)  # Full word expansion only
                 except ValueError:
                     continue
                 if check == macro:  # Macro "foo" expands to "foo bar"
                     fail(f'{macroline[macro]}Macro "{macro}" expands to '
-                         f'itself: {" ".join(value)}')
+                         f'itself: {" ".join(mvalue)}')
                 # Expand macro
-                macros[macro] = value[:pos] + cvalue + value[pos + 1:]
+                macros[macro] = mvalue[:pos] + cvalue + mvalue[pos + 1:]
                 found = True
         if not found:  # No new expansion was done
             return macros
@@ -347,11 +347,41 @@ def expand_single_line(fileline, line, macros):
     """
     # Iterate words in line
     for pos, word in enumerate(line):
+        # Cleanup "-macro", "macro/24", "[macro]:123" and "macro:123"
+        # to prefix/macro/suffix parts
+        word_prefix = word_suffix = ''
+        if word[0] == '-':  # Negative IP address
+            word = word[1:]
+            word_prefix = '-'
+        if word.count('/') == 1:  # Netmask
+            word, word_suffix = word.split('/')
+            word_suffix = f'/{word_suffix}'
+        if (
+                word[0] == '[' and
+                word.count(']:') == 1 and
+                not word_prefix and
+                not word_suffix
+        ):  # [IPv6]:port
+            word, word_suffix = word[1:].split(']:')
+            word_prefix = '['
+            word_suffix = f']:{word_suffix}'
+        if word.count(':') == 1 and not word_suffix:  # IPv4:port
+            word, word_suffix = word.split(':')
+            word_suffix = f':{word_suffix}'
+
+        # Check cleaned value
         if word not in macros:
             continue
-        mvalue = macros[word]
 
-        # Macro found, expand it and return list of expanded lines
+        # Found, add prefix/suffix to all macro's value
+        mvalue = []
+        for item in macros[word]:
+            if item == ';':
+                mvalue.append(item)
+            else:
+                mvalue.append(f'{word_prefix}{item}{word_suffix}')
+
+        # Expand mvalue to line and return list of expanded lines
         prefix = line[:pos]
         suffix = line[pos + 1:]
         return [(fileline, prefix + list(group) + suffix)
