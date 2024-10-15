@@ -340,15 +340,16 @@ def parse_config_macros(config):
 
 
 def expand_single_line(fileline, line, macros):
-    """Expand first matching macro in line. Repeat call to expand all.
+    """Expand first macro in line. Repeat call to expand all.
 
-    This can result to multiple lines. Return None if no expansion was done.
+    Expansion can return multiple lines.
+    Returns None if no expansion was done.
     """
-    for macro, mvalue in macros.items():
-        try:
-            pos = line.index(macro)
-        except ValueError:
+    # Iterate words in line
+    for pos, word in enumerate(line):
+        if word not in macros:
             continue
+        mvalue = macros[word]
 
         # Macro found, expand it and return list of expanded lines
         prefix = line[:pos]
