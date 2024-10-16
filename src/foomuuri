@@ -2750,11 +2750,12 @@ def active_sets():
     Return value is dict of "setname -> entries".
     """
     ret = {}
-    data = run_program_json(CONFIG['nft_bin'] + ['--json', 'list', 'ruleset'])
+    data = run_program_json(CONFIG['nft_bin'] + ['--json', 'list', 'sets',
+                                                 'table', 'inet', 'foomuuri'])
     if not data:
         return ret
     for item in data['nftables']:
-        if 'set' in item and item['set']['table'] == 'foomuuri':
+        if 'set' in item:
             ret[item['set']['name']] = item['set'].get('elem')
     return ret
 
