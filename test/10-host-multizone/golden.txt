@@ -160,8 +160,8 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_4 {
-		icmp type 8 update @_rate_set_1_4 { ip saddr limit rate 5/second burst 20 packets } accept
-		icmp type 8 drop
+		icmp type echo-request update @_rate_set_1_4 { ip saddr limit rate 5/second burst 20 packets } accept
+		icmp type echo-request drop
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -180,8 +180,8 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_6 {
-		icmpv6 type 128 update @_rate_set_2_6 { ip6 saddr limit rate 5/second burst 20 packets } accept
-		icmpv6 type 128 drop
+		icmpv6 type echo-request update @_rate_set_2_6 { ip6 saddr limit rate 5/second burst 20 packets } accept
+		icmpv6 type echo-request drop
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -205,7 +205,7 @@ table inet foomuuri {
 	}
 
 	chain home-localhost_4 {
-		icmp type 8 accept
+		icmp type echo-request accept
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -227,7 +227,7 @@ table inet foomuuri {
 	}
 
 	chain home-localhost_6 {
-		icmpv6 type 128 accept
+		icmpv6 type echo-request accept
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -254,7 +254,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-public_4 {
-		icmp type 8 accept
+		icmp type echo-request accept
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -271,7 +271,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-public_6 {
-		icmpv6 type 128 accept
+		icmpv6 type echo-request accept
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -295,7 +295,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-home_4 {
-		icmp type 8 accept
+		icmp type echo-request accept
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -315,7 +315,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-home_6 {
-		icmpv6 type 128 accept
+		icmpv6 type echo-request accept
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,

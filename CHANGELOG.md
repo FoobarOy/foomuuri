@@ -4,6 +4,8 @@
 
 * Add support for `-macro`, `macro/24`, `[macro]:123` and `macro:123` in
   macro expansion.
+* Add support for `icmp echo-request` (and other names) in addition to
+  `icmp 8`. Use name in default `ping` macro instead of number.
 * Write `foomuuri-monitor` states and statistics to a file once a minute.
 * Fix: Add range support to `iplist list`.
 

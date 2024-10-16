@@ -622,9 +622,21 @@ def is_ip_address(value):
     return 0
 
 
-def is_port(value):
-    """Check if value is port: "1", "1-2" or "1,2", or any combination."""
+def is_port(value, protocol):
+    """Check if value is port: "1", "1-2" or "1,2", or any combination.
+
+    This is used in parse_rule_line so protocol must specified.
+    Allow special keywords for protocol icmp/icmpv6.
+    """
+    if not protocol:
+        return False
     for item in value.split(','):
+        if protocol in ('icmp', 'icmpv6') and (
+                # See: "nft describe icmp type; nft describe icmpv6 type"
+                item == 'redirect' or
+                re.match(r'^[a-z2]{2,}-[-a-z]{5,}$', item)
+        ):
+            continue
         for number in item.split('-'):
             if not number.isnumeric():
                 return False
@@ -769,7 +781,7 @@ def parse_rule_line(fileline_line):
                  f'separate lines: {" ".join(line)}')
 
         # "tcp 22" is shortcut for "tcp dport 22"
-        if not keyword and is_port(item):
+        if not keyword and is_port(item, ret['protocol']):
             keyword = 'dport'
             ret['plain'] = False
             if ret[keyword] is None:
@@ -1398,7 +1410,11 @@ def output_icmp(szone, dzone, rules, ipv):
 
         proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
         out(f'{proto_ports}{match}{policy}')
-        if rule['dport'] and ping not in rule['dport'].split():
+        if (
+                rule['dport'] and
+                ping not in rule['dport'].split() and
+                'echo-request' not in rule['dport'].split()
+        ):
             continue  # Continue to next rule if this wasn't ping or match all
 
         # This rule was for ping, usually accepting non-flood pings. Add
@@ -1411,7 +1427,7 @@ def output_icmp(szone, dzone, rules, ipv):
 
     # Overflow-pings must be dropped before ct
     if has_ping_rule and not has_match_all:
-        out(f'{icmp} type {ping} drop')
+        out(f'{icmp} type echo-request drop')
 
     # Allow needed icmp
     out(f'jump allow_icmp_{ipv}')

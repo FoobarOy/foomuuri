@@ -118,7 +118,7 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_4 {
-		icmp type 8 accept
+		icmp type echo-request accept
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -137,7 +137,7 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_6 {
-		icmpv6 type 128 accept
+		icmpv6 type echo-request accept
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
