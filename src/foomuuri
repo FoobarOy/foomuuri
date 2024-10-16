@@ -3041,6 +3041,8 @@ def iterate_set_elements(data):
             expire = elem['elem']['expires']
             if isinstance(ipaddr, str):
                 yield ipaddr, expire
+            elif 'range' in ipaddr:
+                yield f'{ipaddr["range"][0]}-{ipaddr["range"][1]}', expire
             else:
                 yield (f'{ipaddr["prefix"]["addr"]}/'
                        f'{ipaddr["prefix"]["len"]}', expire)

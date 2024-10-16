@@ -5,6 +5,7 @@
 * Add support for `-macro`, `macro/24`, `[macro]:123` and `macro:123` in
   macro expansion.
 * Write `foomuuri-monitor` states and statistics to a file once a minute.
+* Fix: Add range support to `iplist list`.
 
 ## 0.25 (2024-10-01)
 
