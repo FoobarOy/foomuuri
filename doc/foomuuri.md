@@ -33,6 +33,9 @@ emulation for NetworkManager's zone support.
 `--verbose`
 : verbose output
 
+`--force`
+: force some operations, don't check anything
+
 `--version`
 : output version information and exit
 

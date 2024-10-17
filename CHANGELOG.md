@@ -6,6 +6,7 @@
   macro expansion.
 * Add support for `icmp echo-request` (and other names) in addition to
   `icmp 8`. Use name in default `ping` macro instead of number.
+* Add `--force` command line option to force iplist refresh now.
 * Write `foomuuri-monitor` states and statistics to a file once a minute.
 * Fix: Add range support to `iplist list`.
 

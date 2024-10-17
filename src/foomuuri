@@ -80,6 +80,7 @@ CONFIG = {
     'parameters': [],
     'root_power': True,
     'verbose': 0,
+    'force': 0,
 }
 
 OUT = []       # Generated nftables ruleset / commands
@@ -2951,7 +2952,7 @@ def get_all_urls_and_files(setname, namelist, last_refresh_time,
         time_left = int((last_refresh_time +
                          datetime.timedelta(seconds=refresh) -
                          now).total_seconds())
-    if time_left > 0:
+    if time_left > 0 and not CONFIG['force']:
         verbose(f'Iplist "@{setname}" refresh skipped, {time_left} seconds '
                 f'to next refresh')
         return '_refresh'  # Not yet
@@ -3759,6 +3760,7 @@ def command_help(error=True):
     print()
     print('  --verbose        Verbose output')
     print('  --version        Print version')
+    print('  --force          Force some operations, don\'t check anything')
     print('  --set=option=value')
     print('                   Set config option to value')
     print()
@@ -3778,8 +3780,8 @@ def parse_command_line():
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['command'] = 'help'
-        elif arg == '--verbose':
-            CONFIG['verbose'] += 1
+        elif arg in ('--verbose', '--force'):
+            CONFIG[arg[2:]] += 1
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
