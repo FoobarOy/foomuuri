@@ -340,6 +340,13 @@ def parse_config_macros(config):
             return macros
 
 
+def macro_isdigit(word, separator):
+    """Check if word contains number after separator."""
+    if word.count(separator) != 1:
+        return False
+    return word.split(separator)[1].isdigit()
+
+
 def expand_single_line(fileline, line, macros):
     """Expand first macro in line. Repeat call to expand all.
 
@@ -354,19 +361,19 @@ def expand_single_line(fileline, line, macros):
         if word[0] == '-':  # Negative IP address
             word = word[1:]
             word_prefix = '-'
-        if word.count('/') == 1:  # Netmask
+        if macro_isdigit(word, '/'):  # Netmask
             word, word_suffix = word.split('/')
             word_suffix = f'/{word_suffix}'
         if (
                 word[0] == '[' and
-                word.count(']:') == 1 and
+                macro_isdigit(word, ']:') and
                 not word_prefix and
                 not word_suffix
         ):  # [IPv6]:port
             word, word_suffix = word[1:].split(']:')
             word_prefix = '['
             word_suffix = f']:{word_suffix}'
-        if word.count(':') == 1 and not word_suffix:  # IPv4:port
+        if macro_isdigit(word, ':') and not word_suffix:  # IPv4:port
             word, word_suffix = word.split(':')
             word_suffix = f':{word_suffix}'
 
