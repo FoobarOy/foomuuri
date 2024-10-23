@@ -110,6 +110,7 @@ def run_program_rc(args, *, env=None, print_output=True):
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
+    verbose(' '.join(args))
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
@@ -3188,6 +3189,21 @@ def command_iplist_del():
     return ret
 
 
+def command_iplist_clear():
+    """Delete all entries from iplist."""
+    config = minimal_config()
+    iplist = parse_resolve(config, 'iplist')
+    ret = 0
+    for setname in CONFIG['parameters'][1:]:
+        if setname.startswith('@'):
+            setname = setname[1:]
+        for ipv in (4, 6):
+            ret += run_program_rc(CONFIG['nft_bin'] +
+                                  [f'flush set inet foomuuri {setname}_{ipv}'])
+    iplist_manual_state(iplist)
+    return ret
+
+
 def command_iplist_refresh():
     """Refresh iplist{} entries."""
     # pylint: disable=too-many-locals
@@ -3257,6 +3273,8 @@ def command_iplist():
         return command_iplist_add()
     if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'del':
         return command_iplist_del()
+    if len(CONFIG['parameters']) >= 2 and CONFIG['parameters'][0] == 'clear':
+        return command_iplist_clear()
     if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'refresh':
         return command_iplist_refresh()
     return command_help()
@@ -3749,6 +3767,8 @@ def command_help(error=True):
     print('                   Add or refresh IP address to iplist')
     print('  iplist del name ipaddress {ipaddress...}')
     print('                   Delete IP address from iplist')
+    print('  iplist clear name {name...}')
+    print('                   Delete all IP addresses from iplist')
     print('  iplist refresh name {name...}')
     print('                   Refresh iplist @name now')
     print('  set interface {interface} zone {zone}')

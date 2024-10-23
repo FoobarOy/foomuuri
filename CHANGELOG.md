@@ -2,6 +2,7 @@
 
 ## 0.26 (20xx-xx-xx)
 
+* Add `iplist clear name` command to delete all entries in iplist.
 * Add support for `-macro`, `macro/24`, `[macro]:123` and `macro:123` in
   macro expansion.
 * Add support for `icmp echo-request` (and other names) in addition to
