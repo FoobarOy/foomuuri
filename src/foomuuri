@@ -106,11 +106,11 @@ def out(line):
     OUT.append(line)
 
 
-def run_program_rc(args, *, env=None, print_output=True):
+def run_program_rc(args, *, env=None, print_output=True, quiet=False):
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
-    verbose(' '.join(args))
+    verbose(' '.join(map(str, args)))
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
@@ -120,7 +120,11 @@ def run_program_rc(args, *, env=None, print_output=True):
               flush=True)
         return 1
     output = proc.stdout.rstrip()
-    if output and (proc.returncode or print_output or CONFIG['verbose']):
+    if (
+            output and
+            (proc.returncode or print_output or CONFIG['verbose']) and
+            not quiet
+    ):
         print(output, flush=True)
     return proc.returncode
 
@@ -144,12 +148,18 @@ def run_program_output(args, fileline):
     return proc.stdout.rstrip()
 
 
-def run_program_json(args):
-    """Quietly run external program and return its output as json."""
-    if not args:
+def nft_command(cmd, **kwargs):
+    """Run "nft cmd", wrapper to run_program_rc()."""
+    return run_program_rc(CONFIG['nft_bin'] + [cmd], **kwargs)
+
+
+def nft_json(cmd):
+    """Run "nft --json cmd", return its output as json, ignore errors."""
+    if not cmd:
         return {}
     try:
-        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
+        proc = subprocess.run(CONFIG['nft_bin'] + ['--json', cmd],
+                              check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               timeout=60)
     except (OSError, subprocess.TimeoutExpired):
@@ -2378,8 +2388,7 @@ def command_block():
 
 def parse_active_interface_zone():
     """Parse current interface->zone mapping from active nft ruleset."""
-    data = run_program_json(CONFIG['nft_bin'] + [
-        '--json', 'list', 'map', 'inet', 'foomuuri', 'input_zones'])
+    data = nft_json('list map inet foomuuri input_zones')
     if not data:
         return {}
     ret = {}
@@ -2399,8 +2408,7 @@ def command_status():
     zone_interface = parse_active_interface_zone()
 
     # Running
-    ruleset = run_program_json(CONFIG['nft_bin'] + [
-        '--json', 'list', 'table', 'inet', 'foomuuri'])
+    ruleset = nft_json('list table inet foomuuri')
     if not ruleset:
         fail('Foomuuri is not running')
     print('Foomuuri is running')
@@ -2775,8 +2783,7 @@ def active_sets():
     Return value is dict of "setname -> entries".
     """
     ret = {}
-    data = run_program_json(CONFIG['nft_bin'] + ['--json', 'list', 'sets',
-                                                 'table', 'inet', 'foomuuri'])
+    data = nft_json('list sets table inet foomuuri')
     if not data:
         return ret
     for item in data['nftables']:
@@ -3090,8 +3097,7 @@ def iplist_manual_state(iplist):
             continue
 
         # Get set entries
-        data = run_program_json(CONFIG['nft_bin'] + [
-            '--json', 'list', 'set', 'inet', 'foomuuri', setname])
+        data = nft_json(f'list set inet foomuuri {setname}')
 
         # Collect IP addresses
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -3121,14 +3127,11 @@ def command_iplist_list():
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
-            data4 = run_program_json(CONFIG['nft_bin'] + [
-                '--json', 'list', 'set', 'inet', 'foomuuri', setname])
+            data4 = nft_json(f'list set inet foomuuri {setname}')
             data6 = {}
         else:
-            data4 = run_program_json(CONFIG['nft_bin'] + [
-                '--json', 'list', 'set', 'inet', 'foomuuri', f'{setname}_4'])
-            data6 = run_program_json(CONFIG['nft_bin'] + [
-                '--json', 'list', 'set', 'inet', 'foomuuri', f'{setname}_6'])
+            data4 = nft_json(f'list set inet foomuuri {setname}_4')
+            data6 = nft_json(f'list set inet foomuuri {setname}_6')
         elem4 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data4)]
         elem6 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data6)]
         elems = sorted(elem4) + sorted(elem6)
@@ -3198,8 +3201,7 @@ def command_iplist_clear():
         if setname.startswith('@'):
             setname = setname[1:]
         for ipv in (4, 6):
-            ret += run_program_rc(CONFIG['nft_bin'] +
-                                  [f'flush set inet foomuuri {setname}_{ipv}'])
+            ret += nft_command(f'flush set inet foomuuri {setname}_{ipv}')
     iplist_manual_state(iplist)
     return ret
 
@@ -3284,7 +3286,7 @@ def command_list():
     """List currently active ruleset."""
     # List all
     if not CONFIG['parameters']:
-        return run_program_rc(CONFIG['nft_bin'] + ['list', 'ruleset'])
+        return nft_command('list ruleset')
 
     # Parse list of possible zone-zone pairs
     config = minimal_config()
@@ -3304,15 +3306,13 @@ def command_list():
             print('}')
         elif zone == 'counter':
             # List named counters
-            ret += run_program_rc(CONFIG['nft_bin'] + [
-                'list', 'counters', 'table', 'inet', 'foomuuri'])
+            ret += nft_command('list counters table inet foomuuri')
         else:
             # List zone-zone
             if zone not in zonepairs:
                 fail(f'Unknown zone-zone: {zone}')
             for ipv in (4, 6):
-                ret += run_program_rc(CONFIG['nft_bin'] + [
-                    'list', 'chain', 'inet', 'foomuuri', f'{zone}_{ipv}'])
+                ret += nft_command(f'list chain inet foomuuri {zone}_{ipv}')
     return ret
 
 
