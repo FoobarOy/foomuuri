@@ -3161,12 +3161,14 @@ def command_iplist_add():
                 timeout = address.replace(' ', '')
                 continue
             fail(f'Invalid IP address {address}')
-        table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program_rc(CONFIG['nft_bin'] + [
-            f'add element {table_set} {{ {address} }}; '
-            f'delete element {table_set} {{ {address} }}; '
-            f'add element {table_set} {{ {address} '
-            f'timeout {timeout} }};'])
+
+        # nftables/kernel workaround to get entry's timeout+expire
+        # values updated. This is not atomic update!
+        # With "auto-merge" enabled this seems to be the only.
+        nft_command(f'delete element inet foomuuri {setname}_{ipv} '
+                    f'{{ {address} }}', quiet=True)
+        ret += nft_command(f'add element inet foomuuri {setname}_{ipv} '
+                           f'{{ {address} timeout {timeout} }}')
     iplist_manual_state(iplist)
     return ret
 
@@ -3179,17 +3181,14 @@ def command_iplist_del():
     if setname.startswith('@'):
         setname = setname[1:]
 
-    ret = 0
     for address in CONFIG['parameters'][2:]:
         ipv = is_ip_address(address)
         if not ipv:
             fail(f'Invalid IP address {address}')
-        table_set = f'inet foomuuri {setname}_{ipv}'
-        ret += run_program_rc(CONFIG['nft_bin'] + [
-            f'add element {table_set} {{ {address} }}; '
-            f'delete element {table_set} {{ {address} }};'])
+        nft_command(f'delete element inet foomuuri {setname}_{ipv} '
+                    f'{{ {address} }}', quiet=True)
     iplist_manual_state(iplist)
-    return ret
+    return 0
 
 
 def command_iplist_clear():

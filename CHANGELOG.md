@@ -10,6 +10,7 @@
 * Add `--force` command line option to force iplist refresh now.
 * Write `foomuuri-monitor` states and statistics to a file once a minute.
 * Fix: Add range support to `iplist list`.
+* Fix: `iplist add` and `iplist del` didn't work correctly on all cases.
 
 ## 0.25 (2024-10-01)
 
