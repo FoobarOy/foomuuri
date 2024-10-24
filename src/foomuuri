@@ -3195,7 +3195,7 @@ def command_iplist_del():
     return 0
 
 
-def command_iplist_clear():
+def command_iplist_flush():
     """Delete all entries from iplist."""
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist')
@@ -3278,8 +3278,8 @@ def command_iplist():
         return command_iplist_add()
     if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'del':
         return command_iplist_del()
-    if len(CONFIG['parameters']) >= 2 and CONFIG['parameters'][0] == 'clear':
-        return command_iplist_clear()
+    if len(CONFIG['parameters']) >= 2 and CONFIG['parameters'][0] == 'flush':
+        return command_iplist_flush()
     if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'refresh':
         return command_iplist_refresh()
     return command_help()
@@ -3770,7 +3770,7 @@ def command_help(error=True):
     print('                   Add or refresh IP address to iplist')
     print('  iplist del name ipaddress {ipaddress...}')
     print('                   Delete IP address from iplist')
-    print('  iplist clear name {name...}')
+    print('  iplist flush name {name...}')
     print('                   Delete all IP addresses from iplist')
     print('  iplist refresh name {name...}')
     print('                   Refresh iplist @name now')

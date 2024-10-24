@@ -86,7 +86,7 @@ emulation for NetworkManager's zone support.
 **iplist del name ipaddress {ipaddress...}**
 : delete IP address from iplist
 
-**iplist clear name {name...}**
+**iplist flush name {name...}**
 : delete all IP addresses from iplist
 
 **iplist refresh name {name...}**
