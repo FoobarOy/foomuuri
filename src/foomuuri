@@ -3131,9 +3131,13 @@ def command_iplist_list():
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
+            if f'@{setname[:-2]}' not in known:
+                fail(f'Unknown iplist name: @{setname[:-2]}')
             data4 = nft_json(f'list set inet foomuuri {setname}')
             data6 = {}
         else:
+            if f'@{setname}' not in known:
+                fail(f'Unknown iplist name: @{setname}')
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
         elem4 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data4)]
@@ -3156,6 +3160,8 @@ def command_iplist_add():
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
+    if f'@{setname}_4' not in iplist:
+        fail(f'Unknown iplist name: @{setname}')
 
     ret = 0
     for address in CONFIG['parameters'][2:]:
@@ -3184,6 +3190,8 @@ def command_iplist_del():
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
+    if f'@{setname}_4' not in iplist:
+        fail(f'Unknown iplist name: @{setname}')
 
     for address in CONFIG['parameters'][2:]:
         ipv = is_ip_address(address)
@@ -3203,6 +3211,8 @@ def command_iplist_flush():
     for setname in CONFIG['parameters'][1:]:
         if setname.startswith('@'):
             setname = setname[1:]
+        if f'@{setname}_4' not in iplist:
+            fail(f'Unknown iplist name: @{setname}')
         for ipv in (4, 6):
             ret += nft_command(f'flush set inet foomuuri {setname}_{ipv}')
     iplist_manual_state(iplist)
