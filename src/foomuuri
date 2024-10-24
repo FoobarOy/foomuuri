@@ -3069,8 +3069,12 @@ def iterate_set_elements(data):
     """Iterate elements from "nft --json list set" output."""
     for toplevel in (data or {}).get('nftables', []):
         for elem in toplevel.get('set', {}).get('elem', []):
-            ipaddr = elem['elem']['val']
-            expire = elem['elem']['expires']
+            if isinstance(elem, dict) and 'elem' in elem:
+                ipaddr = elem['elem']['val']
+                expire = elem['elem'].get('expires', 864000)  # 10 days
+            else:
+                ipaddr = elem
+                expire = 864000
             if isinstance(ipaddr, str):
                 yield ipaddr, expire
             elif 'range' in ipaddr:
