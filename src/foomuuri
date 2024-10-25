@@ -95,9 +95,9 @@ def fail(error=None):
     sys.exit(1)
 
 
-def verbose(line):
+def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
-    if CONFIG['verbose']:
+    if CONFIG['verbose'] >= level:
         print(line, flush=True)
 
 
@@ -157,9 +157,10 @@ def nft_json(cmd):
     """Run "nft --json cmd", return its output as json, ignore errors."""
     if not cmd:
         return {}
+    args = CONFIG['nft_bin'] + ['--json', cmd]
+    verbose(' '.join(map(str, args)), 2)
     try:
-        proc = subprocess.run(CONFIG['nft_bin'] + ['--json', cmd],
-                              check=False, stdout=subprocess.PIPE,
+        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               timeout=60)
     except (OSError, subprocess.TimeoutExpired):
@@ -167,6 +168,7 @@ def nft_json(cmd):
     if proc.returncode:
         return None
     try:
+        verbose(proc.stdout, 2)
         return json.loads(proc.stdout)
     except json.decoder.JSONDecodeError:
         return None
