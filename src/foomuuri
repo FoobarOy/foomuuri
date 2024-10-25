@@ -3156,11 +3156,12 @@ def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist', '10d')
+    known = set(iplist) | set(parse_resolve(config, 'resolve'))
     timeout = iplist.pop('timeout')
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
-    if f'@{setname}_4' not in iplist:
+    if f'@{setname}_4' not in known:
         fail(f'Unknown iplist name: @{setname}')
 
     ret = 0
@@ -3187,10 +3188,11 @@ def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist')
+    known = set(iplist) | set(parse_resolve(config, 'resolve'))
     setname = CONFIG['parameters'][1]
     if setname.startswith('@'):
         setname = setname[1:]
-    if f'@{setname}_4' not in iplist:
+    if f'@{setname}_4' not in known:
         fail(f'Unknown iplist name: @{setname}')
 
     for address in CONFIG['parameters'][2:]:
@@ -3207,11 +3209,12 @@ def command_iplist_flush():
     """Delete all entries from iplist."""
     config = minimal_config()
     iplist = parse_resolve(config, 'iplist')
+    known = set(iplist) | set(parse_resolve(config, 'resolve'))
     ret = 0
     for setname in CONFIG['parameters'][1:]:
         if setname.startswith('@'):
             setname = setname[1:]
-        if f'@{setname}_4' not in iplist:
+        if f'@{setname}_4' not in known:
             fail(f'Unknown iplist name: @{setname}')
         for ipv in (4, 6):
             ret += nft_command(f'flush set inet foomuuri {setname}_{ipv}')
