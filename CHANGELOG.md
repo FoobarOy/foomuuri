@@ -9,6 +9,7 @@
   `icmp 8`. Use name in default `ping` macro instead of number.
 * Add `--force` command line option to force iplist refresh now.
 * Write `foomuuri-monitor` states and statistics to a file once a minute.
+* Add `rtsps` macro to default services.
 * Fix: Add range support to `iplist list`.
 * Fix: `iplist add` and `iplist del` didn't work correctly on all cases.
 
