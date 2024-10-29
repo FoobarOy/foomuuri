@@ -216,7 +216,9 @@ table inet foomuuri {
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
 		meta pkttype multicast ip daddr 224.0.0.251 udp dport 5353 accept
+		meta pkttype multicast ip daddr 224.0.0.251 ip protocol igmp accept
 		meta pkttype multicast ip daddr 239.255.255.250 udp dport 1900 accept
+		meta pkttype multicast ip daddr 239.255.255.250 ip protocol igmp accept
 		meta pkttype broadcast udp dport { 11430, 68 } accept
 		meta pkttype { broadcast, multicast } drop
 		udp dport 68 accept
@@ -309,7 +311,9 @@ table inet foomuuri {
 		tcp dport { 143, 22, 25, 443, 53, 631, 80 } accept
 		ip protocol igmp ip daddr 224.0.0.22 accept
 		ip daddr 224.0.0.251 udp dport 5353 accept
+		ip daddr 224.0.0.251 ip protocol igmp accept
 		ip daddr 239.255.255.250 udp dport 1900 accept
+		ip daddr 239.255.255.250 ip protocol igmp accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-home REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
