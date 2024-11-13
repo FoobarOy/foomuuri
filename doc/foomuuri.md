@@ -2,8 +2,8 @@
 title: FOOMUURI
 section: 8
 header: User Manual
-footer: Foomuuri 0.25
-date: Oct 01, 2024
+footer: Foomuuri 0.26
+date: Nov 13, 2024
 ---
 
 # NAME

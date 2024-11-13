@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.26 (20xx-xx-xx)
+## 0.26 (2024-11-13)
 
 * Add `iplist flush name` command to delete all entries in iplist.
 * Add support for `-macro`, `macro/24`, `[macro]:123` and `macro:123` in
