@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.27 (20xx-xx-xx)
+
+* Add `nbd` and `pxe` macros to default services.
+
 ## 0.26 (2024-11-13)
 
 * Add `iplist flush name` command to delete all entries in iplist.
