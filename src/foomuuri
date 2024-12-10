@@ -2955,14 +2955,14 @@ def get_all_urls_and_files(setname, namelist, last_refresh_time,
     for item in namelist:
         if item.startswith('refresh='):
             refresh = parse_hour_min(item[8:], refresh)
-    if not last_refresh_time:
+    if not last_refresh_time or CONFIG['force'] >= 0:
         time_left = 0
     else:
         now = datetime.datetime.now(datetime.timezone.utc)
         time_left = int((last_refresh_time +
                          datetime.timedelta(seconds=refresh) -
                          now).total_seconds())
-    if time_left > 0 and not CONFIG['force']:
+    if time_left > 0:
         verbose(f'Iplist "@{setname}" refresh skipped, {time_left} seconds '
                 f'to next refresh')
         return '_refresh'  # Not yet
@@ -3758,6 +3758,7 @@ def command_monitor():
 
 def command_help(error=True):
     """Print command line help."""
+    # pylint: disable=too-many-statements
     print(f'Foomuuri {VERSION}')
     print()
     print(f'Usage: {sys.argv[0]} {{options}} command')
@@ -3819,15 +3820,15 @@ def parse_command_line():
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['command'] = 'help'
+        elif arg == '--version':
+            print(VERSION)
+            sys.exit(0)
         elif arg in ('--verbose', '--force'):
             CONFIG[arg[2:]] += 1
         elif arg == '--quiet':
             CONFIG['verbose'] -= 1
         elif arg == '--soft':
             CONFIG['force'] -= 1
-        elif arg == '--version':
-            print(VERSION)
-            sys.exit(0)
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')

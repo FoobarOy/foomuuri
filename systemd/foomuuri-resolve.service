@@ -4,4 +4,4 @@ Documentation=https://github.com/FoobarOy/foomuuri/wiki
 
 [Service]
 Type=oneshot
-ExecStart=foomuuri resolve refresh
+ExecStart=foomuuri --soft resolve refresh

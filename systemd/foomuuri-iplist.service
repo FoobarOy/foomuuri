@@ -4,4 +4,4 @@ Documentation=https://github.com/FoobarOy/foomuuri/wiki
 
 [Service]
 Type=oneshot
-ExecStart=foomuuri iplist refresh
+ExecStart=foomuuri --soft iplist refresh
