@@ -122,7 +122,7 @@ def run_program_rc(args, *, env=None, print_output=True, quiet=False):
     output = proc.stdout.rstrip()
     if (
             output and
-            (proc.returncode or print_output or CONFIG['verbose']) and
+            (proc.returncode or print_output or CONFIG['verbose'] > 0) and
             not quiet
     ):
         print(output, flush=True)
@@ -3796,8 +3796,9 @@ def command_help(error=True):
     print()
     print('Available options:')
     print()
-    print('  --verbose        Verbose output')
     print('  --version        Print version')
+    print('  --verbose        Verbose output')
+    print('  --quiet          Be quiet')
     print('  --force          Force some operations, don\'t check anything')
     print('  --set=option=value')
     print('                   Set config option to value')
@@ -3820,6 +3821,10 @@ def parse_command_line():
             CONFIG['command'] = 'help'
         elif arg in ('--verbose', '--force'):
             CONFIG[arg[2:]] += 1
+        elif arg == '--quiet':
+            CONFIG['verbose'] -= 1
+        elif arg == '--soft':
+            CONFIG['force'] -= 1
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)

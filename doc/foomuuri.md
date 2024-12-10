@@ -30,14 +30,17 @@ emulation for NetworkManager's zone support.
 `--help`
 : display this help and exit
 
+`--version`
+: output version information and exit
+
 `--verbose`
 : verbose output
 
+`--quiet`
+: be quiet
+
 `--force`
 : force some operations, don't check anything
-
-`--version`
-: output version information and exit
 
 `--set=option=value`
 : set config option to value
