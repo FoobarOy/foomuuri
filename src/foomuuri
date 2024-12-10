@@ -3801,6 +3801,7 @@ def command_help(error=True):
     print('  --verbose        Verbose output')
     print('  --quiet          Be quiet')
     print('  --force          Force some operations, don\'t check anything')
+    print('  --soft           Don\'t force operations, check more')
     print('  --set=option=value')
     print('                   Set config option to value')
     print()

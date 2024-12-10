@@ -42,6 +42,9 @@ emulation for NetworkManager's zone support.
 `--force`
 : force some operations, don't check anything
 
+`--soft`
+: don't force operations, check more
+
 `--set=option=value`
 : set config option to value
 
