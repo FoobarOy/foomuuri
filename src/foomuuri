@@ -327,6 +327,8 @@ def parse_config_macros(config):
     macroline = {}
     for fileline, macro in config.pop('macro', []):
         key = macro[0]
+        if len(macro) == 1:
+            fail(f'{fileline}Macro "{key}" does not have value')
         value = macro[1:]
         macroline[key] = fileline
         if value[0] == '+':  # append
