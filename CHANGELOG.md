@@ -2,7 +2,10 @@
 
 ## 0.27 (20xx-xx-xx)
 
+* Add `--quiet` command line option to supress warnings.
 * Add `nbd`, `pxe` and `tor` related macros to default services.
+* Fix: `foomuuri iplist refresh` actually refreshes it now, no need for
+  `--force`. Option `--soft` checks for next refresh time.
 
 ## 0.26 (2024-11-13)
 
