@@ -95,6 +95,11 @@ def fail(error=None):
     sys.exit(1)
 
 
+def warning(text):
+    """Print warning message."""
+    print(f'Warning: {text}', flush=True)
+
+
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
     if CONFIG['verbose'] >= level:
@@ -335,8 +340,8 @@ def parse_config_macros(config):
             macros[key] = macros.get(key, []) + value[1:]
         else:
             if CONFIG['command'] == 'check' and macros.get(key):
-                print(f'{fileline}Warning: Overwriting macro "{key}" '
-                      f'with value "{" ".join(value)}"', flush=True)
+                warning(f'{fileline}Overwriting macro "{key}" '
+                        f'with value "{" ".join(value)}"')
             macros[key] = value  # overwrite
 
     # Expand macro in macro{}. Keep going as long as there was some expansion
@@ -1043,8 +1048,8 @@ def verify_config(config, zones, rules):
     localhost = CONFIG['localhost_zone']
     if localhost not in zones:
         zones[localhost] = {'interface': []}
-        print(f'{config["_section_line"]["zone"]}Warning: Zone "{localhost}" '
-              f'is missing from zone{{}}, adding it', flush=True)
+        warning(f'{config["_section_line"]["zone"]}Zone "{localhost}" '
+                f'is missing from zone{{}}, adding it')
 
     if zones[localhost]['interface']:
         fail(f'{config["_section_line"]["zone"]}Zone "{localhost}" has '
@@ -1052,8 +1057,8 @@ def verify_config(config, zones, rules):
              f'it must be empty')
 
     if CONFIG['dbus_zone'] not in zones:
-        print(f'Warning: Config option dbus_zone value '
-              f'"{CONFIG["dbus_zone"]}" is missing from zone{{}}', flush=True)
+        warning(f'Config option dbus_zone value '
+                f'"{CONFIG["dbus_zone"]}" is missing from zone{{}}')
 
     # All zone-zone pairs must be known
     for szone, dzone in rules:
@@ -1449,7 +1454,7 @@ def output_icmp(szone, dzone, rules, ipv):
         if (match + policy).startswith(('accept', 'drop', 'reject', 'jump')):
             has_match_all = True
         elif has_match_all:  # Specific ping rule after match-all rule
-            print(f'{rule["fileline"]}Warning: Unreachable ping rule')
+            warning(f'{rule["fileline"]}Unreachable ping rule')
 
     # Overflow-pings must be dropped before ct
     if has_ping_rule and not has_match_all:
@@ -2298,7 +2303,7 @@ def apply_final():
                                                       CONFIG['next_file']])
         else:
             ret = 0
-            print('Warning: Not running as "root", skipping "nft check"')
+            warning('Not running as "root", skipping "nft check"')
         if ret:
             print(f'Error: Nftables failed to check ruleset, error code {ret}')
         else:
@@ -2523,15 +2528,14 @@ class DbusCommon:
         """Change interface to new_zone, or delete if new_zone is empty."""
         interface, new_zone = str(interface), str(new_zone)
         if new_zone and new_zone not in self.zones:
-            print(f'Warning: Zone "{new_zone}" is unknown', flush=True)
+            warning(f'Zone "{new_zone}" is unknown')
             raise FoomuuriDbusException(f'Zone "{new_zone}" is unknown')
         if interface == 'lo':
             # Interface "lo" must stay in "localhost" zone.
             # Other interfaces can be added to "localhost" only if
             # "localhost-localhost" section is defined.
             if new_zone != CONFIG['localhost_zone']:
-                print(f'Warning: Can\'t change interface "lo" to zone '
-                      f'"{new_zone}"', flush=True)
+                warning(f'Can\'t change interface "lo" to zone "{new_zone}"')
                 raise FoomuuriDbusException(f'Can\'t change interface "lo" '
                                             f'to zone "{new_zone}"')
             return '', ''
@@ -2828,8 +2832,8 @@ def config_resolve_to_iplist():
         for hostname in hostlist:
             if not hosts[hostname] and hostname not in warned:
                 warned.add(hostname)
-                print(f'Warning: No IP address found for hostname '
-                      f'"{hostname}" in resolve "{setname[:-2]}"', flush=True)
+                warning(f'No IP address found for hostname '
+                        f'"{hostname}" in resolve "{setname[:-2]}"')
             for ipaddr in hosts[hostname]:
                 if is_ip_address(ipaddr) == ipv:
                     iplist.add(ipaddr)
@@ -2837,8 +2841,8 @@ def config_resolve_to_iplist():
     return current, timeout
 
 
-def warn_resolve_iplist(setname, warned, error_pre, error_post):
-    """Print warning that setname does not exist."""
+def warn_once(setname, warned, error_pre, error_post):
+    """Print warning for setname if not already warned."""
     if setname[:-2] in warned:
         return  # Already warned
 
@@ -2861,9 +2865,8 @@ def command_resolve():
             # comment
             if setname not in known:
                 comment = '# '
-                warn_resolve_iplist(setname, warned, 'Warning: Resolve',
-                                    'does not exist in currently active '
-                                    'firewall')
+                warn_once(setname, warned, 'Warning: Resolve',
+                          'does not exist in currently active firewall')
             else:
                 # Success, update elements to ruleset.
                 comment = ''
@@ -2888,7 +2891,7 @@ def command_resolve():
     for setname in current:
         if setname[:-2] not in has_entries:
             error = 1
-            warn_resolve_iplist(setname, warned, 'Error: Resolve', 'is empty')
+            warn_once(setname, warned, 'Error: Resolve', 'is empty')
 
     # Apply update
     return apply_resolve_iplist('resolve_file', 'resolve', error)
@@ -2907,7 +2910,7 @@ def get_url(url, setname):
             if response.status_code == 200:
                 return response.text
             err = f'status code: {response.status_code}'
-    print(f'Warning: Iplist "@{setname}", can\'t download {url}, {err}')
+    warning(f'Iplist "@{setname}", can\'t download {url}, {err}')
     return None
 
 
@@ -2916,16 +2919,16 @@ def get_file(wildcard, setname):
     wildpath = pathlib.Path(wildcard)
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        print(f'Warning: Iplist "@{setname}", can\'t read file '
-              f'{wildcard}: No such file')
+        warning(f'Iplist "@{setname}", can\'t read file '
+                f'{wildcard}: No such file')
         return None
     text = ''
     for filename in filenames:
         try:
             content = filename.read_text(encoding='utf-8')
         except PermissionError as error:
-            print(f'Warning: Iplist "@{setname}", can\'t read file '
-                  f'{filename}: {error}')
+            warning(f'Iplist "@{setname}", can\'t read file '
+                    f'{filename}: {error}')
             return None
         text = text + '\n' + content
     return text
@@ -3061,8 +3064,7 @@ def read_all_iplists(iplist, last_refresh, default_refresh):
             elif is_ipv6_address(line):
                 addr_6.add(line)
             else:
-                print(f'Warning: Invalid content in iplist {{ @{setname} }}: '
-                      f'{line}')
+                warning(f'Invalid content in iplist {{ @{setname} }}: {line}')
                 break
         else:  # Include it to reply if all success, update its timestamp
             ret[f'{setname}_4'] = addr_4
@@ -3268,14 +3270,13 @@ def command_iplist_refresh():
             error = 1
             comment = '# '
             addrlist = previous.get(setname, [])
-            warn_resolve_iplist(setname, warned, 'Error: Iplist',
-                                'failed to refresh')
+            warn_once(setname, warned, 'Error: Iplist', 'failed to refresh')
         elif setname not in known:
             # Not active in current ruleset, add items as comments
             comment = '# '
             addrlist = current[setname]
-            warn_resolve_iplist(setname, warned, 'Warning: Iplist',
-                                'does not exist in currently active firewall')
+            warn_once(setname, warned, 'Warning: Iplist',
+                      'does not exist in currently active firewall')
         else:
             # Success, update elements to ruleset.
             comment = ''
@@ -3651,10 +3652,10 @@ def parse_config_targets(config):
                 fail(f'{fileline}{key} is larger than history_size in '
                      f'"target {name}": {cfg[key]} > {cfg["history_size"]}')
         if cfg['history_size'] - cfg['history_up'] >= cfg['history_down']:
-            print(f'{fileline}Warning: Possible up-down loop in '
-                  f'"target {name}": history_size {cfg["history_size"]} - '
-                  f'history_up {cfg["history_up"]} >= '
-                  f'history_down {cfg["history_down"]}', flush=True)
+            warning(f'{fileline}Possible up-down loop in '
+                    f'"target {name}": history_size {cfg["history_size"]} - '
+                    f'history_up {cfg["history_up"]} >= '
+                    f'history_down {cfg["history_down"]}')
 
     return targets
 
@@ -3865,7 +3866,7 @@ def run_command():
     # Warning if not running as root
     CONFIG['root_power'] = not os.getuid()
     if not CONFIG['root_power']:
-        print('Warning: Foomuuri should be run as "root"', flush=True)
+        warning('Foomuuri should be run as "root"')
 
     # Run simple commands without ruleset output
     handler = {
