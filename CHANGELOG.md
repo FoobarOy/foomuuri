@@ -2,7 +2,7 @@
 
 ## 0.27 (20xx-xx-xx)
 
-* Add `nbd` and `pxe` macros to default services.
+* Add `nbd`, `pxe` and `tor` related macros to default services.
 
 ## 0.26 (2024-11-13)
 
