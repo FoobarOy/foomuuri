@@ -97,7 +97,8 @@ def fail(error=None):
 
 def warning(text):
     """Print warning message."""
-    print(f'Warning: {text}', flush=True)
+    if CONFIG['verbose'] >= 0:
+        print(f'Warning: {text}', flush=True)
 
 
 def verbose(line, level=1):
