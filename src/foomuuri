@@ -718,16 +718,16 @@ def verify_rule_sanity(rule, fileline):
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
     if (
-            rule['policy'] in ('mark_set', 'priority_set') and
-            not rule[rule['policy']]
+            rule['statement'] in ('mark_set', 'priority_set') and
+            not rule[rule['statement']]
     ):
-        fail(f'{fileline}"{rule["policy"]}" without value is not valid')
+        fail(f'{fileline}"{rule["statement"]}" without value is not valid')
 
-    if rule['policy'] in ('snat', 'dnat') and not rule['to']:
-        fail(f'{fileline}"{rule["policy"]}" without "to" is not valid')
+    if rule['statement'] in ('snat', 'dnat') and not rule['to']:
+        fail(f'{fileline}"{rule["statement"]}" without "to" is not valid')
 
-    if rule['policy'] == 'masquerade' and rule['to']:
-        fail(f'{fileline}"{rule["policy"]}" with "to" is not valid')
+    if rule['statement'] == 'masquerade' and rule['to']:
+        fail(f'{fileline}"{rule["statement"]}" with "to" is not valid')
 
     if rule['ct_status'] and rule['ct_status'] not in (
             'expected', 'seen-reply', 'assured', 'confirmed',
@@ -751,7 +751,7 @@ def parse_rule_line(fileline_line):
     fileline, line = fileline_line
     ret = {
         # Basic rules
-        'policy': 'accept',
+        'statement': 'accept',
         'cast': 'unicast',
         'protocol': None,
         'saddr': None,
@@ -836,13 +836,13 @@ def parse_rule_line(fileline_line):
         elif item in ('accept', 'drop', 'return', 'continue',
                       'masquerade', 'snat', 'dnat',
                       'mark_save', 'mark_restore'):
-            rule_item_only_one(ret, 'policy', item)
-            ret['policy'] = item
+            rule_item_only_one(ret, 'statement', item)
+            ret['statement'] = item
             ret['plain'] = False
             keyword = None
         elif item == 'reject':
-            rule_item_only_one(ret, 'policy', item)
-            ret['policy'] = 'reject with icmpx admin-prohibited'
+            rule_item_only_one(ret, 'statement', item)
+            ret['statement'] = 'reject with icmpx admin-prohibited'
             ret['plain'] = False
             keyword = None
         elif item in ('multicast', 'broadcast'):
@@ -909,9 +909,9 @@ def parse_rule_line(fileline_line):
             if ret[keyword] is None:
                 ret[keyword] = ''
             if item in ('queue', 'mark_set', 'priority_set'):
-                # policy and start keyword
-                rule_item_only_one(ret, 'policy', item)
-                ret['policy'] = item
+                # statement and start keyword
+                rule_item_only_one(ret, 'statement', item)
+                ret['statement'] = item
             if item not in ('counter', 'log', 'log_level'):
                 ret['plain'] = False
 
@@ -925,11 +925,11 @@ def parse_rule_line(fileline_line):
         else:
             fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
 
-    # Use no-op policy "continue" for plain "log" or "counter" rule,
+    # Use no-op statement "continue" for plain "log" or "counter" rule,
     # everything else defaults to "accept". Also mark them as -conntrack
     # so that they really log/count everything.
     if ret['plain']:
-        ret['policy'] = 'continue'
+        ret['statement'] = 'continue'
         ret['after_conntrack'] = False
     verify_rule_sanity(ret, fileline)
     return ret
@@ -1359,28 +1359,28 @@ def cgroup_match(rule):
     return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
 
 
-def rule_rate_log_policy(szone, dzone, rule, ipv, *, force_policy=None,
-                         do_lograte=True):
-    """Return rule's rate, log and policy as nft command."""
+def rule_rate_log_statement(szone, dzone, rule, ipv, *, force_statement=None,
+                            do_lograte=True):
+    """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
     ret = ''
-    policy = force_policy or rule['policy']
+    statement = force_statement or rule['statement']
 
     # mark_set argument parser
-    if policy == 'mark_set':
-        policy = f'meta mark set {mark_set_argument(rule)}'
-    elif policy == 'mark_save':  # packet -> ct
-        policy = 'ct mark set meta mark'
-    elif policy == 'mark_restore':  # ct -> packet
-        policy = 'meta mark set ct mark'
+    if statement == 'mark_set':
+        statement = f'meta mark set {mark_set_argument(rule)}'
+    elif statement == 'mark_save':  # packet -> ct
+        statement = 'ct mark set meta mark'
+    elif statement == 'mark_restore':  # ct -> packet
+        statement = 'meta mark set ct mark'
 
     # priority
-    if policy == 'priority_set':
-        policy = f'meta priority set {rule[policy]}'
+    if statement == 'priority_set':
+        statement = f'meta priority set {rule[statement]}'
 
     # queue can have optional flags
-    if policy == 'queue' and rule[policy]:
-        policy = f'{policy} {rule[policy]}'
+    if statement == 'queue' and rule[statement]:
+        statement = f'{statement} {rule[statement]}'
 
     ret += rule_rate_limit(rule, ipv)
 
@@ -1405,21 +1405,21 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, *, force_policy=None,
             ret += f'name "{rule["counter"]}" '
 
     # "log" in rule will log all packets matching this rule. This is usually
-    # used in final "drop log" rule. Default log text is "zone-zone POLICY".
+    # used in final "drop log" rule. Default log text is "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
         log_text = rule['log'] or (f'{szone}-{dzone} '
-                                   f'{policy.split()[0].upper()}')
+                                   f'{statement.split()[0].upper()}')
         log_level = (CONFIG['log_level'] if rule['log_level'] is None else
                      rule['log_level'])
         if do_lograte:
             # Limit logging to "foomuuri { log_rate }" entries. This is
             # important to avoid overlogging (DoS or filesystem full).
             logname = f'lograte_{len(LOGRATES) + 1}'
-            LOGRATES[logname] = (ipv, log_text, policy, log_level)
+            LOGRATES[logname] = (ipv, log_text, statement, log_level)
             return f'{ret}jump {logname}'
         ret += f'log prefix "{log_text} " {log_level} '
 
-    return ret + policy
+    return ret + statement
 
 
 def output_icmp(szone, dzone, rules, ipv):
@@ -1443,10 +1443,10 @@ def output_icmp(szone, dzone, rules, ipv):
         match = match_rules(rule, ipv, skip_icmp=False)
         if match is None:
             continue
-        policy = rule_rate_log_policy(szone, dzone, rule, ipv)
+        statement = rule_rate_log_statement(szone, dzone, rule, ipv)
 
         proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
-        out(f'{proto_ports}{match}{policy}')
+        out(f'{proto_ports}{match}{statement}')
         if (
                 rule['dport'] and
                 ping not in rule['dport'].split() and
@@ -1457,7 +1457,8 @@ def output_icmp(szone, dzone, rules, ipv):
         # This rule was for ping, usually accepting non-flood pings. Add
         # explicit rule to drop overflow and all other pings.
         has_ping_rule = True
-        if (match + policy).startswith(('accept', 'drop', 'reject', 'jump')):
+        if (match + statement).startswith(
+                ('accept', 'drop', 'reject', 'jump')):
             has_match_all = True
         elif has_match_all:  # Specific ping rule after match-all rule
             warning(f'{rule["fileline"]}Unreachable ping rule')
@@ -1576,7 +1577,7 @@ def parse_to(rule, ipv):
     """Parse snat/dnat "to" rule to nft rule."""
     if not rule['to']:
         return ''
-    if rule['policy'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
+    if rule['statement'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
         return f' to {rule["to"]}'
 
     # "to" can be IPv4+IPv6, find correct one
@@ -1683,16 +1684,16 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             continue
         if match == '' and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
-        policy = rule_rate_log_policy(szone, dzone, rule, ipv,
-                                      force_policy=rule['nft'])
+        statement = rule_rate_log_statement(szone, dzone, rule, ipv,
+                                            force_statement=rule['nft'])
 
-        if match + policy == 'meta mark set ct mark':
+        if match + statement == 'meta mark set ct mark':
             has_mark_match = True
         if not has_mark_match and rule['mark_match']:
             has_mark_match = True
             out('meta mark set ct mark')
 
-        out(f'{match}{policy}')
+        out(f'{match}{statement}')
 
         # Does this rule need kernel helper?
         if rule['helper']:
@@ -1701,7 +1702,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
                      f'{rule["helper"]}')
             HELPERS.append((rule['helper'], rule['protocol'], rule['dport']))
             kernelname = rule['helper'].split('-')[0].replace('_', '-')
-            out(f'ct helper \"{kernelname}\" {rule["policy"]}')
+            out(f'ct helper \"{kernelname}\" {rule["statement"]}')
 
 
 def output_zonemap(zonemap, szone, dzone, ipv):
@@ -1883,17 +1884,17 @@ def output_rule_section_no_header(rules, section):
             match = match_rules(rule, ipv)
             if match is None:
                 continue
-            policy = rule_rate_log_policy(section.upper(), '', rule, ipv,
-                                          force_policy=rule['nft'],
-                                          do_lograte=False)
+            statement = rule_rate_log_statement(section.upper(), '', rule, ipv,
+                                                force_statement=rule['nft'],
+                                                do_lograte=False)
 
             # Mark match/set requires restoring/saving mark. Add it if not
             # already added.
-            if match + policy == 'meta mark set ct mark':
+            if match + statement == 'meta mark set ct mark':
                 has_mark_match = True
             else:
-                has_mark_set |= 'meta mark set' in policy
-            if match + policy == 'ct mark set meta mark':
+                has_mark_set |= 'meta mark set' in statement
+            if match + statement == 'ct mark set meta mark':
                 has_mark_set = False
 
             if not has_mark_match and rule['mark_match']:
@@ -1901,7 +1902,7 @@ def output_rule_section_no_header(rules, section):
                 out('meta mark set ct mark')
 
             # There are no separate IPv4/IPv6 chains so merge possible rules
-            full_rule = f'{match}{policy}{to_rule}'
+            full_rule = f'{match}{statement}{to_rule}'
             if full_rule in ip_merger:
                 continue
             ip_merger.add(full_rule)
@@ -1935,7 +1936,7 @@ def output_rule_section(rules, section):
     out('}')
 
 
-def output_static_chain_logging(chain, policy):
+def output_static_chain_logging(chain, statement):
     """Output logging rules for input/output/forward/invalid/smurfs chains."""
     lograte = CONFIG[f'log_{chain}']  # Enabled in foomuuri{}
     if lograte.lower() == 'no':
@@ -1945,16 +1946,16 @@ def output_static_chain_logging(chain, policy):
     flags = ' flags ip options' if chain == 'invalid' else ''
     flags += f' {CONFIG["log_level"]}'
     chain = chain.upper()
-    policy = policy.upper()
+    statement = statement.upper()
 
     if not lograte:
-        out(f'log prefix "{chain} {policy} "{flags}')
+        out(f'log prefix "{chain} {statement} "{flags}')
         return
 
     out(f'update @_lograte_set_4 {{ ip saddr limit rate {lograte} }} '
-        f'log prefix "{chain} {policy} "{flags}')
+        f'log prefix "{chain} {statement} "{flags}')
     out(f'update @_lograte_set_6 {{ ip6 saddr limit rate {lograte} }} '
-        f'log prefix "{chain} {policy} "{flags}')
+        f'log prefix "{chain} {statement} "{flags}')
 
 
 def output_header(chain_rules):
@@ -2080,14 +2081,14 @@ def optimize_jumps():
         line = OUT[linenum]
         if line.startswith('jump lograte_'):
             logname = line.split()[1]
-            ipv, log_text, policy, log_level = LOGRATES.pop(logname)
+            ipv, log_text, statement, log_level = LOGRATES.pop(logname)
             rate = ''
             if CONFIG['log_rate']:
                 rate = (f'update @_lograte_set_{ipv} '
                         f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                         f'limit rate {CONFIG["log_rate"]} }} ')
             OUT[linenum] = f'{rate}log prefix "{log_text} " {log_level}'
-            OUT.insert(linenum + 1, policy)
+            OUT.insert(linenum + 1, statement)
         linenum += 1
 
 
@@ -2103,7 +2104,7 @@ def optimize_final_rules():
 
 def output_logrates():
     """Output non-optimized lograte entries as chains."""
-    for logname, (ipv, log_text, policy, log_level) in LOGRATES.items():
+    for logname, (ipv, log_text, statement, log_level) in LOGRATES.items():
         out(f'chain {logname} {{')
         rate = ''
         if CONFIG['log_rate']:
@@ -2111,8 +2112,8 @@ def output_logrates():
                     f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
                     f'limit rate {CONFIG["log_rate"]} }} ')
         out(f'{rate}log prefix "{log_text} " {log_level}')
-        if policy != 'continue':
-            out(f'{policy}')
+        if statement != 'continue':
+            out(f'{statement}')
         out('}')
 
     # Output empty lograte sets (optimized and non-optimized)
