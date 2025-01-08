@@ -2,10 +2,14 @@
 
 ## 0.27 (20xx-xx-xx)
 
-* Add `priority_set` statement to set packet's tc class id.
-* Add `priority_match` matcher to check packet's tc class id.
-* Add `--quiet` command line option to supress warnings.
+* BREAKING CHANGE: Previously `mark_set` was a statement. Now it's not
+  and rule's default statement `accept` is used if not specified. Usually
+  `accept` is what you want to use. To keep previous behavior use
+  `mark_set XX continue`.
+* Add `priority_set` to set packet's tc class id.
+* Add `priority_match` to check packet's tc class id.
 * Add `nbd`, `pxe` and `tor` related macros to default services.
+* Add `--quiet` command line option to suppress warnings.
 * Fix: `foomuuri iplist refresh` actually refreshes it now, no need for
   `--force`. Option `--soft` checks for next refresh time.
 
