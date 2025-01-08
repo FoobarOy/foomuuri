@@ -686,6 +686,12 @@ def rule_item_only_one(rule, keyword, value):
 
 def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
+    # pylint: disable=too-many-branches
+    for key, value in rule.items():
+        if value == '' and key not in ('queue', 'counter', 'log',
+                                       'fileline', 'line'):
+            fail(f'{fileline}"{key}" without value is not valid')
+
     for key in ('saddr_rate_name', 'daddr_rate_name', 'saddr_daddr_rate_name',
                 'helper', 'counter'):
         value = rule[key] or ''
@@ -716,12 +722,6 @@ def verify_rule_sanity(rule, fileline):
     ):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
-
-    if (
-            rule['statement'] in ('mark_set', 'priority_set') and
-            not rule[rule['statement']]
-    ):
-        fail(f'{fileline}"{rule["statement"]}" without value is not valid')
 
     if rule['statement'] in ('snat', 'dnat') and not rule['to']:
         fail(f'{fileline}"{rule["statement"]}" without "to" is not valid')
@@ -786,7 +786,7 @@ def parse_rule_line(fileline_line):
         'new_dzone': None,
         # Misc rules
         'to': None,  # snat/dnat to
-        'queue': None,  # queue flags
+        'queue': None,  # optional queue flags
         'counter': None,
         'helper': None,
         'sipsec': None,
@@ -1458,7 +1458,7 @@ def output_icmp(szone, dzone, rules, ipv):
         # explicit rule to drop overflow and all other pings.
         has_ping_rule = True
         if (match + statement).startswith(
-                ('accept', 'drop', 'reject', 'jump')):
+                ('accept', 'drop', 'reject', 'jump', 'queue')):
             has_match_all = True
         elif has_match_all:  # Specific ping rule after match-all rule
             warning(f'{rule["fileline"]}Unreachable ping rule')
