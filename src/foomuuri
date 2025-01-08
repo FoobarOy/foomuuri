@@ -717,7 +717,10 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if rule['policy'] == 'mark_set' and not rule['mark_set']:
+    if (
+            rule['policy'] in ('mark_set', 'priority_set') and
+            not rule[rule['policy']]
+    ):
         fail(f'{fileline}"{rule["policy"]}" without value is not valid')
 
     if rule['policy'] in ('snat', 'dnat') and not rule['to']:
@@ -795,6 +798,8 @@ def parse_rule_line(fileline_line):
         'template': None,
         'mark_set': None,
         'mark_match': None,
+        'priority_set': None,
+        'priority_match': None,
         'cgroup': None,
         'ct_status': None,
         'time': None,
@@ -894,6 +899,8 @@ def parse_rule_line(fileline_line):
                       'queue',
                       'mark_set',
                       'mark_match',
+                      'priority_set',
+                      'priority_match',
                       'cgroup',
                       'ct_status',
                       'time',
@@ -901,7 +908,8 @@ def parse_rule_line(fileline_line):
             keyword = item
             if ret[keyword] is None:
                 ret[keyword] = ''
-            if item in ('queue', 'mark_set'):  # policy and start keyword
+            if item in ('queue', 'mark_set', 'priority_set'):
+                # policy and start keyword
                 rule_item_only_one(ret, 'policy', item)
                 ret['policy'] = item
             if item not in ('counter', 'log', 'log_level'):
@@ -1353,17 +1361,26 @@ def cgroup_match(rule):
 
 def rule_rate_log_policy(szone, dzone, rule, ipv, *, force_policy=None,
                          do_lograte=True):
-    """Return rule's user, rate, log and policy as nft command."""
+    """Return rule's rate, log and policy as nft command."""
     # pylint: disable=too-many-arguments
     ret = ''
     policy = force_policy or rule['policy']
 
-    if rule['uid']:
-        ret += (f'meta skuid '
-                f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} ')
-    if rule['gid']:
-        ret += (f'meta skgid '
-                f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} ')
+    # mark_set argument parser
+    if policy == 'mark_set':
+        policy = f'meta mark set {mark_set_argument(rule)}'
+    elif policy == 'mark_save':  # packet -> ct
+        policy = 'ct mark set meta mark'
+    elif policy == 'mark_restore':  # ct -> packet
+        policy = 'meta mark set ct mark'
+
+    # priority
+    if policy == 'priority_set':
+        policy = f'meta priority set {rule[policy]}'
+
+    # queue can have optional flags
+    if policy == 'queue' and rule[policy]:
+        policy = f'{policy} {rule[policy]}'
 
     ret += rule_rate_limit(rule, ipv)
 
@@ -1401,18 +1418,6 @@ def rule_rate_log_policy(szone, dzone, rule, ipv, *, force_policy=None,
             LOGRATES[logname] = (ipv, log_text, policy, log_level)
             return f'{ret}jump {logname}'
         ret += f'log prefix "{log_text} " {log_level} '
-
-    # mark_set argument parser
-    if policy == 'mark_set':
-        policy = f'meta mark set {mark_set_argument(rule)}'
-    elif policy == 'mark_save':  # packet -> ct
-        policy = 'ct mark set meta mark'
-    elif policy == 'mark_restore':  # ct -> packet
-        policy = 'meta mark set ct mark'
-
-    # queue can have optional flags
-    if policy == 'queue' and rule[policy]:
-        policy = f'{policy} {rule[policy]}'
 
     return ret + policy
 
@@ -1600,6 +1605,7 @@ def parse_to(rule, ipv):
 
 def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     """Parse rule's matchers to nft rule."""
+    # pylint: disable=too-many-branches
     # pylint: disable=too-many-return-statements
     if cast is not None and rule['cast'] != cast:
         return None  # multi/broadcast doesn't match
@@ -1631,6 +1637,19 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     if rule['ct_status']:
         ct_status = f'ct status {rule["ct_status"]} '
 
+    priority_match = ''
+    if rule['priority_match']:
+        priority_match = f'meta priority {rule["priority_match"]} '
+
+    uid = ''
+    if rule['uid']:
+        uid = (f'meta skuid '
+               f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} ')
+    gid = ''
+    if rule['gid']:
+        gid = (f'meta skgid '
+               f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} ')
+
     ifname = parse_interface_names(rule)
 
     addrlist = ''
@@ -1648,7 +1667,8 @@ def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
 
     # Return matcher string
     return (f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
-            f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}')
+            f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
+            f'{priority_match}{uid}{gid}')
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):

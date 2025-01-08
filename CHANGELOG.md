@@ -2,6 +2,8 @@
 
 ## 0.27 (20xx-xx-xx)
 
+* Add `priority_set` statement to set packet's tc class id.
+* Add `priority_match` matcher to check packet's tc class id.
 * Add `--quiet` command line option to supress warnings.
 * Add `nbd`, `pxe` and `tor` related macros to default services.
 * Fix: `foomuuri iplist refresh` actually refreshes it now, no need for
