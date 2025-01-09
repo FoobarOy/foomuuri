@@ -834,8 +834,7 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'snat', 'dnat',
-                      'mark_save', 'mark_restore'):
+                      'masquerade', 'snat', 'dnat'):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1365,12 +1364,6 @@ def rule_rate_log_statement(szone, dzone, rule, ipv, *, force_statement=None,
     ret = ''
     statement = force_statement or rule['statement']
 
-    # mark save/restore
-    if statement == 'mark_save':  # packet -> ct
-        statement = 'ct mark set mark'
-    elif statement == 'mark_restore':  # ct -> packet
-        statement = 'meta mark set ct mark'
-
     # queue can have optional flags
     if statement == 'queue' and rule[statement]:
         statement = f'{statement} {rule[statement]}'
@@ -1687,9 +1680,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
         statement = rule_rate_log_statement(szone, dzone, rule, ipv,
                                             force_statement=rule['nft'])
 
-        # Automatically add mark_restore if mark_match is used
-        if match + statement == 'meta mark set ct mark':
-            has_mark_restore = True
+        # Automatically restore mark from conntrack if mark_match is used
         if not has_mark_restore and rule['mark_match']:
             has_mark_restore = True
             out('meta mark set ct mark')
@@ -1888,9 +1879,7 @@ def output_rule_section_no_header(rules, section):
                                                 force_statement=rule['nft'],
                                                 do_lograte=False)
 
-            # Automatically add mark_restore if mark_match is used
-            if match + statement == 'meta mark set ct mark':
-                has_mark_restore = True
+            # Automatically restore mark from conntrack if mark_match is used
             if not has_mark_restore and rule['mark_match']:
                 has_mark_restore = True
                 out('meta mark set ct mark')
