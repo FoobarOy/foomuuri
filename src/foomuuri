@@ -1900,7 +1900,15 @@ def output_rule_section_no_header(rules, section):
 
 def output_rule_section(rules, section):
     """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
-    if not rules:
+    # Output-chain must restore mark from conntrack if mark_set was used
+    # for locally generated packets (usually in multi-ISP's prerouting).
+    #
+    # Simply restore mark if mark_set was used in any chain. For that reason
+    # output-chain should be outputted last.
+    need_mark_restore = section == 'output' and any(
+        'ct mark set' in line for line in OUT)
+
+    if not rules and not need_mark_restore:
         return
 
     hooktype = {
@@ -1908,14 +1916,16 @@ def output_rule_section(rules, section):
         'dnat': 'type nat hook prerouting priority dstnat',
         'prerouting': 'type filter hook prerouting priority mangle',
         'postrouting': 'type filter hook postrouting priority mangle',
-        'output': 'type route hook output priority mangle',
         'forward': 'type filter hook forward priority mangle',
+        'output': 'type route hook output priority mangle',
     }.get(section)
     hooktype += CONFIG['priority_offset']
 
     chain_name = hooktype.split()
     out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
     out(hooktype)
+    if need_mark_restore:
+        out('meta mark set ct mark')
     output_rule_section_no_header(rules, section)
     out('}')
 
@@ -2339,7 +2349,7 @@ def command_start():
     chain_rules = {}
     for name in ('snat', 'dnat',
                  'prerouting', 'postrouting',
-                 'output', 'forward',
+                 'forward', 'output',
                  'invalid', 'rpfilter', 'smurfs'):
         chain_rules[name] = parse_config_rule_section(config, name)
     templates = parse_config_templates(config)
@@ -2357,7 +2367,7 @@ def command_start():
     output_zone2zone_rules(rules, zonemap)
     for name in ('snat', 'dnat',
                  'prerouting', 'postrouting',
-                 'output', 'forward'):
+                 'forward', 'output'):
         output_rule_section(chain_rules[name], name)
     optimize_jumps()
     optimize_final_rules()

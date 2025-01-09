@@ -255,6 +255,11 @@ table inet foomuuri {
 		iifname "eth0" meta mark set 42 ct mark set mark accept
 	}
 
+	chain route_output_mangle {
+		type route hook output priority mangle + 5
+		meta mark set ct mark
+	}
+
 	set _lograte_set_4 {
 		type ipv4_addr
 		size 65535
