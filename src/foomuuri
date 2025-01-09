@@ -1393,17 +1393,23 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
-        log_text = rule['log'] or (f'{szone}-{dzone} '
-                                   f'{statement.split()[0].upper()}')
+        log_prefix = rule['log'] or (f'{szone}-{dzone} '
+                                     f'{statement.split()[0].upper()}')
         log_level = (CONFIG['log_level'] if rule['log_level'] is None else
                      rule['log_level'])
-        if do_lograte:
+        log_nft = f'log prefix "{log_prefix} " {log_level}'
+        if do_lograte and CONFIG['log_rate']:
             # Limit maximum amount of logging to "foomuuri { log_rate }".
             # This is important to avoid overlogging (DoS or filesystem full).
+            rate = (f'update @_lograte_set_{ipv} '
+                    f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
+                    f'limit rate {CONFIG["log_rate"]} }} ')
+            if statement == 'continue':
+                return f'{prefix}{rate}{log_nft}'
             logname = f'lograte_{len(LOGRATES) + 1}'
-            LOGRATES[logname] = (ipv, log_text, statement, log_level)
+            LOGRATES[logname] = (f'{rate}{log_nft}', statement)
             return f'{prefix}jump {logname}'
-        prefix += f'log prefix "{log_text} " {log_level} '
+        prefix += f'{log_nft} '
 
     return prefix + statement
 
@@ -2059,13 +2065,8 @@ def optimize_jumps():
         line = OUT[linenum]
         if line.startswith('jump lograte_'):
             logname = line.split()[1]
-            ipv, log_text, statement, log_level = LOGRATES.pop(logname)
-            rate = ''
-            if CONFIG['log_rate']:
-                rate = (f'update @_lograte_set_{ipv} '
-                        f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
-                        f'limit rate {CONFIG["log_rate"]} }} ')
-            OUT[linenum] = f'{rate}log prefix "{log_text} " {log_level}'
+            log_nft, statement = LOGRATES.pop(logname)
+            OUT[linenum] = log_nft
             OUT.insert(linenum + 1, statement)
         linenum += 1
 
@@ -2074,7 +2075,7 @@ def optimize_final_rules():
     """Remove unreachable rules from chain after "drop" without matcher."""
     linenum = 0
     while linenum < len(OUT):
-        if OUT[linenum].startswith(('accept', 'drop', 'reject')):
+        if OUT[linenum].startswith(('accept', 'drop', 'reject', 'queue')):
             while OUT[linenum + 1] != '}':
                 del OUT[linenum + 1]
         linenum += 1
@@ -2082,19 +2083,13 @@ def optimize_final_rules():
 
 def output_logrates():
     """Output non-optimized lograte entries as chains."""
-    for logname, (ipv, log_text, statement, log_level) in LOGRATES.items():
+    for logname, (log_nft, statement) in LOGRATES.items():
         out(f'chain {logname} {{')
-        rate = ''
-        if CONFIG['log_rate']:
-            rate = (f'update @_lograte_set_{ipv} '
-                    f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
-                    f'limit rate {CONFIG["log_rate"]} }} ')
-        out(f'{rate}log prefix "{log_text} " {log_level}')
-        if statement != 'continue':
-            out(f'{statement}')
+        out(log_nft)
+        out(statement)
         out('}')
 
-    # Output empty lograte sets (optimized and non-optimized)
+    # Output empty lograte sets used by "foomuuri { log_rate }".
     for ipv in (4, 6):
         out(f'set _lograte_set_{ipv} {{')
         out(f'type ipv{ipv}_addr')

@@ -250,8 +250,8 @@ table inet foomuuri {
 		type filter hook forward priority mangle + 5
 		log prefix "Forward-IPS " group 3 continue
 		counter continue
-		queue flags fanout,bypass to 3-5
 		iifname "eth0" oifname "eth1" queue
+		queue flags fanout,bypass to 3-5
 	}
 
 	set _lograte_set_4 {
