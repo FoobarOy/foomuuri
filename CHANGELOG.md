@@ -6,11 +6,11 @@
   * Previously `mark_set` was a statement. Now it's not and rule's default
     statement `accept` is used if not specified. Usually `accept` is what
 	you want to use. To keep previous behavior use `mark_set XX continue`.
-  * `mark_save` and `mark_restore` are removed. They are now automatically
-    added when needed.
-* Add `priority_set` to set packet's tc class id.
-* Add `priority_match` to check packet's tc class id.
-* Add `nbd`, `pxe` and `tor` related macros to default services.
+  * `mark_save` and `mark_restore` are removed. They are automatically added
+    when needed.
+* Add `priority_set` to set packet's traffic control class id.
+* Add `priority_match` to check packet's traffic control class id.
+* Add `nbd`, `pxe`, `salt`, and `tor` related macros to default services.
 * Add `--quiet` command line option to suppress warnings.
 * Fix: `foomuuri iplist refresh` actually refreshes it now, no need for
   `--force`. Option `--soft` checks for next refresh time.
