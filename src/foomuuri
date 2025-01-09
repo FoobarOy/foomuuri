@@ -1357,18 +1357,18 @@ def cgroup_match(rule):
     return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
 
 
-def rule_rate_log_statement(szone, dzone, rule, ipv, *, force_statement=None,
-                            do_lograte=True):
+def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
+                   do_lograte=True):
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
-    ret = ''
     statement = force_statement or rule['statement']
 
     # queue can have optional flags
     if statement == 'queue' and rule[statement]:
         statement = f'{statement} {rule[statement]}'
 
-    ret += rule_rate_limit(rule, ipv)
+    # Rate, counter and log goes before statement
+    prefix = rule_rate_limit(rule, ipv)
 
     # "counter" in single rule line adds counters to it.
     #
@@ -1386,9 +1386,9 @@ def rule_rate_log_statement(szone, dzone, rule, ipv, *, force_statement=None,
             f'{szone}-any' in counterlist or
             f'any-{dzone}' in counterlist
     ):
-        ret += 'counter '
+        prefix += 'counter '
         if rule['counter']:
-            ret += f'name "{rule["counter"]}" '
+            prefix += f'name "{rule["counter"]}" '
 
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone STATEMENT".
@@ -1398,14 +1398,14 @@ def rule_rate_log_statement(szone, dzone, rule, ipv, *, force_statement=None,
         log_level = (CONFIG['log_level'] if rule['log_level'] is None else
                      rule['log_level'])
         if do_lograte:
-            # Limit logging to "foomuuri { log_rate }" entries. This is
-            # important to avoid overlogging (DoS or filesystem full).
+            # Limit maximum amount of logging to "foomuuri { log_rate }".
+            # This is important to avoid overlogging (DoS or filesystem full).
             logname = f'lograte_{len(LOGRATES) + 1}'
             LOGRATES[logname] = (ipv, log_text, statement, log_level)
-            return f'{ret}jump {logname}'
-        ret += f'log prefix "{log_text} " {log_level} '
+            return f'{prefix}jump {logname}'
+        prefix += f'log prefix "{log_text} " {log_level} '
 
-    return ret + statement
+    return prefix + statement
 
 
 def output_icmp(szone, dzone, rules, ipv):
@@ -1426,10 +1426,10 @@ def output_icmp(szone, dzone, rules, ipv):
         if rule['protocol'] != icmp:
             continue
 
-        match = match_rules(rule, ipv, skip_icmp=False)
+        match = rule_matchers(rule, ipv, skip_icmp=False)
         if match is None:
             continue
-        statement = rule_rate_log_statement(szone, dzone, rule, ipv)
+        statement = rule_statement(szone, dzone, rule, ipv)
 
         proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
         out(f'{proto_ports}{match}{statement}')
@@ -1590,7 +1590,7 @@ def parse_to(rule, ipv):
     return f' {"ip" if ipv == 4 else "ip6"} to {target[0]}'
 
 
-def match_rules(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
+def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     """Parse rule's matchers to nft rule."""
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-return-statements
@@ -1672,13 +1672,13 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
     for rule in rules:
         if rule['after_conntrack'] != after_conntrack:
             continue
-        match = match_rules(rule, ipv, cast=cast)
+        match = rule_matchers(rule, ipv, cast=cast)
         if match is None:
             continue
         if match == '' and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
-        statement = rule_rate_log_statement(szone, dzone, rule, ipv,
-                                            force_statement=rule['nft'])
+        statement = rule_statement(szone, dzone, rule, ipv,
+                                   force_statement=rule['nft'])
 
         # Automatically restore mark from conntrack if mark_match is used
         if not has_mark_restore and rule['mark_match']:
@@ -1709,7 +1709,7 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         if new_szone == szone and new_dzone == dzone:
             continue
 
-        match = match_rules(rule, ipv)
+        match = rule_matchers(rule, ipv)
         if match is None:
             continue
         out(f'{match}jump {new_szone}-{new_dzone}_{ipv}')
@@ -1719,7 +1719,7 @@ def output_options(rules, ipv):
     """Output "mss" etc options."""
     for rule in rules:
         if rule['mss'] and ipv == 4:
-            match = match_rules(rule, ipv, skip_options=False)
+            match = rule_matchers(rule, ipv, skip_options=False)
             out(f'{match}tcp flags syn tcp option '
                 f'maxseg size set {rule["mss"]}')
 
@@ -1872,12 +1872,12 @@ def output_rule_section_no_header(rules, section):
             to_rule = parse_to(rule, ipv)
             if to_rule is None:
                 continue
-            match = match_rules(rule, ipv)
+            match = rule_matchers(rule, ipv)
             if match is None:
                 continue
-            statement = rule_rate_log_statement(section.upper(), '', rule, ipv,
-                                                force_statement=rule['nft'],
-                                                do_lograte=False)
+            statement = rule_statement(section.upper(), '', rule, ipv,
+                                       force_statement=rule['nft'],
+                                       do_lograte=False)
 
             # Automatically restore mark from conntrack if mark_match is used
             if not has_mark_restore and rule['mark_match']:
