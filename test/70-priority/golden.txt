@@ -127,8 +127,8 @@ table inet foomuuri {
 			untracked : jump smurfs_4
 		}
 		ip protocol igmp ip daddr 224.0.0.22 accept
-		tcp dport 22 meta priority none drop
-		tcp dport 22 meta priority 1:4242 accept
+		tcp dport 22 meta priority "none" drop
+		tcp dport 22 meta priority "1:4242" accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
@@ -142,8 +142,8 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		tcp dport 22 meta priority none drop
-		tcp dport 22 meta priority 1:4242 accept
+		tcp dport 22 meta priority "none" drop
+		tcp dport 22 meta priority "1:4242" accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
@@ -252,8 +252,8 @@ table inet foomuuri {
 
 	chain filter_forward_mangle {
 		type filter hook forward priority mangle + 5
-		iifname "eth0" meta priority set 1:4242 accept
-		iifname "eth1" meta priority none meta priority set 1:4343 accept
+		iifname "eth0" meta priority set "1:4242" accept
+		iifname "eth1" meta priority "none" meta priority set "1:4343" accept
 	}
 
 	set _lograte_set_4 {
