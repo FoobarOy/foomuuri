@@ -1646,7 +1646,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     meta_set = ''
     if rule['mark_set']:
         meta_set += (f'meta mark set {mark_set_argument(rule)} '
-                     f'ct mark set mark ')
+                     f'ct mark set meta mark ')
     if rule['priority_set']:
         meta_set += f'meta priority set {rule["priority_set"]} '
 
@@ -1686,8 +1686,9 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
         statement = rule_statement(szone, dzone, rule, ipv,
                                    force_statement=rule['nft'])
 
-        # Automatically restore mark from conntrack if mark_match is used
-        if not has_mark_restore and rule['mark_match']:
+        # Automatically restore mark from conntrack before mark match or set
+        # is used. Mark set needs it too for OR-operations.
+        if not has_mark_restore and (rule['mark_match'] or rule['mark_set']):
             has_mark_restore = True
             out('meta mark set ct mark')
 
@@ -1885,8 +1886,11 @@ def output_rule_section_no_header(rules, section):
                                        force_statement=rule['nft'],
                                        do_lograte=False)
 
-            # Automatically restore mark from conntrack if mark_match is used
-            if not has_mark_restore and rule['mark_match']:
+            # Automatically restore mark from conntrack when needed
+            if (
+                    not has_mark_restore and
+                    (rule['mark_match'] or rule['mark_set'])
+            ):
                 has_mark_restore = True
                 out('meta mark set ct mark')
 
