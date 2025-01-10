@@ -3316,7 +3316,7 @@ def command_iplist():
 
 
 def command_list():
-    """List currently active ruleset."""
+    """List currently active ruleset or other things."""
     # List all
     if not CONFIG['parameters']:
         return nft_command('list ruleset')
@@ -3326,26 +3326,41 @@ def command_list():
     zones = parse_config_zones(config)
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
-    # List rules for single zone-zone, known macros, etc
+    # Parse parameters
+    list_type = CONFIG['parameters'][0]
+    list_params = CONFIG['parameters'][1:]
     ret = 0
-    for zone in CONFIG['parameters']:
-        if zone == 'macro':
-            # List macros. config{} doesn't have macro{} anymore so config
-            # must be re-read.
-            macros = parse_config_macros(read_config())
-            print('macro {')
-            for macro in sorted(macros):
+
+    if list_type == 'macro':
+        # List macros. config{} doesn't have macro{} anymore so config
+        # must be re-read.
+        macros = parse_config_macros(read_config())
+        print('macro {')
+        for macro in sorted(macros):
+            if (
+                    not list_params or
+                    macro in list_params or
+                    any(item in list_params for item in macros[macro])
+            ):
                 print(f'  {macro:15s} {" ".join(macros[macro])}')
-            print('}')
-        elif zone == 'counter':
-            # List named counters
-            ret += nft_command('list counters table inet foomuuri')
+        print('}')
+        return 0
+
+    if list_type == 'counter':
+        # List named counters
+        if not list_params:
+            ret |= nft_command('list counters table inet foomuuri')
         else:
-            # List zone-zone
-            if zone not in zonepairs:
-                fail(f'Unknown zone-zone: {zone}')
-            for ipv in (4, 6):
-                ret += nft_command(f'list chain inet foomuuri {zone}_{ipv}')
+            for counter in list_params:
+                ret |= nft_command(f'list counter inet foomuuri {counter}')
+        return ret
+
+    # List zone-zone rules
+    for zone in CONFIG['parameters']:
+        if zone not in zonepairs:
+            fail(f'Unknown zone-zone: {zone}')
+        for ipv in (4, 6):
+            ret += nft_command(f'list chain inet foomuuri {zone}_{ipv}')
     return ret
 
 
@@ -3792,7 +3807,11 @@ def command_help(error=True):
     print('  list zone-zone {zone-zone...}')
     print('                   List active ruleset for zone-zone')
     print('  list macro       List all known macros')
+    print('  list macro keyword {keyword...}')
+    print('                   List all macros with specified name or value')
     print('  list counter     List all named counters')
+    print('  list counter keyword {keyword}')
+    print('                   List named counter with specified name')
     print('  iplist list      List entries in all configured iplists and '
           'resolves')
     print('  iplist list name {name...}')

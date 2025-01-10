@@ -12,6 +12,10 @@
 * Add `priority_match` to check packet's traffic control class id.
 * Add `nbd`, `pxe`, `salt`, and `tor` related macros to default services.
 * Add `--quiet` command line option to suppress warnings.
+* Add filters to `foomuuri list`:
+  * `foomuuri list macro http https`: specified macros.
+  * `foomuuri list macro 80 443`: macros that include value 80 or 443.
+  * `foomuuri list counter traffic_in traffic_out`: specified counters.
 * Fix: `foomuuri iplist refresh` actually refreshes it now, no need for
   `--force`. Option `--soft` checks for next refresh time.
 

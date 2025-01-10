@@ -77,8 +77,14 @@ emulation for NetworkManager's zone support.
 **list macro**
 : list all known macros
 
+**list macro keyword {keyword...}**
+: list all macros with specified name or value
+
 **list counter**
 : list all named counters
+
+**list counter keyword {keyword...}**
+: list named counter with specified name
 
 **iplist list**
 : list entries in all configured iplists and resolves
