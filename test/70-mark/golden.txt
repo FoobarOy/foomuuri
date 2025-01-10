@@ -252,7 +252,8 @@ table inet foomuuri {
 
 	chain filter_forward_mangle {
 		type filter hook forward priority mangle + 5
-		iifname "eth0" meta mark set 42 ct mark set mark accept
+		meta mark set ct mark
+		iifname "eth0" meta mark set 42 ct mark set meta mark accept
 	}
 
 	chain route_output_mangle {
