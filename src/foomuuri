@@ -1632,7 +1632,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
 
     priority_match = ''
     if rule['priority_match']:
-        priority_match = f'meta priority {rule["priority_match"]} '
+        priority_match = f'meta priority "{rule["priority_match"]}" '
 
     uid = ''
     if rule['uid']:
@@ -1648,7 +1648,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
         meta_set += (f'meta mark set {mark_set_argument(rule)} '
                      f'ct mark set meta mark ')
     if rule['priority_set']:
-        meta_set += f'meta priority set {rule["priority_set"]} '
+        meta_set += f'meta priority set "{rule["priority_set"]}" '
 
     ifname = parse_interface_names(rule)
 

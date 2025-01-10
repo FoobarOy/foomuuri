@@ -3,7 +3,7 @@
 ## 0.27 (20xx-xx-xx)
 
 * BREAKING CHANGES:
-  * Previously `mark_set` was a statement. Now it's not and rule's default
+  * Previously `mark_set` was a statement. Now it's matcher and rule's default
     statement `accept` is used if not specified. Usually `accept` is what
 	you want to use. To keep previous behavior use `mark_set XX continue`.
   * `mark_save` and `mark_restore` are removed. They are automatically added
