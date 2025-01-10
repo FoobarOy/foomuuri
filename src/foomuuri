@@ -693,7 +693,7 @@ def verify_rule_sanity(rule, fileline):
             fail(f'{fileline}"{key}" without value is not valid')
 
     for key in ('saddr_rate_name', 'daddr_rate_name', 'saddr_daddr_rate_name',
-                'helper', 'counter'):
+                'helper', 'counter', 'mss'):
         value = rule[key] or ''
         if ' ' in value:
             fail(f'{fileline}"{key}" must be single word: {value}')
