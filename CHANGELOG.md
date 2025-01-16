@@ -8,6 +8,7 @@
 	what you want to use. To keep previous behavior use `mark_set XX continue`.
   * `mark_save` and `mark_restore` are removed. They are automatically added
     when needed.
+  * Multi-ISP example in GitHub wiki is updated to match above changes.
 * Add `priority_set` to set packet's traffic control class id.
 * Add `priority_match` to check packet's traffic control class id.
 * Add `nbd`, `pxe`, `salt`, and `tor` related macros to default services.
