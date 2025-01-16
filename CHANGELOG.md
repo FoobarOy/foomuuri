@@ -3,15 +3,17 @@
 ## 0.27 (20xx-xx-xx)
 
 * BREAKING CHANGES:
-  * Previously `mark_set` was a statement. Now it's matcher and rule's default
-    statement `accept` is used if not specified. Usually `accept` is what
-	you want to use. To keep previous behavior use `mark_set XX continue`.
+  * Previously `mark_set` was a statement. Now it's a matcher and rule's
+    default statement `accept` is used if not specified. Usually `accept` is
+	what you want to use. To keep previous behavior use `mark_set XX continue`.
   * `mark_save` and `mark_restore` are removed. They are automatically added
     when needed.
 * Add `priority_set` to set packet's traffic control class id.
 * Add `priority_match` to check packet's traffic control class id.
 * Add `nbd`, `pxe`, `salt`, and `tor` related macros to default services.
 * Add `--quiet` command line option to suppress warnings.
+* Print warning in `foomuuri check` if macro is overwritten.
+* Add more checks for invalid rules, like `ssh saddr` without address.
 * Add filters to `foomuuri list`:
   * `foomuuri list macro http https`: specified macros.
   * `foomuuri list macro 80 443`: macros that include value 80 or 443.
