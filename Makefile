@@ -29,8 +29,8 @@ clean distclean:
 
 install:
 	mkdir -p $(DESTDIR)/etc/foomuuri/
-	mkdir -p $(DESTDIR)/usr/sbin/
-	cp src/foomuuri $(DESTDIR)/usr/sbin/
+	mkdir -p $(DESTDIR)/usr/bin/
+	cp src/foomuuri $(DESTDIR)/usr/bin/
 	mkdir -p $(DESTDIR)/usr/lib/sysctl.d/
 	cp etc/50-foomuuri.conf $(DESTDIR)/usr/lib/sysctl.d/50-foomuuri.conf
 	mkdir -p $(DESTDIR)/usr/share/foomuuri/
