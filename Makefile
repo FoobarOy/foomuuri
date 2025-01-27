@@ -3,7 +3,6 @@
 .PHONY: all test devel clean distclean install sysupdate release tar
 
 CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }')
-SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
 
 # Default target is to run tests
 
@@ -27,10 +26,13 @@ clean distclean:
 
 # Install current source to DESTDIR
 
+BINDIR			?= /usr/sbin
+SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
+
 install:
 	mkdir -p $(DESTDIR)/etc/foomuuri/
-	mkdir -p $(DESTDIR)/usr/sbin/
-	cp src/foomuuri $(DESTDIR)/usr/sbin/
+	mkdir -p $(DESTDIR)$(BINDIR)/
+	cp src/foomuuri $(DESTDIR)$(BINDIR)/
 	mkdir -p $(DESTDIR)/usr/lib/sysctl.d/
 	cp etc/50-foomuuri.conf $(DESTDIR)/usr/lib/sysctl.d/50-foomuuri.conf
 	mkdir -p $(DESTDIR)/usr/share/foomuuri/
