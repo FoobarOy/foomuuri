@@ -5,7 +5,7 @@
 * BREAKING CHANGES:
   * Previously `mark_set` was a statement. Now it's a matcher and rule's
     default statement `accept` is used if not specified. Usually `accept` is
-	what you want to use. To keep previous behavior use `mark_set XX continue`.
+    what you want to use. To keep previous behavior use `mark_set XX continue`.
   * `mark_save` and `mark_restore` are removed. They are automatically added
     when needed.
   * Multi-ISP example in GitHub wiki is updated to match above changes.
