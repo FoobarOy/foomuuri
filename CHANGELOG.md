@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.28 (20xx-xx-xx)
+
+* Add `bgp` macro to default.services.
+
 ## 0.27 (2025-01-28)
 
 * BREAKING CHANGES:
