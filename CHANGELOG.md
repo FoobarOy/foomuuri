@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.27 (20xx-xx-xx)
+## 0.27 (2025-01-28)
 
 * BREAKING CHANGES:
   * Previously `mark_set` was a statement. Now it's a matcher and rule's
