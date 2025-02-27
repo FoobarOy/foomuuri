@@ -69,9 +69,11 @@ CONFIG = {
     'good_file': 'good.fw',
     'next_file': 'next.fw',
     'dbus_file': 'dbus.fw',
-    'resolve_file': 'resolve.fw',
-    'iplist_file': 'iplist.fw',
-    'iplist_manual_file': 'iplist-manual.fw',
+    'resolve_file': 'resolve.fw',  # old iplist/resolve
+    'iplist_file': 'iplist.fw',  # old iplist/resolve
+    'iplist_manual_file': 'iplist-manual.fw',  # old iplist/resolve
+    'iplist_cache_file': 'iplist-cache.json',
+    'iplist_apply_file': 'iplist-cache.fw',
     'zone_file': 'zone',
     'monitor_statistics_file': 'monitor.statistics',
 
@@ -88,11 +90,12 @@ LOGRATES = {}  # Lograte names and limits
 HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 
-def fail(error=None):
+def fail(error=None, fatal=True):
     """Exit with error message."""
     if error:
-        print(f'Error: {error}')
-    sys.exit(1)
+        print(f'Error: {error}', flush=True)
+    if fatal:
+        sys.exit(1)
 
 
 def warning(text):
@@ -122,8 +125,7 @@ def run_program_rc(args, *, env=None, print_output=True, quiet=False):
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               env=env, timeout=60)
     except (OSError, subprocess.TimeoutExpired) as error:
-        print(f'Error: Failed to run command "{shlex.join(args)}": {error}',
-              flush=True)
+        fail(f'Failed to run command "{shlex.join(args)}": {error}', False)
         return 1
     output = proc.stdout.rstrip()
     if (
@@ -536,39 +538,17 @@ def parse_config_rule_section(config, section):
     return rules
 
 
-def parse_resolve(config, section, timeout=None, refresh=None):
-    """Parse resolve{} and iplist{} from config.
-
-    Line syntax for resolve:
-      @name fqdn fqdn2 fqdn3 ipv4 ipv6 ip/mask
-
-    Line syntax for iplist:
-      @name url filename ipv4 ipv6 ip/mask
-
-    Entry "timeout 10h 30m" (defaults to 24h if "resolve", 10d if "iplist")
-    is how long found IP addresses are remembered.
-
-    Entry "refresh 3h" is how often iplist entries will be fetched.
-    """
-    ret = {
-        'timeout': timeout,
-        'refresh': refresh,
-    }
-    for fileline, line in config.pop(section, []):
-        if line[0] in ('timeout', 'refresh') and len(line) > 1:
-            ret[line[0]] = ''.join(line[1:])
-        else:
-            if not line[0].startswith('@') or len(line[0]) == 1:
+def parse_iplist_names(config):
+    """Return list of resolve{} or iplist{} set names from config."""
+    ret = set()
+    for section in ('iplist', 'resolve'):
+        for fileline, line in config.get(section, []):
+            if line[0] in ('timeout', 'refresh'):
+                continue
+            if not line[0].startswith('@') or line[0] == '@':
                 fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
             check_name(line[0][1:], fileline, '@')
-            for ipv in (4, 6):  # "@foo" to "@foo_4" and "@foo_6"
-                name = f'{line[0]}_{ipv}'
-                if len(line) == 1 or line[1:] == ['-']:
-                    ret[name] = []
-                elif line[1] == '+':  # append
-                    ret[name] = ret.get(name, []) + line[2:]
-                else:  # overwrite
-                    ret[name] = line[1:]
+            ret.add(line[0])
     return ret
 
 
@@ -950,7 +930,7 @@ def parse_config_rules(config):
     """
     rules = {}
     for section, lines in config.items():
-        if section.startswith('_'):
+        if section.startswith('_') or section in ('resolve', 'iplist'):
             continue
         try:
             szone, dzone = section.split('-')
@@ -1471,7 +1451,7 @@ def parse_iplist(rule, direction, ipv):
 
     ips = []
     for item in iplist.split():
-        if item.startswith(('@', '-@')):  # "@foo" to "@foo_4", used by resolve
+        if item.startswith(('@', '-@')):  # "@foo" to "@foo_4"
             ips.append(f'{item}_{ipv}')
         else:
             ipv_addr = is_ip_address(item)
@@ -2113,64 +2093,15 @@ def output_logrates():
         out('}')
 
 
-def output_resolve_sets(resolve, automerge=False):
-    """Output empty resolve{} and iplist{} sets."""
-    for name in resolve:
-        if not name.startswith('@'):
-            continue
-        out(f'set {name[1:]} {{')
-        out(f'type ipv{name[-1]}_addr')
-        out('flags interval,timeout')
-        if automerge:
+def output_iplist_sets(iplist):
+    """Output empty iplist{} sets."""
+    for name in sorted(iplist):
+        for ipv in (4, 6):
+            out(f'set {name[1:]}_{ipv} {{')
+            out(f'type ipv{ipv}_addr')
+            out('flags interval,timeout')
             out('auto-merge')
-        out('}')
-
-
-def output_resolve_elements(resolve, statefile):
-    """Add resolve{} and iplist{} elements from state file to ruleset."""
-    # Read previous resolve results
-    filename = CONFIG[statefile]
-    try:
-        # pylint: disable=no-member
-        content = filename.read_text(encoding='utf-8')
-    except FileNotFoundError:
-        return
-    except PermissionError as error:
-        fail(f'File {filename}: Can\'t read: {error}')
-
-    # Known resolve names in current config files
-    known = [name[1:] for name in resolve if name.startswith('@')]
-    if not known:
-        return
-
-    # Add previous result if resolve name is known
-    out('')
-    now = datetime.datetime.now(datetime.timezone.utc)
-    for line in content.splitlines():
-        if line.startswith('# '):  # Try "didn't exist in active ruleset" now
-            line = line[2:]
-        tokens = line.split()
-        if (
-                line.startswith('add element inet foomuuri ') and
-                len(tokens) >= 10 and
-                tokens[7] == 'timeout' and
-                tokens[4] in known  # It is known name
-        ):
-            # Check optional expire timestamp, used in iplist-manual.fw
-            if len(tokens) == 12 and tokens[10] == '#':
-                try:
-                    expire = datetime.datetime.strptime(tokens[11],
-                                                        '%Y-%m-%dT%H:%M:%S')
-                    expire = expire.replace(tzinfo=datetime.timezone.utc)
-                except ValueError:
-                    continue
-                # Skip expired entries, update timeout for rest
-                seconds = int((expire - now).total_seconds())
-                if seconds <= 0:
-                    continue
-                line = f'{" ".join(tokens[:8])} {seconds}s }}'
-
-            out(line)
+            out('}')
 
 
 def output_named_counters(rules, chain_rules):
@@ -2246,7 +2177,10 @@ def save_file(filename, lines):
     """Write lines to file."""
     try:
         filename.unlink(missing_ok=True)
-        filename.write_text('\n'.join(lines) + '\n', 'utf-8')
+        if isinstance(lines, dict):
+            filename.write_text(json.dumps(lines, indent=2) + '\n', 'utf-8')
+        else:
+            filename.write_text('\n'.join(lines) + '\n', 'utf-8')
         filename.chmod(0o600)
     except PermissionError as error:
         fail(f'File {filename}: Can\'t write: {error}')
@@ -2314,7 +2248,7 @@ def apply_final():
             ret = 0
             warning('Not running as "root", skipping "nft check"')
         if ret:
-            print(f'Error: Nftables failed to check ruleset, error code {ret}')
+            fail(f'Nftables failed to check ruleset, error code {ret}', False)
         else:
             print('check success')
         return ret
@@ -2328,7 +2262,7 @@ def apply_final():
 
     # Check failure
     if ret:
-        print(f'Error: Failed to load ruleset to nftables, error code {ret}')
+        fail(f'Failed to load ruleset to nftables, error code {ret}', False)
         return 1
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
@@ -2348,8 +2282,7 @@ def command_start():
     config = minimal_config()
     zones = parse_config_zones(config)
     zonemap = parse_config_zonemap(config)
-    resolve = parse_resolve(config, 'resolve')
-    iplist = parse_resolve(config, 'iplist')
+    iplist = parse_iplist_names(config)
     chain_rules = {}
     for name in ('snat', 'dnat',
                  'prerouting', 'postrouting',
@@ -2377,15 +2310,12 @@ def command_start():
     optimize_final_rules()
     optimize_accepts()
     output_logrates()
-    output_resolve_sets(resolve)
-    output_resolve_sets(iplist, automerge=True)
+    output_iplist_sets(iplist)
     output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
     output_footer()
-    output_resolve_elements(resolve, 'resolve_file')
-    output_resolve_elements(iplist, 'iplist_file')
-    output_resolve_elements(iplist, 'iplist_manual_file')
+    command_iplist_refresh(config, iplist)
 
     # Save known zones to file
     save_file(CONFIG['zone_file'], zones.keys())
@@ -2766,13 +2696,18 @@ def command_set():
         fail(error)
 
 
+def hostname_cleanup(hostname):
+    """Remove tailing flags and filters from hostname."""
+    if hostname.endswith('|missing-ok') and len(hostname) > 11:
+        return hostname[:-11]
+    return hostname
+
+
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
-    if is_ip_address(hostname):  # Return as is if already IP or IP/mask
-        return (hostname,)
     ret = set()
     try:
-        for item in socket.getaddrinfo(hostname, None):
+        for item in socket.getaddrinfo(hostname_cleanup(hostname), None):
             if item[4] and item[4][0]:
                 ret.add(item[4][0])
     except socket.gaierror:
@@ -2780,133 +2715,69 @@ def resolve_one_hostname(hostname):
     return ret
 
 
-def resolve_all_hostnames(resolve):
-    """Return dict of hostname -> set of IP addresses."""
+def resolve_all_hostnames(resolve, cache):
+    """Resolve hostnames to IP addresses and save them to cache."""
+    # pylint: disable=too-many-locals
+
     # Collect list of hostnames to resolve
+    now = datetime.datetime.now(datetime.timezone.utc)
     todo = set()
-    for hostlist in resolve.values():
-        todo.update(hostlist)
+    for hostname, (timeout, refresh) in resolve.items():
+        cachevalue = cache.get(hostname, {}).get('ip', {})
+        cacherefresh = cache.get(hostname, {}).get('refresh')
+        if cachevalue and cacherefresh:
+            host_timeout = cacherefresh + datetime.timedelta(seconds=timeout)
+            next_refresh = cacherefresh + datetime.timedelta(seconds=refresh)
+            if now >= host_timeout:
+                cache[hostname]['ip'] = {}
+                cache[hostname]['dirty'] = True
+            elif now < next_refresh and CONFIG['force'] < 0:
+                verbose(f'Using cached value for '
+                        f'"{hostname_cleanup(hostname)}"')
+                continue
+        todo.add(hostname)
+    if not todo:
+        return
 
     # Resolve them
-    hosts = {}
+    verbose(f'DNS lookup for: {", ".join(todo)}')
     with concurrent.futures.ThreadPoolExecutor() as executor:
         jobs = {executor.submit(resolve_one_hostname, hostname): hostname
                 for hostname in todo}
         for future in concurrent.futures.as_completed(jobs):
-            hosts[jobs[future]] = future.result()
-    return hosts
+            hostname = jobs[future]
+            addrlist = future.result()
+            if addrlist:
+                # Append/update addresses, don't replace whole list.
+                # Some cloud services will change server IP a lot, and some
+                # will return only partial list of addresses. By appending
+                # old addresses will still work until lookup timeout.
+                iplist_cache_init(cache, hostname)
+                cache[hostname]['dirty'] = True
+                cache[hostname]['refresh'] = now
+                expire = now + datetime.timedelta(seconds=resolve[hostname][0])
+                for addr in addrlist:
+                    cache[hostname]['ip'][addr] = expire
+                verbose(f'Hostname "{hostname_cleanup(hostname)}" resolved '
+                        f'to: {", ".join(addrlist)}')
+            elif hostname_cleanup(hostname) == hostname:
+                warning(f'No IP address found for hostname '
+                        f'"{hostname_cleanup(hostname)}" in iplist')
 
 
 def active_sets():
-    """Return set names in currently active firewall.
-
-    Return value is dict of "setname -> entries".
-    """
-    ret = {}
+    """Return set names in currently active firewall."""
+    ret = set()
     data = nft_json('list sets table inet foomuuri')
     if not data:
         return ret
     for item in data['nftables']:
         if 'set' in item:
-            ret[item['set']['name']] = item['set'].get('elem')
+            ret.add(f'@{item["set"]["name"][:-2]}')
     return ret
 
 
-def apply_resolve_iplist(filename, error_txt, pending_error):
-    """Save and apply resolve/iplist update."""
-    if not OUT:
-        return pending_error
-    save_final(CONFIG[filename])
-    ret = run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG[filename]])
-    if ret:
-        print(f'Error: Failed to update {error_txt}, error code {ret}')
-    return ret or pending_error
-
-
-def config_resolve_to_iplist():
-    """Parse config's resolve{} and return "setname_4 -> iplist" dict."""
-    config = minimal_config()
-    resolve = parse_resolve(config, 'resolve', '24h')
-    timeout = resolve.pop('timeout')
-    resolve.pop('refresh')
-    hosts = resolve_all_hostnames(resolve)
-
-    # Convert resolve "@setname_4 -> list of hostnames" to
-    # "setname_4 -> list of IP addresses"
-    current = {}
-    warned = set()
-    for setname, hostlist in resolve.items():
-        iplist = set()
-        ipv = int(setname[-1])
-        for hostname in hostlist:
-            if not hosts[hostname] and hostname not in warned:
-                warned.add(hostname)
-                warning(f'No IP address found for hostname '
-                        f'"{hostname}" in resolve "{setname[:-2]}"')
-            for ipaddr in hosts[hostname]:
-                if is_ip_address(ipaddr) == ipv:
-                    iplist.add(ipaddr)
-        current[setname[1:]] = sorted(iplist)
-    return current, timeout
-
-
-def warn_once(setname, warned, error_pre, error_post):
-    """Print warning for setname if not already warned."""
-    if setname[:-2] in warned:
-        return  # Already warned
-
-    print(f'{error_pre} "@{setname[:-2]}" {error_post}', flush=True)
-    warned.add(setname[:-2])
-
-
-def command_resolve():
-    """Resolve hostnames."""
-    # Read config and resolve
-    current, timeout = config_resolve_to_iplist()
-    previous = read_previous_resolve_iplist('resolve_file')[0]
-    known = active_sets()
-
-    # Output entries
-    warned = set()
-    for setname, addresses in current.items():
-        for address in addresses:
-            # Is this set active in current ruleset? If not, add entry as
-            # comment
-            if setname not in known:
-                comment = '# '
-                warn_once(setname, warned, 'Warning: Resolve',
-                          'does not exist in currently active firewall')
-            else:
-                # Success, update elements to ruleset.
-                comment = ''
-                out(f'add element inet foomuuri {setname} {{ {address} }}')
-                out(f'delete element inet foomuuri {setname} {{ {address} }}')
-            out(f'{comment}add element inet foomuuri {setname} '
-                f'{{ {address} timeout {timeout} }}')
-
-        # All lookups failed. Add previous entries as comments.
-        if not addresses and setname in previous:
-            for address in sorted(previous[setname]):
-                out(f'# add element inet foomuuri {setname} '
-                    f'{{ {address} timeout {timeout} }}')
-
-    # Error if set in currently active firewall is / will be empty
-    has_entries = set()
-    for setname, addresses in current.items():
-        if addresses or known.get(setname):
-            has_entries.add(setname[:-2])
-    error = 0
-    warned = set()
-    for setname in current:
-        if setname[:-2] not in has_entries:
-            error = 1
-            warn_once(setname, warned, 'Error: Resolve', 'is empty')
-
-    # Apply update
-    return apply_resolve_iplist('resolve_file', 'resolve', error)
-
-
-def get_url(url, setname):
+def get_url(url):
     """Download URL and return it as text, or None if failure."""
     for retry in range(3):
         if retry:
@@ -2919,25 +2790,23 @@ def get_url(url, setname):
             if response.status_code == 200:
                 return response.text
             err = f'status code: {response.status_code}'
-    warning(f'Iplist "@{setname}", can\'t download {url}, {err}')
+    warning(f'Can\'t download iplist URL "{url}": {err}')
     return None
 
 
-def get_file(wildcard, setname):
+def get_file(wildcard):
     """Read all files and return them as single text."""
     wildpath = pathlib.Path(wildcard)
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        warning(f'Iplist "@{setname}", can\'t read file '
-                f'{wildcard}: No such file')
+        warning(f'Can\'t read iplist file "{wildcard}": No such file')
         return None
     text = ''
     for filename in filenames:
         try:
             content = filename.read_text(encoding='utf-8')
         except PermissionError as error:
-            warning(f'Iplist "@{setname}", can\'t read file '
-                    f'{filename}: {error}')
+            warning(f'Can\'t read iplist file "{filename}": {error}')
             return None
         text = text + '\n' + content
     return text
@@ -2946,141 +2815,29 @@ def get_file(wildcard, setname):
 def parse_hour_min(timespec, fallback):
     """Parse 4h3m to seconds.
 
-    This is a dummy parser without any good error checking.
+    This is dummy parser without any good error checking.
     """
     if not timespec:
         return fallback
     timespec = timespec.replace(' ', '')
-    hours = mins = 0
+    days = hours = minutes = seconds = 0
+    if 'd' in timespec:
+        days, timespec = timespec.split('d', 1)
     if 'h' in timespec:
         hours, timespec = timespec.split('h', 1)
     if 'm' in timespec:
-        mins, timespec = timespec.split('m', 1)
+        minutes, timespec = timespec.split('m', 1)
+    if 's' in timespec:
+        seconds, timespec = timespec.split('s', 1)
     if timespec:
         return fallback
     try:
-        return int(hours) * 3600 + int(mins) * 60
+        return (int(days) * 86400 +
+                int(hours) * 3600 +
+                int(minutes) * 60 +
+                int(seconds))
     except ValueError:
         return fallback
-
-
-def get_all_urls_and_files(setname, namelist, last_refresh_time,
-                           default_refresh):
-    """Read all URLs and filename-wildcards and return them as text."""
-    # Is it time to update this list?
-    refresh = parse_hour_min(default_refresh, 0)
-    for item in namelist:
-        if item.startswith('refresh='):
-            refresh = parse_hour_min(item[8:], refresh)
-    if not last_refresh_time or CONFIG['force'] >= 0:
-        time_left = 0
-    else:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        time_left = int((last_refresh_time +
-                         datetime.timedelta(seconds=refresh) -
-                         now).total_seconds())
-    if time_left > 0:
-        verbose(f'Iplist "@{setname}" refresh skipped, {time_left} seconds '
-                f'to next refresh')
-        return '_refresh'  # Not yet
-
-    # It is time. Fetch!
-    text = ''
-    for filename in namelist:
-        if filename.startswith('refresh='):
-            continue
-        if filename.startswith(('https:', 'http:')):
-            content = get_url(filename, setname)
-        elif is_ip_address(filename):
-            content = filename
-        else:
-            content = get_file(filename, setname)
-        if content is None:
-            return None  # Return None if any fails
-        text = text + '\n' + content
-    verbose(f'Iplist "@{setname} refreshed')
-    return text
-
-
-def read_previous_resolve_iplist(filename):
-    """Read previous resolve/iplist state file and parse it to dict."""
-    # Read state file, silently ignore if missing
-    try:
-        # pylint: disable=no-member
-        content = CONFIG[filename].read_text(encoding='utf-8')
-    except FileNotFoundError:
-        return {}, {}
-    except PermissionError as error:
-        fail(f'File {CONFIG["iplist_file"]}: Can\'t read: {error}')
-
-    # Parse lines to setname->set(ipaddrs)
-    addrs = {}
-    last_refresh = {}
-    for line in content.splitlines():
-        if line.startswith('# last_refresh'):
-            try:
-                last_refresh[line.split()[2]] = datetime.datetime.strptime(
-                    line.split()[3], '%Y-%m-%dT%H:%M:%S').replace(
-                        tzinfo=datetime.timezone.utc)
-            except (IndexError, ValueError):
-                pass
-            continue
-        tokens = line.replace('# ', '').split()
-        if len(tokens) != 10 or tokens[7] != 'timeout':
-            continue
-        setname = tokens[4]
-        if setname not in addrs:
-            addrs[setname] = set()
-        addrs[setname].add(tokens[6])
-    return addrs, last_refresh
-
-
-def read_all_iplists(iplist, last_refresh, default_refresh):
-    """Read all iplist files and return dict setname_ipv->iplist."""
-    ret = {}
-    for setname, filenames in iplist.items():
-        # iplist has "name_6" and "name_4" with same content, ignore "_6"
-        if setname.endswith('_6'):
-            continue
-        setname = setname[1:-2]  # Strip "@" and "_4"
-
-        # Get content
-        text = get_all_urls_and_files(setname, filenames,
-                                      last_refresh.get(setname),
-                                      default_refresh)
-        if text is None:  # Fetch failure
-            continue
-        if text == '_refresh':  # It wasn't time to refresh
-            ret[setname] = text
-            continue
-
-        # Parse each line to IPv4/IPv6 lists
-        addr_4 = set()
-        addr_6 = set()
-        for line in text.splitlines():
-            # Strip comments and empty lines
-            if '#' in line:
-                line = line.split('#')[0]
-            if ';' in line:
-                line = line.split(';')[0]
-            line = line.strip()
-            if not line:
-                continue
-
-            # Parse single item per line
-            if is_ipv4_address(line):
-                addr_4.add(line)
-            elif is_ipv6_address(line):
-                addr_6.add(line)
-            else:
-                warning(f'Invalid content in iplist {{ @{setname} }}: {line}')
-                break
-        else:  # Include it to reply if all success, update its timestamp
-            ret[f'{setname}_4'] = addr_4
-            ret[f'{setname}_6'] = addr_6
-            last_refresh[setname] = datetime.datetime.now(
-                datetime.timezone.utc)
-    return ret
 
 
 def iterate_set_elements(data):
@@ -3102,60 +2859,17 @@ def iterate_set_elements(data):
                        f'{ipaddr["prefix"]["len"]}', expire)
 
 
-def iplist_manual_state(iplist):
-    """Save manual iplist status to state file.
-
-    There is no locking so simultaneous add/del can result one missing/extra
-    IP address. Next add/del will fix it.
-    """
-    manual = []
-    known = active_sets()
-    for setname, filenames in iplist.items():
-        # Skip if not manual list, has filenames
-        if filenames or not setname.startswith('@'):
-            continue
-        setname = setname[1:]
-        if setname not in known:
-            continue
-
-        # Get set entries
-        data = nft_json(f'list set inet foomuuri {setname}')
-
-        # Collect IP addresses
-        now = datetime.datetime.now(datetime.timezone.utc)
-        for ipaddr, expire in iterate_set_elements(data):
-            stamp = (now + datetime.timedelta(seconds=expire)).strftime(
-                '%Y-%m-%dT%H:%M:%S')
-            manual.append(f'add element inet foomuuri {setname} '
-                          f'{{ {ipaddr} timeout {expire}s }} # {stamp}')
-
-    # Save manual list
-    save_file(CONFIG['iplist_manual_file'], manual)
-
-
 def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
-    known = set()
-    for item in (
-            list(parse_resolve(config, 'iplist')) +
-            list(parse_resolve(config, 'resolve'))
-    ):
-        if item.startswith('@'):
-            known.add(item[:-2])
-
-    ret = 1  # Default to no output, failure
+    known = parse_iplist_names(config)
     for setname in CONFIG['parameters'][1:] or sorted(known):
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
-            if f'@{setname[:-2]}' not in known:
-                fail(f'Unknown iplist name: @{setname[:-2]}')
             data4 = nft_json(f'list set inet foomuuri {setname}')
             data6 = {}
         else:
-            if f'@{setname}' not in known:
-                fail(f'Unknown iplist name: @{setname}')
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
         elem4 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data4)]
@@ -3164,140 +2878,476 @@ def command_iplist_list():
         if not elems:
             print(f'@{setname}')
         else:
-            ret = 0  # Outputted something, return ok
             for elem in elems:
                 print(f'@{setname:20s}  {elem}')
-    return ret
+    return 0
 
 
 def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
-    iplist = parse_resolve(config, 'iplist', '10d')
-    known = set(iplist) | set(parse_resolve(config, 'resolve'))
-    timeout = iplist.pop('timeout')
+    iplist, timeouts = iplist_parse_config(config)
+    cache = read_iplist_cache(iplist)
     setname = CONFIG['parameters'][1]
-    if setname.startswith('@'):
-        setname = setname[1:]
-    if f'@{setname}_4' not in known:
-        fail(f'Unknown iplist name: @{setname}')
+    if not setname.startswith('@'):
+        setname = f'@{setname}'
+    if setname not in iplist:
+        fail(f'Unknown iplist name: {setname}')
+    timeout = max(timeouts[setname]['url_timeout'],
+                  timeouts[setname]['dns_timeout'])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expire = now + datetime.timedelta(seconds=timeout)
 
-    ret = 0
+    # Add entries to cache and apply it
+    iplist_cache_init(cache, f'manual.{setname}')
     for address in CONFIG['parameters'][2:]:
         ipv = is_ip_address(address)
-        if not ipv:
-            if address[-1] in 'smhd':
-                timeout = address.replace(' ', '')
-                continue
-            fail(f'Invalid IP address {address}')
+        if ipv:
+            cache[f'manual.{setname}']['ip'][address] = expire
+            cache[f'manual.{setname}']['dirty'] = True
+        else:
+            timeout = parse_hour_min(address, 0)
+            if not timeout:
+                fail(f'Invalid IP address {address}')
+            expire = now + datetime.timedelta(seconds=timeout)
+            if timeout > 630720000:  # More than 20 years is "forever"
+                expire = datetime.datetime(year=2100, month=1, day=1,
+                                           tzinfo=datetime.timezone.utc)
 
-        # nftables/kernel workaround to get entry's timeout+expire
-        # values updated. This is not atomic update!
-        # With "auto-merge" enabled this seems to be the only.
-        nft_command(f'delete element inet foomuuri {setname}_{ipv} '
-                    f'{{ {address} }}', quiet=True)
-        ret += nft_command(f'add element inet foomuuri {setname}_{ipv} '
-                           f'{{ {address} timeout {timeout} }}')
-    iplist_manual_state(iplist)
-    return ret
+    return iplist_output_values(iplist, cache, active_sets(), {setname})
 
 
 def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
-    iplist = parse_resolve(config, 'iplist')
-    known = set(iplist) | set(parse_resolve(config, 'resolve'))
+    iplist, _dummy_timeouts = iplist_parse_config(config)
+    cache = read_iplist_cache(iplist)
     setname = CONFIG['parameters'][1]
-    if setname.startswith('@'):
-        setname = setname[1:]
-    if f'@{setname}_4' not in known:
-        fail(f'Unknown iplist name: @{setname}')
+    if not setname.startswith('@'):
+        setname = f'@{setname}'
+    if setname not in iplist:
+        fail(f'Unknown iplist name: {setname}')
 
+    # Delete entries from cache and apply it
+    iplist_cache_init(cache, f'manual.{setname}')
     for address in CONFIG['parameters'][2:]:
-        ipv = is_ip_address(address)
-        if not ipv:
-            fail(f'Invalid IP address {address}')
-        nft_command(f'delete element inet foomuuri {setname}_{ipv} '
-                    f'{{ {address} }}', quiet=True)
-    iplist_manual_state(iplist)
-    return 0
+        cache[f'manual.{setname}']['ip'].pop(address, None)
+        cache[f'manual.{setname}']['dirty'] = True
+
+    return iplist_output_values(iplist, cache, active_sets(), {setname})
 
 
 def command_iplist_flush():
     """Delete all entries from iplist."""
     config = minimal_config()
-    iplist = parse_resolve(config, 'iplist')
-    known = set(iplist) | set(parse_resolve(config, 'resolve'))
-    ret = 0
+    iplist, _dummy_timeouts = iplist_parse_config(config)
+    cache = read_iplist_cache(iplist)
+    update_only = set()
+
     for setname in CONFIG['parameters'][1:]:
-        if setname.startswith('@'):
-            setname = setname[1:]
-        if f'@{setname}_4' not in known:
-            fail(f'Unknown iplist name: @{setname}')
-        for ipv in (4, 6):
-            ret += nft_command(f'flush set inet foomuuri {setname}_{ipv}')
-    iplist_manual_state(iplist)
+        if not setname.startswith('@'):
+            setname = f'@{setname}'
+        if setname not in iplist:
+            fail(f'Unknown iplist name: {setname}')
+
+        update_only.add(setname)
+        iplist_cache_init(cache, f'manual.{setname}')
+        cache[f'manual.{setname}']['ip'] = {}
+        cache[f'manual.{setname}']['dirty'] = True
+
+    return iplist_output_values(iplist, cache, active_sets(), update_only)
+
+
+def iplist_cleanup_file(url, text):
+    """Remove comments and empty lines from downloaded iplist file."""
+    if not text:
+        return []
+    values = []
+    for line in text.splitlines():
+        if '#' in line:
+            line = line.split('#', 1)[0]
+        if ';' in line:
+            line = line.split(';', 1)[0]
+        for value in line.split():
+            if is_ip_address(value):
+                values.append(value)
+            else:
+                warning(f'Unknown entry in iplist "{url}": {value}')
+    return values
+
+
+def get_url_or_file(url, timeout, refresh, cache):
+    """Get URL or file content with cache check."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cachevalue = cache.get(url, {}).get('ip', {})
+    cacherefresh = cache.get(url, {}).get('refresh')
+    if cachevalue and cacherefresh:
+        url_timeout = cacherefresh + datetime.timedelta(seconds=timeout)
+        next_refresh = cacherefresh + datetime.timedelta(seconds=refresh)
+        if now >= url_timeout:
+            cache[url]['ip'] = {}
+            cache[url]['dirty'] = True
+        elif now < next_refresh and CONFIG['force'] < 0:
+            verbose(f'Using cached value for "{url}"')
+            return
+
+    if url.startswith(('https:', 'http:')):
+        value = get_url(url)
+    else:
+        value = get_file(url)
+
+    if value is not None:
+        # Replace list, don't append. These lists are always complete
+        # address lists.
+        expire = now + datetime.timedelta(seconds=timeout)
+        cache[url] = {
+            'ip': {addr: expire for addr in iplist_cleanup_file(url, value)},
+            'dirty': True,
+            'refresh': datetime.datetime.now(datetime.timezone.utc),
+        }
+        verbose(f'Iplist content for "{url}" refreshed, '
+                f'{len(cache[url]["ip"])} entries')
+
+
+def iplist_parse_timeout(fileline, timeouts, key, value):
+    """Update timeouts[key] = value."""
+    if '=' in key and not value:
+        key, value = key.split('=', 1)
+    if not value:
+        fail(f'{fileline}No value for "{key}"')
+    if key in ('dns_timeout', 'dns_refresh',
+               'url_timeout', 'url_refresh'):
+        timeouts[key] = parse_hour_min(''.join(value), timeouts[key])
+        return
+    if key == 'timeout':
+        timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_hour_min(
+            ''.join(value), timeouts['dns_timeout'])
+        return
+    timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_hour_min(
+        ''.join(value), timeouts['dns_refresh'])
+
+
+def read_old_iplist_format(cache):
+    """Read old iplist.fw (v0.27) files and convert them to new cache format.
+
+    Example entries:
+
+    # add element inet foomuuri fi_6 { 2a13:aec0::/32 timeout 10d }
+    add element inet foomuuri foo_4 { 10.0.9.98 timeout 24h }
+    add element inet foomuuri dynamic_4 { 10.0.0.4 timeout
+      798169s } # 2024-12-11T17:16:28
+    """
+    for file_key in ('resolve_file', 'iplist_file', 'iplist_manual_file'):
+        try:
+            # pylint: disable=no-member
+            manual = CONFIG[file_key].read_text('utf-8')
+        except OSError:
+            continue  # Silently ignore all errors
+
+        for line in manual.splitlines():
+            if line.startswith('# '):
+                line = line[2:]
+            items = line.split()
+            if (
+                    not line.startswith('add element inet') or
+                    len(items) not in (10, 12) or
+                    not is_ip_address(items[6])
+            ):
+                continue
+            setname = f'manual.@{items[4][:-2]}'
+
+            if len(items) == 12:
+                timeout = items[11]  # iplist_manual_file has expire stamp
+            else:
+                timeout = (datetime.datetime.now(datetime.timezone.utc) +
+                           datetime.timedelta(seconds=parse_hour_min(
+                               items[8], 0))).strftime('%Y-%m-%dT%H:%M:%S')
+            iplist_cache_init(cache, setname)
+            cache[setname]['ip'][items[6]] = timeout
+
+
+def read_iplist_cache(iplist):
+    """Read current iplist values from cache."""
+    # pylint: disable=no-member  # exists, read_text
+
+    cache = {}
+    try:
+        cache = json.loads(CONFIG['iplist_cache_file'].read_text('utf-8'))
+    except json.decoder.JSONDecodeError as error:
+        warning(f'File {CONFIG["iplist_cache_file"]}: Broken JSON '
+                f'format: {error}')
+    except PermissionError as error:
+        fail(f'File {CONFIG["iplist_cache_file"]}: Can\'t read: {error}')
+    except FileNotFoundError:
+        read_old_iplist_format(cache)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for key in list(cache):
+        if (
+                (key.startswith('@') and key not in iplist) or
+                (key.startswith('manual.@') and key[7:] not in iplist) or
+                'ip' not in cache[key]
+        ):
+            # Iplist in cache, not in config
+            del cache[key]
+            verbose(f'Deleting iplist "{key}" from cache, not in config')
+            continue
+
+        # Check top level refresh. Missing or invalid value is ok.
+        try:
+            refresh = datetime.datetime.strptime(
+                cache[key]['refresh'], '%Y-%m-%dT%H:%M:%S')
+            refresh = refresh.replace(tzinfo=datetime.timezone.utc)
+        except (ValueError, KeyError, TypeError):
+            refresh = now
+        cache[key]['refresh'] = refresh
+
+        # Check IP address timeouts
+        for value in list(cache[key]['ip']):
+            try:
+                timeout = datetime.datetime.strptime(
+                    cache[key]['ip'][value], '%Y-%m-%dT%H:%M:%S')
+                timeout = timeout.replace(tzinfo=datetime.timezone.utc)
+            except (ValueError, KeyError):
+                warning(f'Invalid iplist "{key}" entry "{value}" timestamp '
+                        f'in cache')
+                timeout = now  # Gets deleted
+            cache[key]['ip'][value] = timeout
+            if now >= timeout:
+                verbose(f'Deleting expired iplist "{key}" entry "{value}"')
+                del cache[key]['ip'][value]
+
+        # Don't keep empty sets
+        if not cache[key]['ip']:
+            del cache[key]
+    return cache
+
+
+def write_iplist_cache(cache):
+    """Write iplist cache to disk for next run."""
+    for key in cache:
+        cache[key].pop('dirty', None)
+        if key.startswith(('@', 'manual.@')):
+            del cache[key]['refresh']
+        else:
+            cache[key]['refresh'] = cache[key]['refresh'].strftime(
+                '%Y-%m-%dT%H:%M:%S')
+        for address, value in cache[key]['ip'].items():
+            cache[key]['ip'][address] = value.strftime('%Y-%m-%dT%H:%M:%S')
+
+    save_file(CONFIG['iplist_cache_file'], cache)
+
+
+def iplist_parse_config(config):
+    """Parse resolve{} and iplist{} sections from config."""
+    def_times = {
+        'dns_timeout': 86400,   # 24h
+        'dns_refresh': 900,     # 15m
+        'url_timeout': 886400,  # 10d
+        'url_refresh': 86400,   # 24h
+        'timeout': 0,           # Backward compability keyword
+        'refresh': 0,           # Backward compability keyword
+    }
+    iplist = {}
+    timeouts = {}
+    for fileline, line in config.pop('resolve', []) + config.pop('iplist', []):
+        name = line[0]
+        if name in def_times:  # Parse new global timeout/refresh value
+            iplist_parse_timeout(fileline, def_times, name, line[1:])
+            continue
+        if not name.startswith('@') or name == '@':
+            fail(f'{fileline}Invalid iplist name: {" ".join(line)}')
+        check_name(name[1:], fileline, '@')
+
+        # Parse line items to value[]
+        if len(line) == 1 or line[1:] == ['-']:  # Empty set
+            value = []
+        elif line[1] == '+':  # Append to previous value
+            value = iplist.get(name, []) + line[2:]
+        else:  # Overwrite previous value
+            if name in iplist:
+                verbose(f'{fileline}Overwriting iplist "{name}" with value '
+                        f'"{" ".join(line[1:])}"')
+            value = line[1:]
+
+        # Parse pre-entry timeouts
+        this_value = []
+        this_timeouts = timeouts.get(name, def_times).copy()
+        for item in value:
+            if '=' in item and item.split('=', 1)[0] in def_times:
+                iplist_parse_timeout(fileline, this_timeouts, item, None)
+            else:
+                this_value.append(item)
+
+        iplist[name] = this_value
+        timeouts[name] = this_timeouts
+    if CONFIG['verbose'] >= 2:
+        for name, values in iplist.items():
+            verbose(f'{name:9s}  {" ".join(values)}')
+    return iplist, timeouts
+
+
+def iplist_collect_resolve_list(iplist, timeouts):
+    """Collect URLs and hostnames to be resolved."""
+    if CONFIG['command'] != 'iplist':
+        # Don't resolve anything if called as "foomuuri start".
+        # Use cached entries only.
+        return {}, {}
+
+    urls = {}
+    hostnames = {}
+    for name, values in iplist.items():
+        for value in values:
+            if value.startswith(('https://', 'http://', '.', '/')):
+                if value in urls:
+                    urls[value] = (
+                        min(urls[value][0], timeouts[name]['url_timeout']),
+                        min(urls[value][1], timeouts[name]['url_refresh']))
+                else:
+                    urls[value] = (timeouts[name]['url_timeout'],
+                                   timeouts[name]['url_refresh'])
+            elif not is_ip_address(value):
+                if value in hostnames:
+                    hostnames[value] = (min(hostnames[value][0],
+                                            timeouts[name]['dns_timeout']),
+                                        min(hostnames[value][1],
+                                            timeouts[name]['dns_refresh']))
+                else:
+                    hostnames[value] = (timeouts[name]['dns_timeout'],
+                                        timeouts[name]['dns_refresh'])
+    if CONFIG['verbose'] >= 2:
+        verbose(f'URLs:      {urls}')
+        verbose(f'Hostnames: {hostnames}')
+    return urls, hostnames
+
+
+def iplist_cache_init(cache, setname):
+    """Add empty setname to cache."""
+    if setname in cache:
+        return
+    cache[setname] = {
+        'ip': {},
+        'refresh': datetime.datetime.now(datetime.timezone.utc),
+    }
+
+
+def iplist_cache_copy_ip(cache, source, destination):
+    """Copy IP addresses from cache[source] to cache[destination]."""
+    if source not in cache:
+        return
+    if cache[source].get('dirty'):
+        cache[destination]['dirty'] = True
+    for value, timeout in cache[source]['ip'].items():
+        cache[destination]['ip'][value] = timeout
+
+
+def iplist_output_values(iplist, cache, currently_active, update_only):
+    """Output and apply nft commands to add iplist entries."""
+    forever = datetime.datetime(year=2100, month=1, day=1,
+                                tzinfo=datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    error = 0
+    for setname, setvalues in iplist.items():
+        # Collect new values to cache[@setname]
+        cache[setname] = {
+            'ip': {},
+            'refresh': now,
+        }
+        for value in setvalues:
+            # Static IP address doesn't need refresh, so timeout is forever
+            if is_ip_address(value):
+                cache[setname]['ip'][value] = forever
+                cache[setname]['dirty'] = True
+                continue
+
+            # Add IPs from URL/hostname
+            iplist_cache_copy_ip(cache, value, setname)
+
+        # Add manually added IPs
+        iplist_cache_copy_ip(cache, f'manual.{setname}', setname)
+
+        # Output nft commands to update iplist values
+        if update_only and setname not in update_only:
+            continue  # Filtered away by command line parameter
+        if setname not in currently_active:
+            warning(f'Iplist "{setname}" does not exist in currently active '
+                    f'firewall')
+            continue
+        if not cache[setname].get('dirty') and CONFIG['force'] < 0:
+            verbose(f'Iplist "{setname}" is clean, skipping update')
+            continue
+        if (
+                setvalues and
+                not cache[setname]['ip'] and
+                CONFIG['command'] == 'iplist'
+        ):
+            fail(f'Iplist "{setname}" is empty', False)
+            error = 2
+        else:
+            verbose(f'Updating iplist "{setname}", '
+                    f'{len(cache[setname]["ip"])} entries')
+        out('')
+        out(f'flush set inet foomuuri {setname[1:]}_4')
+        out(f'flush set inet foomuuri {setname[1:]}_6')
+        for value, timeout in cache[setname]['ip'].items():
+            ipv = is_ip_address(value)
+            seconds = max(1, int((timeout - now).total_seconds()))
+            if seconds > 630720000:  # 20 years, add without timeout
+                out(f'add element inet foomuuri {setname[1:]}_{ipv} '
+                    f'{{ {value} }}')
+            else:
+                out(f'add element inet foomuuri {setname[1:]}_{ipv} '
+                    f'{{ {value} timeout {seconds}s }}')
+
+    return iplist_apply_values(cache) | error
+
+
+def iplist_apply_values(cache):
+    """Save iplist changes to disk and use nft to apply it."""
+    if CONFIG['command'] != 'iplist' or not OUT:
+        return 0
+
+    write_iplist_cache(cache)
+    save_final(CONFIG['iplist_apply_file'])
+    ret = run_program_rc(CONFIG['nft_bin'] +
+                         ['--file', CONFIG['iplist_apply_file']])
+    if ret:
+        fail(f'Failed to update iplists, nftables error code {ret}', False)
     return ret
 
 
-def command_iplist_refresh():
+def command_iplist_refresh(config=None, currently_active=None):
     """Refresh iplist{} entries."""
-    # pylint: disable=too-many-locals
+    # Read minimal config and parse it
+    if not config:
+        config = minimal_config()
+    iplist, timeouts = iplist_parse_config(config)
+    urls, hostnames = iplist_collect_resolve_list(iplist, timeouts)
 
-    # Read minimal config and read iplist{} entries
-    config = minimal_config()
-    iplist = parse_resolve(config, 'iplist', '10d', '24h')
-    timeout = iplist.pop('timeout')
-    refresh = iplist.pop('refresh')
-    previous, last_refresh = read_previous_resolve_iplist('iplist_file')
-    for param in CONFIG['parameters'][1:]:  # Refresh parameters now
-        if param.startswith('@'):
-            param = param[1:]
-        last_refresh[param] = None
-    current = read_all_iplists(iplist, last_refresh, refresh)
-    known = active_sets()
+    # Read URLs and files to cache
+    cache = read_iplist_cache(iplist)
+    for url, (timeout, refresh) in urls.items():
+        get_url_or_file(url, timeout, refresh, cache)
 
-    # Output last_refresh entries
-    for setname, timestamp in last_refresh.items():
-        if f'@{setname}_4' in iplist and timestamp:
-            out(f'# last_refresh {setname} {timestamp:%Y-%m-%dT%H:%M:%S}')
+    # Resolve hostnames to cache
+    resolve_all_hostnames(hostnames, cache)
 
-    # Output address entries
-    warned = set()
-    error = 0
-    for setname, filenames in iplist.items():
-        if not filenames:
-            continue  # Don't touch sets without filenames
+    # Read active set names from nft if not provided by "foomuuri start"
+    if currently_active is None:
+        currently_active = active_sets()
 
-        setname = setname[1:]  # Strip "@"
-        if current.get(setname[:-2]) == '_refresh':
-            # It wasn't time to refresh
-            comment = '# '
-            addrlist = previous.get(setname, [])
-        elif setname not in current:
-            # Fetch for this set failed. Add previous fetch as comments
-            error = 1
-            comment = '# '
-            addrlist = previous.get(setname, [])
-            warn_once(setname, warned, 'Error: Iplist', 'failed to refresh')
-        elif setname not in known:
-            # Not active in current ruleset, add items as comments
-            comment = '# '
-            addrlist = current[setname]
-            warn_once(setname, warned, 'Warning: Iplist',
-                      'does not exist in currently active firewall')
-        else:
-            # Success, update elements to ruleset.
-            comment = ''
-            out(f'flush set inet foomuuri {setname}')
-            addrlist = current[setname]
+    # Default to update all sets, "foomuuri iplist refresh setname" can filter
+    update_only = None
+    if CONFIG['parameters'][1:]:
+        update_only = []
+        for name in CONFIG['parameters'][1:]:
+            if name.startswith('@'):
+                update_only.append(name)
+            else:
+                update_only.append(f'@{name}')
 
-        for ipaddr in sorted(addrlist):
-            out(f'{comment}add element inet foomuuri {setname} '
-                f'{{ {ipaddr} timeout {timeout} }}')
-
-    # Apply update
-    return apply_resolve_iplist('iplist_file', 'iplist', error)
+    # Apply updates to ruleset
+    return iplist_output_values(iplist, cache, currently_active, update_only)
 
 
 def command_iplist():
@@ -3365,7 +3415,7 @@ def command_list():
 
 
 def command_reload():
-    """Run start and refresh resolve and iplist."""
+    """Run start and refresh iplist."""
     # Use same args
     args = [sys.argv[0]]
     for arg in sys.argv[1:]:
@@ -3374,7 +3424,6 @@ def command_reload():
 
     # Run commands
     for sub, fatal in ((['start'], True),
-                       (['resolve', 'refresh'], False),
                        (['iplist', 'refresh'], False)):
         ret = run_program_rc(args + sub)
         if ret and fatal:
@@ -3797,8 +3846,7 @@ def command_help(error=True):
     print()
     print('  start            Load configuration files and generate ruleset')
     print('  stop             Remove ruleset')
-    print('  reload           Same as start, followed by resolve and iplist '
-          'refresh')
+    print('  reload           Same as start, followed by iplist refresh')
     print('  status           Show current status: running, zone-interface '
           'mapping')
     print('  check            Verify configuration files')
@@ -3807,23 +3855,23 @@ def command_help(error=True):
     print('  list zone-zone {zone-zone...}')
     print('                   List active ruleset for zone-zone')
     print('  list macro       List all known macros')
-    print('  list macro keyword {keyword...}')
+    print('  list macro name {name...}')
     print('                   List all macros with specified name or value')
     print('  list counter     List all named counters')
-    print('  list counter keyword {keyword}')
+    print('  list counter name {name...}')
     print('                   List named counter with specified name')
-    print('  iplist list      List entries in all configured iplists and '
-          'resolves')
+    print('  iplist list      List entries in all configured iplists')
     print('  iplist list name {name...}')
-    print('                   List entries in named iplist/resolve')
+    print('                   List entries in named iplist')
     print('  iplist add name {timeout} ipaddress {ipaddress...}')
     print('                   Add or refresh IP address to iplist')
     print('  iplist del name ipaddress {ipaddress...}')
     print('                   Delete IP address from iplist')
     print('  iplist flush name {name...}')
     print('                   Delete all IP addresses from iplist')
+    print('  iplist refresh   Refresh all iplists now')
     print('  iplist refresh name {name...}')
-    print('                   Refresh iplist @name now')
+    print('                   Refresh named iplists now')
     print('  set interface {interface} zone {zone}')
     print('                   Change interface to zone')
     print('  set interface {interface} zone -')
@@ -3841,8 +3889,6 @@ def command_help(error=True):
     print()
     print('Internally used commands:')
     print()
-    print('  iplist refresh   Refresh iplist entries')
-    print('  resolve refresh  Refresh resolve hostnames')
     print('  dbus             Start D-Bus daemon')
     print('  monitor          Start target monitor daemon')
     if error:
@@ -3884,7 +3930,7 @@ def run_command():
     """Run CONFIG[command]."""
     # Only some commands can take arguments
     if CONFIG['parameters'] and CONFIG['command'] not in (
-            'list', 'iplist', 'set', 'resolve', 'help'):
+            'list', 'iplist', 'set', 'help'):
         return command_help()
 
     # Help doesn't need root
@@ -3904,7 +3950,6 @@ def run_command():
         'list': command_list,
         'set': command_set,
         'iplist': command_iplist,
-        'resolve': command_resolve,
         'dbus': command_dbus,
         'monitor': command_monitor,
     }.get(CONFIG['command'])

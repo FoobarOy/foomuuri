@@ -1,9 +1,0 @@
-[Unit]
-Description=Multizone bidirectional nftables firewall - Refresh resolve hostnames
-Documentation=https://github.com/FoobarOy/foomuuri/wiki
-Requires=foomuuri.service
-PartOf=foomuuri.service
-
-[Timer]
-OnActiveSec=2m
-OnUnitActiveSec=15m

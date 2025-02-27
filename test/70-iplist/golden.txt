@@ -1,0 +1,195 @@
+table inet foomuuri
+delete table inet foomuuri
+
+table inet foomuuri {
+
+	chain allow_icmp_4 {
+		icmp type {
+			destination-unreachable,  # 3, Destination Unreachable
+			time-exceeded,            # 11, Time Exceeded
+			parameter-problem         # 12, Parameter Problem
+		} accept
+	}
+
+	chain allow_icmp_6 {
+		icmpv6 type {
+			destination-unreachable,  # 1, Destination Unreachable
+			packet-too-big,           # 2, Packet Too Big
+			time-exceeded,            # 3, Time Exceeded
+			parameter-problem,        # 4, Parameter Problem
+			nd-router-solicit,        # 133, Router Solicitation
+			nd-neighbor-solicit,      # 135, Neighbor Solicitation
+			nd-neighbor-advert,       # 136, Neighbor Advertisement
+			ind-neighbor-solicit,     # 141, Inverse Neighbor Discovery Solicitation Message
+			ind-neighbor-advert       # 142, Inverse Neighbor Discovery Advertisement Message
+		} accept
+		icmpv6 type . ip6 saddr {
+			nd-router-advert . fe80::/10,      # 134, Router Advertisement
+			mld-listener-query . fe80::/10,    # 130, Multicast Listener Query
+			mld-listener-report . fe80::/10,   # 131, Multicast Listener Report
+			mld-listener-done . fe80::/10,     # 132, Multicast Listener Done
+			149 . fe80::/10,                   # 149, Certification Path Advertisement Message
+			151 . fe80::/10,                   # 151, Multicast Router Advertisement
+			152 . fe80::/10,                   # 152, Multicast Router Solicitation
+			153 . fe80::/10,                   # 153, Multicast Router Termination
+			mld2-listener-report . fe80::/10,  # 143, Version 2 Multicast Listener Report
+			mld2-listener-report . ::,
+			148 . fe80::/10,                   # 148, Certification Path Solicitation Message
+			148 . ::
+		} accept
+	}
+
+	chain smurfs_4 {
+		ip saddr 0.0.0.0 return
+		fib saddr type { broadcast, multicast } jump smurfs_drop
+	}
+
+	chain smurfs_6 {
+		fib saddr type multicast jump smurfs_drop
+	}
+
+	chain invalid_drop {
+		drop
+	}
+
+	chain smurfs_drop {
+		drop
+	}
+
+	chain rpfilter_drop {
+		udp sport 67 udp dport 68 return
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "RPFILTER DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "RPFILTER DROP " level info flags skuid
+		drop
+	}
+
+	chain input {
+		type filter hook input priority filter + 5
+		iifname vmap @input_zones
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
+		drop
+	}
+
+	chain output {
+		type filter hook output priority filter + 5
+		oifname vmap @output_zones
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		ip6 saddr :: icmpv6 type mld2-listener-report accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "OUTPUT REJECT " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "OUTPUT REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain forward {
+		type filter hook forward priority filter + 5
+		iifname . oifname vmap @forward_zones
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
+		drop
+	}
+
+	map input_zones {
+		type ifname : verdict
+		elements = {
+			"lo" : accept,
+		}
+	}
+
+	map output_zones {
+		type ifname : verdict
+		elements = {
+			"lo" : accept,
+		}
+	}
+
+	map forward_zones {
+		type ifname . ifname : verdict
+		elements = {
+			"lo" . "lo" : accept,
+		}
+	}
+
+	chain localhost-localhost {
+		meta nfproto vmap {
+			ipv4 : jump localhost-localhost_4,
+			ipv6 : jump localhost-localhost_6
+		}
+	}
+
+	chain localhost-localhost_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		accept
+	}
+
+	chain localhost-localhost_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		accept
+	}
+
+	set _lograte_set_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _lograte_set_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set empty_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set empty_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set two_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set two_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	chain rpfilter {
+		type filter hook prerouting priority filter + 5
+		fib saddr . mark . iif oif 0 meta ipsec missing jump rpfilter_drop
+	}
+
+}
+
+flush set inet foomuuri empty_4
+flush set inet foomuuri empty_6
+
+flush set inet foomuuri two_4
+flush set inet foomuuri two_6
+add element inet foomuuri two_4 { 10.0.0.1 }
+add element inet foomuuri two_6 { ff00::1 }

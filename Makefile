@@ -46,8 +46,6 @@ install:
 	cp systemd/foomuuri-iplist.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-iplist.timer $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	cp systemd/foomuuri-monitor.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
-	cp systemd/foomuuri-resolve.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
-	cp systemd/foomuuri-resolve.timer $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
 	mkdir -p $(DESTDIR)/usr/lib/tmpfiles.d/
 	cp systemd/foomuuri.tmpfilesd $(DESTDIR)/usr/lib/tmpfiles.d/foomuuri.conf
 	mkdir -p $(DESTDIR)/run/foomuuri/

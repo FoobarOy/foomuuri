@@ -9,7 +9,6 @@ Wants=foomuuri-boot.service
 Wants=foomuuri-dbus.service
 Wants=foomuuri-iplist.timer
 Wants=foomuuri-monitor.service
-Wants=foomuuri-resolve.timer
 
 [Service]
 Type=oneshot

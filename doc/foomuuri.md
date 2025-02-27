@@ -57,7 +57,7 @@ emulation for NetworkManager's zone support.
 : remove ruleset from kernel
 
 **reload**
-: same as **start**, followed by resolve and iplist refresh
+: same as **start**, followed by iplist refresh
 
 **status**
 : show current status: running, zone-interface mapping
@@ -77,20 +77,20 @@ emulation for NetworkManager's zone support.
 **list macro**
 : list all known macros
 
-**list macro keyword {keyword...}**
+**list macro name {name...}**
 : list all macros with specified name or value
 
 **list counter**
 : list all named counters
 
-**list counter keyword {keyword...}**
+**list counter name {name...}**
 : list named counter with specified name
 
 **iplist list**
-: list entries in all configured iplists and resolves
+: list entries in all configured iplists
 
 **iplist list name {name...}**
-: list entries in named iplist/resolve
+: list entries in named iplist
 
 **iplist add name {timeout} ipaddress {ipaddress...}**
 : add or refresh IP address to iplist

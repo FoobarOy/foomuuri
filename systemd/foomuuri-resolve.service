@@ -1,7 +1,0 @@
-[Unit]
-Description=Multizone bidirectional nftables firewall - Refresh resolve hostnames
-Documentation=https://github.com/FoobarOy/foomuuri/wiki
-
-[Service]
-Type=oneshot
-ExecStart=foomuuri --soft resolve refresh

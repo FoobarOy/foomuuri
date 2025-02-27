@@ -43,7 +43,7 @@ load configuration files, generate new ruleset and load it to kernel
 remove ruleset from kernel
 .TP
 \f[B]reload\f[R]
-same as \f[B]start\f[R], followed by resolve and iplist refresh
+same as \f[B]start\f[R], followed by iplist refresh
 .TP
 \f[B]status\f[R]
 show current status: running, zone\-interface mapping
@@ -63,20 +63,20 @@ list active ruleset for \f[B]zone\-zone\f[R] currently loaded to kernel
 \f[B]list macro\f[R]
 list all known macros
 .TP
-\f[B]list macro keyword {keyword\&...}\f[R]
+\f[B]list macro name {name\&...}\f[R]
 list all macros with specified name or value
 .TP
 \f[B]list counter\f[R]
 list all named counters
 .TP
-\f[B]list counter keyword {keyword\&...}\f[R]
+\f[B]list counter name {name\&...}\f[R]
 list named counter with specified name
 .TP
 \f[B]iplist list\f[R]
-list entries in all configured iplists and resolves
+list entries in all configured iplists
 .TP
 \f[B]iplist list name {name\&...}\f[R]
-list entries in named iplist/resolve
+list entries in named iplist
 .TP
 \f[B]iplist add name {timeout} ipaddress {ipaddress\&...}\f[R]
 add or refresh IP address to iplist
