@@ -10,6 +10,8 @@
     for URLs (HTTP or file) and resolved hostnames.
   * `timeout` and `refresh` options are deprecated. They set both `url_XXX`
     and `dns_XXX` values.
+* Add `10 mbytes/second` per byte support to rate limits (`global_rate` etc).
+* Add `over` support to rate limits to be used with `drop` statement.
 * Add `bgp` macro to default services.
 
 ## 0.27 (2025-01-28)

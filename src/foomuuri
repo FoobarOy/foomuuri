@@ -681,11 +681,36 @@ def verify_rule_sanity(rule, fileline):
     for key in ('global_rate', 'saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
         if not rule[key]:
             continue
-        if re.match(r'^\d+/(second|minute|hour) burst \d+$', rule[key]):
-            rule[key] += ' packets'
+        # Limit by packets:
+        #
+        # 3/second
+        # 3/second burst 5
+        # 3/second burst 5 packets
+        # over 3/second
+        # over 3/second burst 5
+        # over 3/second burst 5 packets
+        #
+        # Limit by bytes:
+        #
+        # 10 mbytes/second
+        # 10 mbytes/second burst 12000 kbytes
+        # over 10 mbytes/second
+        # over 10 mbytes/second burst 12000 kbytes
+        #
+        # Limit by connection count
+        #
+        # ct count 8
+        # ct count over 8
+        if re.match(r'^(over )?\d+/(second|minute|hour) burst \d+$',
+                    rule[key]):
+            rule[key] += ' packets'  # Add missing "packets"
         if not (
-                re.match(r'^\d+/(second|minute|hour)( burst \d+ packets)?$',
-                         rule[key]) or
+                re.match(r'^(over )?'
+                         r'\d+/(second|minute|hour)'
+                         r'( burst \d+ packets)?$', rule[key]) or
+                re.match(r'^(over )?'
+                         r'\d+ [km]?bytes/(second|minute|hour)'
+                         r'( burst \d+ [km]?bytes)?$', rule[key]) or
                 re.match(r'^ct count (over )?\d+$', rule[key])
         ):
             fail(f'{fileline}Invalid "{key}" value: {rule[key]}')
