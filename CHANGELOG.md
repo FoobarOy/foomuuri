@@ -7,7 +7,7 @@
   rename `resolve {}` to `iplist {}` and check timeout and refresh options.
   * Add `url_timeout` (10d), `url_refresh` (1d), `dns_timeout` (24h) and
     `dns_refresh` (15m) options to specify expiry timeout and refresh interval
-	for URLs (HTTP or file) and resolved hostnames.
+    for URLs (HTTP or file) and resolved hostnames.
   * `timeout` and `refresh` options are deprecated. They set both `url_XXX`
     and `dns_XXX` values.
 * Add `bgp` macro to default services.

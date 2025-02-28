@@ -3241,6 +3241,38 @@ def iplist_cache_copy_ip(cache, source, destination):
         cache[destination]['ip'][value] = timeout
 
 
+def iplist_output_add_element(cache, setname, now):
+    """Output nft commands to update iplist values to sets.
+
+    Auto-merge in nftables set requires that adds are done set by set, not
+    mixing foo_4 and foo_6 adds.
+    """
+    # Collect addresses to IPv4 and IPv6 sets
+    updates = {
+        4: set(),
+        6: set(),
+    }
+    for address in cache[setname]['ip']:
+        updates[is_ip_address(address)].add(address)
+
+    # Output add to sets
+    out('')
+    for ipv in (4, 6):
+        out(f'flush set inet foomuuri {setname[1:]}_{ipv}')
+        if not updates[ipv]:
+            continue
+
+        out(f'add element inet foomuuri {setname[1:]}_{ipv} {{')
+        for address in sorted(updates[ipv]):
+            timeout = cache[setname]['ip'][address]
+            seconds = max(1, int((timeout - now).total_seconds()))
+            if seconds > 630720000:  # 20 years, add without timeout
+                out(f'{address},')
+            else:
+                out(f'{address} timeout {seconds}s,')
+        out('}')
+
+
 def iplist_output_values(iplist, cache, currently_active, update_only):
     """Output and apply nft commands to add iplist entries."""
     forever = datetime.datetime(year=2100, month=1, day=1,
@@ -3266,7 +3298,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         # Add manually added IPs
         iplist_cache_copy_ip(cache, f'manual.{setname}', setname)
 
-        # Output nft commands to update iplist values
+        # Check that this set should be updated
         if update_only and setname not in update_only:
             continue  # Filtered away by command line parameter
         if setname not in currently_active:
@@ -3276,6 +3308,8 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         if not cache[setname].get('dirty') and CONFIG['force'] < 0:
             verbose(f'Iplist "{setname}" is clean, skipping update')
             continue
+
+        # Print error if set had values, but result is empty
         if (
                 setvalues and
                 not cache[setname]['ip'] and
@@ -3286,18 +3320,9 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         else:
             verbose(f'Updating iplist "{setname}", '
                     f'{len(cache[setname]["ip"])} entries')
-        out('')
-        out(f'flush set inet foomuuri {setname[1:]}_4')
-        out(f'flush set inet foomuuri {setname[1:]}_6')
-        for value, timeout in cache[setname]['ip'].items():
-            ipv = is_ip_address(value)
-            seconds = max(1, int((timeout - now).total_seconds()))
-            if seconds > 630720000:  # 20 years, add without timeout
-                out(f'add element inet foomuuri {setname[1:]}_{ipv} '
-                    f'{{ {value} }}')
-            else:
-                out(f'add element inet foomuuri {setname[1:]}_{ipv} '
-                    f'{{ {value} timeout {seconds}s }}')
+
+        # Add elements to sets
+        iplist_output_add_element(cache, setname, now)
 
     return iplist_apply_values(cache) | error
 
