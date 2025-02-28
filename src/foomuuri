@@ -2721,18 +2721,16 @@ def command_set():
         fail(error)
 
 
-def hostname_cleanup(hostname):
-    """Remove tailing flags and filters from hostname."""
-    if hostname.endswith('|missing-ok') and len(hostname) > 11:
-        return hostname[:-11]
-    return hostname
+def remove_filters(text):
+    """Remove tailing flags and filters from hostname or URL."""
+    return text.split('|')[0]
 
 
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
     ret = set()
     try:
-        for item in socket.getaddrinfo(hostname_cleanup(hostname), None):
+        for item in socket.getaddrinfo(remove_filters(hostname), None):
             if item[4] and item[4][0]:
                 ret.add(item[4][0])
     except socket.gaierror:
@@ -2758,7 +2756,7 @@ def resolve_all_hostnames(resolve, cache):
                 cache[hostname]['dirty'] = True
             elif now < next_refresh and CONFIG['force'] < 0:
                 verbose(f'Using cached value for '
-                        f'"{hostname_cleanup(hostname)}"')
+                        f'"{remove_filters(hostname)}"')
                 continue
         todo.add(hostname)
     if not todo:
@@ -2783,11 +2781,11 @@ def resolve_all_hostnames(resolve, cache):
                 expire = now + datetime.timedelta(seconds=resolve[hostname][0])
                 for addr in addrlist:
                     cache[hostname]['ip'][addr] = expire
-                verbose(f'Hostname "{hostname_cleanup(hostname)}" resolved '
+                verbose(f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}')
-            elif hostname_cleanup(hostname) == hostname:
+            elif '|missing-ok' not in hostname:
                 warning(f'No IP address found for hostname '
-                        f'"{hostname_cleanup(hostname)}" in iplist')
+                        f'"{remove_filters(hostname)}" in iplist')
 
 
 def active_sets():
@@ -2808,23 +2806,26 @@ def get_url(url):
         if retry:
             time.sleep(10)
         try:
-            response = requests.get(url, timeout=50)
+            response = requests.get(remove_filters(url), timeout=50)
         except OSError as error:
             err = f'error: {error}'
         else:
             if response.status_code == 200:
                 return response.text
             err = f'status code: {response.status_code}'
-    warning(f'Can\'t download iplist URL "{url}": {err}')
+    if '|missing-ok' not in url:
+        warning(f'Can\'t download iplist URL "{remove_filters(url)}": {err}')
     return None
 
 
 def get_file(wildcard):
     """Read all files and return them as single text."""
-    wildpath = pathlib.Path(wildcard)
+    wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        warning(f'Can\'t read iplist file "{wildcard}": No such file')
+        if '|missing-ok' not in wildcard:
+            warning(f'Can\'t read iplist file "{remove_filters(wildcard)}": '
+                    f'No such file')
         return None
     text = ''
     for filename in filenames:
