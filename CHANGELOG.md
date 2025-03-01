@@ -10,6 +10,12 @@
     for URLs (HTTP or file) and resolved hostnames.
   * `timeout` and `refresh` options are deprecated. They set both `url_XXX`
     and `dns_XXX` values.
+  * Downloaded iplist content can be filter:
+    * `|shell:/path/to/command` pipe it via external command.
+    * `|json:jqfilter` use external `jq` command to parse it as JSON data.
+    * `|html:XPath` parse it as HTML data.
+    * `|xml:XPath` parse it as XML data.
+    * `|missing-ok` don't print warning if download or DNS resolve fails.
 * Add `10 mbytes/second` per byte support to rate limits (`global_rate` etc).
 * Add `over` support to rate limits to be used with `drop` statement.
 * Add `bgp` macro to default services.
