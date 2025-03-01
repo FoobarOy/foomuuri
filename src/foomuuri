@@ -137,7 +137,25 @@ def run_program_rc(args, *, env=None, print_output=True, quiet=False):
     return proc.returncode
 
 
-def run_program_output(args, fileline):
+def run_program_pipe(args, text_input):
+    """Run external program with stdin, return its output."""
+    if not args:
+        return ''
+    try:
+        proc = subprocess.run(args, check=False, input=text_input,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT,
+                              encoding='utf-8', timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f'Failed to run command "{" ".join(args)}": {error}')
+    if proc.returncode:
+        warning(f'Failed to run command "{" ".join(args)}": '
+                f'return code {proc.returncode}')
+        return None
+    return proc.stdout
+
+
+def run_program_shell(args, fileline):
     """Run external program as shell command and return its output.
 
     Command failure is fatal. Parameter args must be a string, not list.
@@ -193,7 +211,7 @@ def shell_expansion(content, fileline):
             postfix = postfix.splitlines()[0]
             fail(f'{fileline}"$(shell" without ")" in command: {postfix}')
         shell, postfix = postfix.split(')', 1)
-        content = f'{prefix}{run_program_output(shell, fileline)}{postfix}'
+        content = f'{prefix}{run_program_shell(shell, fileline)}{postfix}'
     return content
 
 
@@ -2988,6 +3006,15 @@ def iplist_cleanup_file(url, text):
     """Remove comments and empty lines from downloaded iplist file."""
     if not text:
         return []
+
+    # Apply filters
+    for spec in url.split('|')[1:]:
+        if spec.startswith('json.'):
+            text = run_program_pipe(['jq', '--raw-output', spec[4:]], text)
+            if not text:
+                return []
+
+    # Collect IP addresses
     values = []
     for line in text.splitlines():
         if '#' in line:
