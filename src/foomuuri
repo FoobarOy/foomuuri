@@ -27,9 +27,21 @@ import unicodedata
 import dbus
 import dbus.mainloop.glib
 import dbus.service
-import requests
 from gi.repository import GLib
 
+# requests is optional, used by iplist http download
+try:
+    import requests
+    HAVE_REQUESTS = True
+except ImportError:
+    HAVE_REQUESTS = False
+
+# lxml is optional, used by iplist xml and html filters
+try:
+    import lxml.etree
+    HAVE_LXML = True
+except ImportError:
+    HAVE_LXML = False
 
 # SystemD notify support is optional
 try:
@@ -2820,17 +2832,20 @@ def active_sets():
 
 def get_url(url):
     """Download URL and return it as text, or None if failure."""
-    for retry in range(3):
-        if retry:
-            time.sleep(10)
-        try:
-            response = requests.get(remove_filters(url), timeout=50)
-        except OSError as error:
-            err = f'error: {error}'
-        else:
-            if response.status_code == 200:
-                return response.text
-            err = f'status code: {response.status_code}'
+    if HAVE_REQUESTS:
+        for retry in range(3):
+            if retry:
+                time.sleep(10)
+            try:
+                response = requests.get(remove_filters(url), timeout=50)
+            except OSError as error:
+                err = f'error: {error}'
+            else:
+                if response.status_code == 200:
+                    return response.text
+                err = f'status code: {response.status_code}'
+    else:
+        err = 'No python-requests installed'
     if '|missing-ok' not in url:
         warning(f'Can\'t download iplist URL "{remove_filters(url)}": {err}')
     return None
@@ -3002,17 +3017,42 @@ def command_iplist_flush():
     return iplist_output_values(iplist, cache, active_sets(), update_only)
 
 
+def lxml_parser(url, parser, path, text):
+    """Parse html/xml text with lxml."""
+    # pylint: disable=c-extension-no-member
+    try:
+        root = lxml.etree.fromstring(text, parser)
+        nodes = root.xpath(path)
+    except lxml.etree.LxmlError as error:
+        warning(f'Failed to parse iplist xml/html "{url}": {error}')
+        return None
+    return '\n'.join(nodes)
+
+
+def iplist_url_filters(url, text):
+    """Apply filters to downloaded iplist content."""
+    for spec in url.split('|')[1:]:
+        if not text:
+            break
+
+        # pylint: disable=c-extension-no-member
+        if spec.startswith('shell:'):
+            text = run_program_pipe([spec[6:]], text)
+        elif spec.startswith('json:'):
+            text = run_program_pipe(['jq', '--raw-output', spec[5:]], text)
+        elif spec.startswith('html:') and HAVE_LXML:
+            text = lxml_parser(url, lxml.etree.HTMLParser(), spec[5:], text)
+        elif spec.startswith('xml:') and HAVE_LXML:
+            text = lxml_parser(url, lxml.etree.XMLParser(), spec[4:], text)
+    return text
+
+
 def iplist_cleanup_file(url, text):
     """Remove comments and empty lines from downloaded iplist file."""
+    # Apply filters
+    text = iplist_url_filters(url, text)
     if not text:
         return []
-
-    # Apply filters
-    for spec in url.split('|')[1:]:
-        if spec.startswith('json.'):
-            text = run_program_pipe(['jq', '--raw-output', spec[4:]], text)
-            if not text:
-                return []
 
     # Collect IP addresses
     values = []
