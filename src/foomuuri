@@ -2236,7 +2236,8 @@ def save_file(filename, lines):
     try:
         filename.unlink(missing_ok=True)
         if isinstance(lines, dict):
-            filename.write_text(json.dumps(lines, indent=2) + '\n', 'utf-8')
+            filename.write_text(json.dumps(lines, indent=2, sort_keys=True) +
+                                '\n', 'utf-8')
         else:
             filename.write_text('\n'.join(lines) + '\n', 'utf-8')
         filename.chmod(0o600)
@@ -3393,7 +3394,9 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
                                 tzinfo=datetime.timezone.utc)
     now = datetime.datetime.now(datetime.timezone.utc)
     error = 0
-    for setname, setvalues in iplist.items():
+    for setname in sorted(iplist):
+        setvalues = iplist[setname]
+
         # Collect new values to cache[@setname]
         cache[setname] = {
             'ip': {},
@@ -3919,8 +3922,7 @@ def monitor_write_statistics(targets):
         }
         for target, cfg in targets.items()
     }
-    save_file(CONFIG['monitor_statistics_file'],
-              [json.dumps(stats, indent=2, sort_keys=True)])
+    save_file(CONFIG['monitor_statistics_file'], stats)
 
 
 def command_monitor():
