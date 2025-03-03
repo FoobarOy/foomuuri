@@ -573,6 +573,9 @@ def parse_iplist_names(config):
     ret = set()
     for section in ('iplist', 'resolve'):
         for fileline, line in config.get(section, []):
+            if line[0].startswith(('dns_timeout=', 'dns_refresh=',
+                                   'url_timeout=', 'url_refresh=')):
+                continue
             if line[0] in ('timeout', 'refresh'):
                 continue
             if not line[0].startswith('@') or line[0] == '@':
@@ -3102,22 +3105,27 @@ def get_url_or_file(url, timeout, refresh, cache):
                 f'{len(cache[url]["ip"])} entries')
 
 
-def iplist_parse_timeout(fileline, timeouts, key, value):
-    """Update timeouts[key] = value."""
-    if '=' in key and not value:
-        key, value = key.split('=', 1)
+def iplist_parse_timeout(fileline, timeouts, setting, extra):
+    """Parse key=value from setting and set timeouts[key] = value."""
+    # Parse setting to key=value
+    if extra:  # Backward compabililty  (v0.27)
+        key = setting
+        value = ''.join(extra)
+    else:
+        key, value = setting.split('=', 1)
     if not value:
         fail(f'{fileline}No value for "{key}"')
+
+    # Update timeout
     if key in ('dns_timeout', 'dns_refresh',
                'url_timeout', 'url_refresh'):
-        timeouts[key] = parse_hour_min(''.join(value), timeouts[key])
-        return
-    if key == 'timeout':
+        timeouts[key] = parse_hour_min(value, timeouts[key])
+    elif key == 'timeout':
         timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_hour_min(
-            ''.join(value), timeouts['dns_timeout'])
-        return
-    timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_hour_min(
-        ''.join(value), timeouts['dns_refresh'])
+            value, timeouts['dns_timeout'])
+    else:  # refresh
+        timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_hour_min(
+            value, timeouts['dns_refresh'])
 
 
 def read_old_iplist_format(cache):
@@ -3238,16 +3246,29 @@ def iplist_parse_config(config):
         'dns_refresh': 900,     # 15m
         'url_timeout': 886400,  # 10d
         'url_refresh': 86400,   # 24h
-        'timeout': 0,           # Backward compability keyword
+        'timeout': 0,           # Backward compability keyword (v0.27)
         'refresh': 0,           # Backward compability keyword
     }
     iplist = {}
     timeouts = {}
     for fileline, line in config.pop('resolve', []) + config.pop('iplist', []):
         name = line[0]
-        if name in def_times:  # Parse new global timeout/refresh value
+
+        # Parse global timeout/refresh value
+        if (
+                (
+                    '=' in name and
+                    name.split('=')[0] in def_times and
+                    len(line) == 1
+                ) or (  # Backward compabililty  (v0.27)
+                    name in ('timeout', 'refresh') and
+                    len(line) > 1
+                )
+        ):
             iplist_parse_timeout(fileline, def_times, name, line[1:])
             continue
+
+        # Name must be set name, check it
         if not name.startswith('@') or name == '@':
             fail(f'{fileline}Invalid iplist name: {" ".join(line)}')
         check_name(name[1:], fileline, '@')
@@ -3267,7 +3288,7 @@ def iplist_parse_config(config):
         this_value = []
         this_timeouts = timeouts.get(name, def_times).copy()
         for item in value:
-            if '=' in item and item.split('=', 1)[0] in def_times:
+            if '=' in item and item.split('=')[0] in def_times:
                 iplist_parse_timeout(fileline, this_timeouts, item, None)
             else:
                 this_value.append(item)
