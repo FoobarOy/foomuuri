@@ -1,4 +1,5 @@
 foomuuri-*.tar.gz
 
 test/*/*.fw
+test/*/iplist-cache.json
 test/*/zone

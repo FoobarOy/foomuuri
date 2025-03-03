@@ -1,0 +1,12 @@
+
+flush set inet foomuuri empty_4
+flush set inet foomuuri empty_6
+
+flush set inet foomuuri two_4
+add element inet foomuuri two_4 {
+	10.0.0.1,
+}
+flush set inet foomuuri two_6
+add element inet foomuuri two_6 {
+	ff00::1,
+}
