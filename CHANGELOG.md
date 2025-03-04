@@ -12,7 +12,7 @@
     and `dns_XXX` values.
   * Downloaded iplist content can be filter:
     * `|shell:/path/to/command` pipe it via external command.
-    * `|json:jqfilter` use external `jq` command to parse it as JSON data.
+    * `|json:filter` use external `jq` command to parse it as JSON data.
     * `|html:XPath` parse it as HTML data.
     * `|xml:XPath` parse it as XML data.
     * `|missing-ok` don't print warning if download or DNS resolve fails.

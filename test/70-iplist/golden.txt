@@ -141,6 +141,111 @@ table inet foomuuri {
 		accept
 	}
 
+	chain localhost-public {
+		meta nfproto vmap {
+			ipv4 : jump localhost-public_4,
+			ipv6 : jump localhost-public_6
+		}
+	}
+
+	chain localhost-public_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-public_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain public-localhost {
+		meta nfproto vmap {
+			ipv4 : jump public-localhost_4,
+			ipv6 : jump public-localhost_6
+		}
+	}
+
+	chain public-localhost_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain public-localhost_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain public-public {
+		meta nfproto vmap {
+			ipv4 : jump public-public_4,
+			ipv6 : jump public-public_6
+		}
+	}
+
+	chain public-public_4 {
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		meta pkttype { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
+		drop
+	}
+
+	chain public-public_6 {
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		meta pkttype multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
+		drop
+	}
+
 	set _lograte_set_4 {
 		type ipv4_addr
 		size 65535
