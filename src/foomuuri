@@ -3353,7 +3353,10 @@ def iplist_cache_copy_ip(cache, source, destination):
     if cache[source].get('dirty'):
         cache[destination]['dirty'] = True
     for value, timeout in cache[source]['ip'].items():
-        cache[destination]['ip'][value] = timeout
+        # Choose maximum timeout if both dynamic (resolved from hostname)
+        # and manually added entry exists.
+        old_value = cache[destination]['ip'].get(value, timeout)
+        cache[destination]['ip'][value] = max(old_value, timeout)
 
 
 def iplist_output_add_element(cache, setname, now):
