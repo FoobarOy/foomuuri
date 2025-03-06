@@ -234,7 +234,6 @@ def read_config():
     """
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    # pylint: disable=no-member  # rglob
     configfiles = (sorted(list(CONFIG['_share_dir'].rglob('*.conf'))) +
                    sorted(list(CONFIG['_etc_dir'].rglob('*.conf'))))
     configfiles = [name for name in configfiles
@@ -1999,7 +1998,6 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    # pylint: disable=no-member  # rglob, read_text
     for filename in (sorted(list(CONFIG['_share_dir'].rglob('*.nft'))) +
                      sorted(list(CONFIG['_etc_dir'].rglob('*.nft')))):
         try:
@@ -2323,7 +2321,6 @@ def apply_final():
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
     if CONFIG['command'] == 'start':
-        # pylint: disable=no-member
         CONFIG['_good_file'].unlink(missing_ok=True)
         CONFIG['_next_file'].rename(CONFIG['_good_file'])
     signal_childs()
@@ -3138,7 +3135,6 @@ def read_old_iplist_format(cache):
     """
     for file_key in ('_resolve_file', '_iplist_file', '_iplist_manual_file'):
         try:
-            # pylint: disable=no-member
             manual = CONFIG[file_key].read_text('utf-8')
         except OSError:
             continue  # Silently ignore all errors
@@ -3167,8 +3163,6 @@ def read_old_iplist_format(cache):
 
 def read_iplist_cache(iplist):
     """Read current iplist values from cache."""
-    # pylint: disable=no-member  # exists, read_text
-
     cache = {}
     try:
         cache = json.loads(CONFIG['_iplist_cache_file'].read_text('utf-8'))
