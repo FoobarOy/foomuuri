@@ -188,14 +188,14 @@ def run_program_shell(args, fileline):
 
 def nft_command(cmd, **kwargs):
     """Run "nft cmd", wrapper to run_program_rc()."""
-    return run_program_rc(CONFIG['nft_bin'] + [cmd], **kwargs)
+    return run_program_rc(CONFIG['_nft_bin'] + [cmd], **kwargs)
 
 
 def nft_json(cmd):
     """Run "nft --json cmd", return its output as json, ignore errors."""
     if not cmd:
         return {}
-    args = CONFIG['nft_bin'] + ['--json', cmd]
+    args = CONFIG['_nft_bin'] + ['--json', cmd]
     verbose(' '.join(map(str, args)), 2)
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
@@ -235,8 +235,8 @@ def read_config():
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     # pylint: disable=no-member  # rglob
-    configfiles = (sorted(list(CONFIG['share_dir'].rglob('*.conf'))) +
-                   sorted(list(CONFIG['etc_dir'].rglob('*.conf'))))
+    configfiles = (sorted(list(CONFIG['_share_dir'].rglob('*.conf'))) +
+                   sorted(list(CONFIG['_etc_dir'].rglob('*.conf'))))
     configfiles = [name for name in configfiles
                    if name.name[0] not in ('.', '#')]
 
@@ -336,26 +336,23 @@ def read_config():
     return config
 
 
-def config_to_pathlib(fix_files):
+def config_to_pathlib():
     """Convert str paths in CONFIG{} to pathlib.Paths."""
     # "*_dir" are needed for reading config files
-    keys = list(CONFIG)
+    keys = [key for key in CONFIG if not key.startswith('_')]
     for key in keys:
         if key.endswith('_dir'):
-            CONFIG[key] = pathlib.Path(CONFIG[key])
+            CONFIG[f'_{key}'] = pathlib.Path(CONFIG[key])
 
-    # "*_file" are needed to save current state. "state_dir" can be changed
-    # in command line and in foomuuri section in config. Fix "*_file" only
-    # after reading minimal config.
-    if fix_files:
-        for key in keys:
-            if key.endswith('_file'):
-                CONFIG[key] = CONFIG['state_dir'] / CONFIG[key]
+    # "*_file" are needed to save current state
+    for key in keys:
+        if key.endswith('_file'):
+            CONFIG[f'_{key}'] = CONFIG['_state_dir'] / CONFIG[key]
 
     # "*_bin" are binaries with optional arguments
     for key in keys:
-        if key.endswith('_bin') and isinstance(CONFIG[key], str):
-            CONFIG[key] = shlex.split(CONFIG[key])
+        if key.endswith('_bin'):
+            CONFIG[f'_{key}'] = shlex.split(CONFIG[key])
 
 
 def parse_config_macros(config):
@@ -504,7 +501,7 @@ def parse_config_foomuuri(config):
             CONFIG[name] = f'{CONFIG[name]} {value[2:]}'
         else:
             CONFIG[name] = value  # overwrite
-    config_to_pathlib(True)  # Paths can be changed in foomuuri{}
+    config_to_pathlib()  # Redo as config files can change these
 
     # Convert chain priority offset to nft. It is already converted on D-Bus
     # handler reload.
@@ -2003,8 +2000,8 @@ def output_header(chain_rules):
 
     # Insert include files
     # pylint: disable=no-member  # rglob, read_text
-    for filename in (sorted(list(CONFIG['share_dir'].rglob('*.nft'))) +
-                     sorted(list(CONFIG['etc_dir'].rglob('*.nft')))):
+    for filename in (sorted(list(CONFIG['_share_dir'].rglob('*.nft'))) +
+                     sorted(list(CONFIG['_etc_dir'].rglob('*.nft')))):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
@@ -2281,7 +2278,7 @@ def signal_childs():
     """Signal foomuuri-dbus and foomuuri-monitor to reload."""
     for child in ('dbus', 'monitor'):
         # Read pid
-        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
         except PermissionError as error:
@@ -2301,8 +2298,8 @@ def apply_final():
     # Check config
     if CONFIG['command'] == 'check':
         if CONFIG['root_power']:  # "nft check" requires root
-            ret = run_program_rc(CONFIG['nft_bin'] + ['--check', '--file',
-                                                      CONFIG['next_file']])
+            ret = run_program_rc(CONFIG['_nft_bin'] + ['--check', '--file',
+                                                       CONFIG['_next_file']])
         else:
             ret = 0
             warning('Not running as "root", skipping "nft check"')
@@ -2316,7 +2313,7 @@ def apply_final():
     run_program_rc(CONFIG.get(f'pre_{CONFIG["command"]}'))
 
     # Load "next"
-    ret = run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG['next_file']],
+    ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_next_file']],
                          print_output=False)
 
     # Check failure
@@ -2327,8 +2324,8 @@ def apply_final():
     # Success. Rename "next" to "good", signal dbus to reload and run hook
     if CONFIG['command'] == 'start':
         # pylint: disable=no-member
-        CONFIG['good_file'].unlink(missing_ok=True)
-        CONFIG['next_file'].rename(CONFIG['good_file'])
+        CONFIG['_good_file'].unlink(missing_ok=True)
+        CONFIG['_next_file'].rename(CONFIG['_good_file'])
     signal_childs()
     run_program_rc(CONFIG.get(f'post_{CONFIG["command"]}'))
     print(f'{CONFIG["command"]} success')
@@ -2377,7 +2374,7 @@ def command_start():
     command_iplist_refresh(config, iplist)
 
     # Save known zones to file
-    save_file(CONFIG['zone_file'], zones.keys())
+    save_file(CONFIG['_zone_file'], zones.keys())
 
 
 def command_stop(parse_config=True):
@@ -2392,8 +2389,8 @@ def command_stop(parse_config=True):
 def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
-    return run_program_rc(CONFIG['nft_bin'] + [
-        '--file', CONFIG['share_dir'] / 'block.fw'])
+    return run_program_rc(CONFIG['_nft_bin'] + [
+        '--file', CONFIG['_share_dir'] / 'block.fw'])
 
 
 def parse_active_interface_zone():
@@ -2425,7 +2422,7 @@ def command_status():
 
     # D-Bus, Monitor
     for child in ('dbus', 'monitor'):
-        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
             os.kill(pid, 0)
@@ -2474,8 +2471,8 @@ class DbusCommon:
     @staticmethod
     def apply_out():
         """Apply current OUT commands."""
-        save_final(CONFIG['dbus_file'])
-        run_program_rc(CONFIG['nft_bin'] + ['--file', CONFIG['dbus_file']])
+        save_final(CONFIG['_dbus_file'])
+        run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_dbus_file']])
 
     @staticmethod
     def remove_interface(interface_zone, interface):
@@ -2717,7 +2714,7 @@ def command_dbus():
 
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
+        save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
 
         # Start processing messages
         print('D-Bus handler ready', flush=True)
@@ -3139,7 +3136,7 @@ def read_old_iplist_format(cache):
     add element inet foomuuri dynamic_4 { 10.0.0.4 timeout
       798169s } # 2024-12-11T17:16:28
     """
-    for file_key in ('resolve_file', 'iplist_file', 'iplist_manual_file'):
+    for file_key in ('_resolve_file', '_iplist_file', '_iplist_manual_file'):
         try:
             # pylint: disable=no-member
             manual = CONFIG[file_key].read_text('utf-8')
@@ -3174,12 +3171,12 @@ def read_iplist_cache(iplist):
 
     cache = {}
     try:
-        cache = json.loads(CONFIG['iplist_cache_file'].read_text('utf-8'))
+        cache = json.loads(CONFIG['_iplist_cache_file'].read_text('utf-8'))
     except json.decoder.JSONDecodeError as error:
-        warning(f'File {CONFIG["iplist_cache_file"]}: Broken JSON '
+        warning(f'File {CONFIG["_iplist_cache_file"]}: Broken JSON '
                 f'format: {error}')
     except PermissionError as error:
-        fail(f'File {CONFIG["iplist_cache_file"]}: Can\'t read: {error}')
+        fail(f'File {CONFIG["_iplist_cache_file"]}: Can\'t read: {error}')
     except FileNotFoundError:
         read_old_iplist_format(cache)
 
@@ -3237,7 +3234,7 @@ def write_iplist_cache(cache):
         for address, value in cache[key]['ip'].items():
             cache[key]['ip'][address] = value.strftime('%Y-%m-%dT%H:%M:%S')
 
-    save_file(CONFIG['iplist_cache_file'], cache)
+    save_file(CONFIG['_iplist_cache_file'], cache)
 
 
 def iplist_parse_config(config):
@@ -3453,9 +3450,9 @@ def iplist_apply_values(cache):
         return 0
 
     write_iplist_cache(cache)
-    save_final(CONFIG['iplist_apply_file'])
-    ret = run_program_rc(CONFIG['nft_bin'] +
-                         ['--file', CONFIG['iplist_apply_file']])
+    save_final(CONFIG['_iplist_apply_file'])
+    ret = run_program_rc(CONFIG['_nft_bin'] +
+                         ['--file', CONFIG['_iplist_apply_file']])
     if ret:
         fail(f'Failed to update iplists, nftables error code {ret}', False)
     return ret
@@ -3925,7 +3922,7 @@ def monitor_write_statistics(targets):
         }
         for target, cfg in targets.items()
     }
-    save_file(CONFIG['monitor_statistics_file'], stats)
+    save_file(CONFIG['_monitor_statistics_file'], stats)
 
 
 def command_monitor():
@@ -3958,7 +3955,7 @@ def command_monitor():
         CONFIG['keep_going'] = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['run_dir'] / 'foomuuri-monitor.pid',
+        save_file(CONFIG['_run_dir'] / 'foomuuri-monitor.pid',
                   [str(os.getpid())])
 
         # Start monitoring
@@ -4069,7 +4066,7 @@ def parse_command_line():
             CONFIG['parameters'].append(arg)
     if not CONFIG['command']:
         CONFIG['command'] = 'help'
-    config_to_pathlib(False)  # Needed to read conf, and --set=x_dir=y
+    config_to_pathlib()  # Needed to read config files and for --set=x_dir=y
 
 
 def run_command():
@@ -4111,7 +4108,7 @@ def run_command():
         fail(f'Unknown command: {CONFIG["command"]}')
 
     # Save and apply changes
-    save_final(CONFIG['next_file'])
+    save_final(CONFIG['_next_file'])
     return apply_final()
 
 
