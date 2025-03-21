@@ -18,6 +18,7 @@
     * `|missing-ok` don't print warning if download or DNS resolve fails.
 * Add `10 mbytes/second` per byte support to rate limits (`global_rate` etc).
 * Add `over` support to rate limits to be used with `drop` statement.
+* Add `dscp` matcher to match packet's DSCP value.
 * Add `bgp` macro to default services.
 
 ## 0.27 (2025-01-28)

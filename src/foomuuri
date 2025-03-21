@@ -834,6 +834,7 @@ def parse_rule_line(fileline_line):
         'mark_match': None,
         'priority_set': None,
         'priority_match': None,
+        'dscp': None,
         'cgroup': None,
         'ct_status': None,
         'time': None,
@@ -934,6 +935,7 @@ def parse_rule_line(fileline_line):
                       'mark_match',
                       'priority_set',
                       'priority_match',
+                      'dscp',
                       'cgroup',
                       'ct_status',
                       'time',
@@ -1633,6 +1635,7 @@ def parse_to(rule, ipv):
 def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     """Parse rule's matchers to nft rule."""
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
     if cast is not None and rule['cast'] != cast:
         return None  # multi/broadcast doesn't match
@@ -1684,6 +1687,11 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     if rule['priority_set']:
         meta_set += f'meta priority set "{rule["priority_set"]}" '
 
+    dscp = ''
+    if rule['dscp']:
+        dscp = (f'{"ip" if ipv == 4 else "ip6"} dscp '
+                f'{single_or_set(rule["dscp"], rule["fileline"])} ')
+
     ifname = parse_interface_names(rule)
 
     addrlist = ''
@@ -1702,7 +1710,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     # Return matcher string
     return (f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
             f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
-            f'{priority_match}{uid}{gid}{meta_set}')
+            f'{priority_match}{dscp}{uid}{gid}{meta_set}')
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
