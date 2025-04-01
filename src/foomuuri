@@ -8,6 +8,7 @@ Copyright 2023, Kim B. Heino, Foobar Oy <b@bbbs.net>
 License: GPL-2.0-or-later
 """
 
+import collections
 import concurrent.futures
 import datetime
 import ipaddress
@@ -68,7 +69,7 @@ CONFIG = {
     'rpfilter': 'yes',
     'counter': 'no',
     'set_size': '65535',
-    'recursion_limit': '65535',
+    'recursion_limit': '10000',
     'priority_offset': '5',
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
@@ -354,11 +355,29 @@ def config_to_pathlib():
             CONFIG[f'_{key}'] = shlex.split(CONFIG[key])
 
 
+def parse_config_templates(config, macros, macroline):
+    """Parse "template foo { ... }" rules and convert them to macros."""
+    names = [item for item in config if item.startswith('template ')]
+    for name in names:
+        lines = config.pop(name)
+        fileline = config['_section_line'][name]
+        if not lines:
+            fail(f'{fileline}Template "{name[9:]}" is empty')
+        macro_name = f'_template_{name[9:]}'
+        macroline[macro_name] = fileline
+        macros[macro_name] = []
+        for line in lines:
+            if macros[macro_name]:
+                macros[macro_name].append(';')
+            macros[macro_name].extend(line[1])
+
+
 def parse_config_macros(config):
     """Parse macro{} from config. Recursively expand macro in macro{}."""
     # Parse macro{} to dict
     macros = {}
     macroline = {}
+    parse_config_templates(config, macros, macroline)
     for fileline, macro in config.pop('macro', []):
         key = macro[0]
         value = macro[1:]
@@ -400,12 +419,28 @@ def macro_isdigit(word, separator):
     return word.split(separator)[1].isdigit()
 
 
+def change_template_to_macro_in_rule(fileline, line, macros):
+    """Change "template foo" to "_template_foo"."""
+    pos = 0
+    while pos < len(line) - 1:
+        if line[pos] == 'template':
+            del line[pos]
+            macro_name = f'_template_{line[pos]}'
+            if macro_name not in macros:
+                fail(f'{fileline}Unknown template name: {line[pos]}')
+            line[pos] = macro_name
+        pos += 1
+
+
 def expand_single_line(fileline, line, macros):
     """Expand first macro in line. Repeat call to expand all.
 
     Expansion can return multiple lines.
     Returns None if no expansion was done.
     """
+    # Change "template foo" to macro call
+    change_template_to_macro_in_rule(fileline, line, macros)
+
     # Iterate words in line
     for pos, word in enumerate(line):
         # Cleanup "-macro", "macro/24", "[macro]:123" and "macro:123"
@@ -459,6 +494,7 @@ def expand_macros(config):
             continue  # Don't expand in these sections
 
         new_lines = []
+        recursion_limit = collections.Counter()
         while orig_lines:
             # Get next line and expand macros there
             fileline, line = orig_lines.pop(0)
@@ -469,6 +505,12 @@ def expand_macros(config):
                 orig_lines = expanded + orig_lines
             else:  # Not found, go to next line
                 new_lines.append((fileline, line))
+
+            # Check for expansion loop
+            recursion_limit.update([fileline])
+            if recursion_limit[fileline] > int(CONFIG['recursion_limit']):
+                fail(f'{fileline}Possible macro or template loop '
+                     f'in "{section}": {" ".join(line[:10])} ...')
         config[section] = new_lines
 
 
@@ -969,16 +1011,6 @@ def parse_rule_line(fileline_line):
     return ret
 
 
-def parse_config_templates(config):
-    """Parse "template foo { ... }" rules from config."""
-    templates = {}
-    names = [item for item in config if item.startswith('template ')]
-    for name in names:
-        lines = config.pop(name)
-        templates[name[9:]] = [parse_rule_line(line) for line in lines]
-    return templates
-
-
 def parse_config_rules(config):
     """Parse "zone-zone" rules from config.
 
@@ -1058,29 +1090,6 @@ def insert_any_zones(zones, rules):
     for szone in zones:
         for dzone in zones:
             insert_single_any(any_rules, rules, szone, dzone)
-
-
-def expand_templates(rules, templates):
-    """Expand rule "template foo" in rules."""
-    for zonepair in rules:
-        index = 0
-        while index < len(rules[zonepair]):
-            # Is this rule "template foo"?
-            template = rules[zonepair][index]['template']
-            if not template:
-                index += 1
-                continue
-            fileline = rules[zonepair][index]['fileline']
-
-            # Replace current rule with template's content
-            if template not in templates:
-                fail(f'{fileline}Unknown template name: {template}')
-            rules[zonepair] = (rules[zonepair][:index] +
-                               templates[template] +
-                               rules[zonepair][index + 1:])
-            if len(rules[zonepair]) > int(CONFIG['recursion_limit']):
-                fail(f'{fileline}Possible template loop: '
-                     f'{zonepair[0]}-{zonepair[1]} template {template}')
 
 
 def verify_config(config, zones, rules):
@@ -2350,12 +2359,10 @@ def command_start():
                  'forward', 'output',
                  'invalid', 'rpfilter', 'smurfs'):
         chain_rules[name] = parse_config_rule_section(config, name)
-    templates = parse_config_templates(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
     rules = parse_config_rules(config)  # Also verify for unknown sections
     insert_any_zones(zones, rules)
-    expand_templates(rules, templates)
     verify_config(config, zones, rules)
 
     # Generate output
@@ -3533,7 +3540,7 @@ def command_list():
         macros = parse_config_macros(read_config())
         print('macro {')
         for macro in sorted(macros):
-            if (
+            if not macro.startswith('_template_') and (
                     not list_params or
                     macro in list_params or
                     any(item in list_params for item in macros[macro])
