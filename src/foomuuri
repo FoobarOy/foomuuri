@@ -290,28 +290,32 @@ def read_config():
                     fail(f'{fileline}Extra "}}"')
                 section = None
 
-            # "foo {" is section start
-            elif len(tokens) == 2 and tokens[1] == '{':
+            # Section start:
+            # - "foo {"
+            # - "template foo {" / "target foo" / "group foo"
+            # - "prerouting {"
+            # - "prerouting filter mangle - 10 {"
+            elif len(tokens) >= 2 and tokens[-1] == '{':
                 if section:
                     fail(f'{fileline}New "{" ".join(tokens)}" while section '
                          f'"{section}" is still open')
-                section = tokens[0]
+                if (
+                        tokens[0] in ('template', 'target', 'group') and
+                        len(tokens) != 3
+                ):
+                    fail(f'{fileline}Section "{tokens[0]}" must have single '
+                         f' word name: {" ".join(tokens)}')
+                if len(tokens) > 2 and tokens[0] not in (
+                        'template', 'target', 'group',
+                        'snat', 'dnat',
+                        'prerouting', 'postrouting',
+                        'forward', 'output'):
+                    fail(f'{fileline}Section "{tokens[0]}" does not take '
+                         f'parameters: {" ".join(tokens)}')
+
+                section = ' '.join(tokens[:-1])
                 if section.startswith('_'):  # _name is protected
                     fail(f'{fileline}Unknown section: {section}')
-                if section not in config:
-                    config[section] = []
-                    section_line[section] = fileline
-
-            # "template foo {" / "target foo" / "group foo" is section start
-            elif (
-                    len(tokens) == 3 and
-                    tokens[0] in ('template', 'target', 'group') and
-                    tokens[2] == '{'
-            ):
-                if section:
-                    fail(f'{fileline}New "{" ".join(tokens)}" while section '
-                         f'"{section}" is still open')
-                section = f'{tokens[0]} {tokens[1]}'
                 if section not in config:
                     config[section] = []
                     section_line[section] = fileline
@@ -599,11 +603,45 @@ def parse_config_zonemap(config):
     return zonemap
 
 
-def parse_config_rule_section(config, section):
+def parse_config_special_chains(config):
     """Parse snat{}, dnat{}, prerouting{} etc. rules from config."""
-    lines = config.pop(section, [])
-    rules = [parse_rule_line(line) for line in lines]
-    return rules
+    chain_rules = {
+        # output+mangle is needed for mark restore in output_special_chains()
+        ('output', 'route', 'mangle' + CONFIG['priority_offset']): [],
+    }
+    for prefix, def_type, def_priority in (
+            ('snat', 'nat', 'srcnat'),
+            ('dnat', 'nat', 'dstnat'),
+            ('prerouting', 'filter', 'mangle'),
+            ('postrouting', 'filter', 'mangle'),
+            ('forward', 'filter', 'mangle'),
+            ('output', 'route', 'mangle'),
+            ('invalid', None, None),
+            ('rpfilter', None, None),
+            ('smurfs', None, None)):
+        for section in list(config):
+            if not (section == prefix or section.startswith(f'{prefix} ')):
+                continue
+
+            items = section.split(' ', 2)
+            if len(items) == 2:
+                fileline = config['_section_line'][section]
+                fail(f'{fileline}Invalid section: type or priority missing: '
+                     f'{section}')
+
+            if len(items) == 1:
+                ftype = def_type
+                priority = None
+                if def_priority:
+                    priority = def_priority + CONFIG['priority_offset']
+            else:
+                ftype = items[1]
+                priority = items[2]
+
+            lines = config.pop(section)
+            chain_rules[(prefix, ftype, priority)] = [parse_rule_line(line)
+                                                      for line in lines]
+    return chain_rules
 
 
 def parse_iplist_names(config):
@@ -911,7 +949,7 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'snat', 'dnat'):
+                      'masquerade', 'snat', 'dnat', 'notrack'):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1953,36 +1991,43 @@ def output_rule_section_no_header(rules, section):
             out(full_rule)
 
 
-def output_rule_section(rules, section):
+def output_special_chains(chain_rules):
     """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
-    # Output-chain must restore mark from conntrack if mark_set was used
-    # for locally generated packets (usually in multi-ISP's prerouting).
-    #
-    # Simply restore mark if mark_set was used in any chain. For that reason
-    # output-chain should be outputted last.
-    need_mark_restore = section == 'output' and any(
-        'ct mark set' in line for line in OUT)
+    for prefix in ('snat', 'dnat',
+                   'prerouting', 'postrouting',
+                   'forward', 'output'):
+        for (section, ftype, priority), rules in chain_rules.items():
+            if prefix != section:
+                continue
 
-    if not rules and not need_mark_restore:
-        return
+            # Output-chain must restore mark from conntrack if mark_set was
+            # used for locally generated packets (usually in multi-ISP's
+            # prerouting).
+            #
+            # Simply restore mark if mark_set was used in any chain. For that
+            # reason output-chain should be outputted last.
+            need_mark_restore = section == 'output' and any(
+                'ct mark set' in line for line in OUT)
 
-    hooktype = {
-        'snat': 'type nat hook postrouting priority srcnat',
-        'dnat': 'type nat hook prerouting priority dstnat',
-        'prerouting': 'type filter hook prerouting priority mangle',
-        'postrouting': 'type filter hook postrouting priority mangle',
-        'forward': 'type filter hook forward priority mangle',
-        'output': 'type route hook output priority mangle',
-    }.get(section)
-    hooktype += CONFIG['priority_offset']
+            if not rules and not need_mark_restore:
+                continue
 
-    chain_name = hooktype.split()
-    out(f'chain {chain_name[1]}_{chain_name[3]}_{chain_name[5]} {{')
-    out(hooktype)
-    if need_mark_restore:
-        out('meta mark set ct mark')
-    output_rule_section_no_header(rules, section)
-    out('}')
+            hook_chain = {
+                'snat': 'postrouting',
+                'dnat': 'prerouting',
+            }.get(section, section)
+            hook_nft = f'type {ftype} hook {hook_chain} priority {priority}'
+            chain_name = f'{ftype}_{hook_chain}_{priority}'
+            chain_name = chain_name.replace(CONFIG['priority_offset'], '')
+            chain_name = chain_name.replace('+', '')
+            chain_name = chain_name.replace(' ', '_')
+            chain_name = chain_name.replace('__', '_')
+            out(f'chain {chain_name} {{')
+            out(hook_nft)
+            if need_mark_restore:
+                out('meta mark set ct mark')
+            output_rule_section_no_header(rules, section)
+            out('}')
 
 
 def output_static_chain_logging(chain, statement):
@@ -2029,7 +2074,8 @@ def output_header(chain_rules):
     # Logging chains
     for chain in ('invalid', 'smurfs', 'rpfilter'):
         out(f'chain {chain}_drop {{')
-        output_rule_section_no_header(chain_rules[chain], chain)
+        output_rule_section_no_header(chain_rules.get((chain, None, None), []),
+                                      chain)
         if chain == 'rpfilter':
             out('udp sport 67 udp dport 68 return')
         output_static_chain_logging(chain, 'drop')
@@ -2353,12 +2399,7 @@ def command_start():
     zones = parse_config_zones(config)
     zonemap = parse_config_zonemap(config)
     iplist = parse_iplist_names(config)
-    chain_rules = {}
-    for name in ('snat', 'dnat',
-                 'prerouting', 'postrouting',
-                 'forward', 'output',
-                 'invalid', 'rpfilter', 'smurfs'):
-        chain_rules[name] = parse_config_rule_section(config, name)
+    chain_rules = parse_config_special_chains(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
     rules = parse_config_rules(config)  # Also verify for unknown sections
@@ -2370,10 +2411,7 @@ def command_start():
     output_rate_names(rules)
     output_zone_vmaps(zones, rules)
     output_zone2zone_rules(rules, zonemap)
-    for name in ('snat', 'dnat',
-                 'prerouting', 'postrouting',
-                 'forward', 'output'):
-        output_rule_section(chain_rules[name], name)
+    output_special_chains(chain_rules)
     optimize_jumps()
     optimize_final_rules()
     optimize_accepts()
