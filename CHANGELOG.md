@@ -18,8 +18,8 @@
   * `|missing-ok` don't print warning if download or DNS resolve fails.
 * Improve `template foo` handling to support matchers and everything else that
   macros support.
-* Add `prerouting filter raw` and similar sections to allow specifying hook
-  type and priority.
+* Add `prerouting filter raw` and similar sections to allow specifying chain
+  type and hook priority.
 * Add `notrack` statement to be used in prerouting section to mark packet to
   not be added to conntrack.
 * Add `10 mbytes/second` per byte support to rate limits (`global_rate` etc).

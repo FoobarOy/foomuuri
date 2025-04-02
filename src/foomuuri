@@ -623,9 +623,9 @@ def parse_config_special_chains(config):
             if not (section == prefix or section.startswith(f'{prefix} ')):
                 continue
 
+            fileline = config['_section_line'][section]
             items = section.split(' ', 2)
             if len(items) == 2:
-                fileline = config['_section_line'][section]
                 fail(f'{fileline}Invalid section: type or priority missing: '
                      f'{section}')
 
@@ -637,6 +637,8 @@ def parse_config_special_chains(config):
             else:
                 ftype = items[1]
                 priority = items[2]
+                if ftype not in ('filter', 'nat', 'route'):
+                    fail(f'{fileline}Invalid section type: {section}')
 
             lines = config.pop(section)
             chain_rules[(prefix, ftype, priority)] = [parse_rule_line(line)
