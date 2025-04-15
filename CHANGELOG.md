@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.28 (20xx-xx-xx)
+## 0.28 (2025-04-15)
 
 * Merge `iplist` and `resolve` sections to unified `iplist`. Old config will
   work as is, but updating it to new `iplist` format is recommended: simply
