@@ -12,3 +12,4 @@ Conflicts=firewalld.service
 Type=notify
 ExecStart=foomuuri dbus
 ExecReload=kill -HUP $MAINPID
+Restart=on-failure
