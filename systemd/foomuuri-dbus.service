@@ -7,9 +7,9 @@ After=foomuuri.service
 Requires=foomuuri.service
 PartOf=foomuuri.service
 Conflicts=firewalld.service
+BindsTo=dbus.service
 
 [Service]
 Type=notify
 ExecStart=foomuuri dbus
 ExecReload=kill -HUP $MAINPID
-Restart=on-failure
