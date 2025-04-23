@@ -3624,6 +3624,68 @@ def command_reload():
     return 0
 
 
+def alarm_handler(_dummy_signum, _dummy_frame):
+    """Signal handler to catch input timeout."""
+    raise KeyboardInterrupt
+
+
+def input_timeout(prompt, timeout):
+    """Ask something from user with timeout."""
+    signal.signal(signal.SIGALRM, alarm_handler)
+    signal.alarm(timeout)
+    try:
+        return input(prompt)
+    except KeyboardInterrupt:
+        print()
+        print('Timeout')
+    finally:
+        signal.alarm(0)
+    return ''
+
+
+def command_try_reload():
+    """Reload, ask confirmation, optionally revert to previous rules.
+
+    Revert is not fail safe. Things can break if:
+    - Zone is added/deleted to config and NetworkManager sends new
+      "change to zone" request via D-Bus. This happens only if user
+      reconfigures NetworkManager or attach ethernet cable or similar.
+    - Needed entry is removed from iplist config and foomuuri-iplist.timer
+      updates iplist contents. There is a long expiry time for entries so
+      there is plenty of time to fix config.
+
+    It is recommended to fix config immediately and run "foomuuri reload" or
+    "foomuuri try-reload".
+    """
+    # Get copy of currently active ruleset
+    minimal_config()
+    old_rules = run_program_pipe(CONFIG['_nft_bin'] +
+                                 ['list', 'table', 'inet', 'foomuuri'], None)
+    if not old_rules or not old_rules.startswith('table inet foomuuri {'):
+        fail('Foomuuri is not running, use "foomuuri start" instead')
+
+    # Load new ruleset
+    error = command_reload()
+    if error:
+        return error
+
+    # Verify from user if ruleset is ok
+    answer = input_timeout('Can you establish NEW connections (yes/no)? ', 15)
+    if answer.lower().startswith('y'):
+        return 0
+
+    # Revert to old ruleset and return errorcode 2
+    warning('Revert to old config')
+
+    save_file(CONFIG['_good_file'], [
+        'table inet foomuuri',
+        'delete table inet foomuuri',
+        '',
+        old_rules])
+    return run_program_rc(CONFIG['_nft_bin'] +
+                          ['--file', CONFIG['_good_file']]) + 2
+
+
 def seconds_to_human(seconds):
     """Convert seconds int to human readable "19 days, 18:37" format."""
     day = seconds // 86400
@@ -4039,6 +4101,8 @@ def command_help(error=True):
     print('  start            Load configuration files and generate ruleset')
     print('  stop             Remove ruleset')
     print('  reload           Same as start, followed by iplist refresh')
+    print('  try-reload       Same as reload, ask confirmation to keep new '
+          'config')
     print('  status           Show current status: running, zone-interface '
           'mapping')
     print('  check            Verify configuration files')
@@ -4137,6 +4201,7 @@ def run_command():
     # Run simple commands without ruleset output
     handler = {
         'reload': command_reload,
+        'try-reload': command_try_reload,
         'status': command_status,
         'block': command_block,
         'list': command_list,

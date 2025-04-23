@@ -59,6 +59,10 @@ emulation for NetworkManager's zone support.
 **reload**
 : same as **start**, followed by iplist refresh
 
+**try-reload**
+: same as **reload**, ask confirmation to keep new config, revert back to
+old config if no reply
+
 **status**
 : show current status: running, zone-interface mapping
 

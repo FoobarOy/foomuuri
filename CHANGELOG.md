@@ -1,5 +1,11 @@
 # ChangeLog
 
+## 0.29 (20xx-xx-xx)
+
+* Add `try-reload` command to safely test new config. It will load new config,
+  ask confirmation from user to keep new config, and revert back to old config
+  if user didn't reply in 15 seconds.
+
 ## 0.28 (2025-04-15)
 
 * Merge `iplist` and `resolve` sections to unified `iplist`. Old config will
