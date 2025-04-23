@@ -176,7 +176,7 @@ table inet foomuuri {
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
 		meta pkttype { broadcast, multicast } drop
-		socket cgroupv2 level 2 "system.slice/sshd.service" accept
+		socket cgroupv2 level 1 "system.slice" accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
@@ -191,7 +191,7 @@ table inet foomuuri {
 			untracked : jump smurfs_6
 		}
 		meta pkttype multicast drop
-		socket cgroupv2 level 2 "system.slice/sshd.service" accept
+		socket cgroupv2 level 1 "system.slice" accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
