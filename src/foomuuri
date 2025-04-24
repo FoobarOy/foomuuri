@@ -73,6 +73,7 @@ CONFIG = {
     'priority_offset': '5',
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
+    'try-reload_timeout': '15',
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -3670,7 +3671,13 @@ def command_try_reload():
         return error
 
     # Verify from user if ruleset is ok
-    answer = input_timeout('Can you establish NEW connections (yes/no)? ', 15)
+    try:
+        timeout = int(CONFIG['try-reload_timeout'])
+    except ValueError:
+        timeout = 15
+    print(f'You have {timeout} seconds to accept the changes.')
+    answer = input_timeout('Can you establish NEW connections (yes/no)? ',
+                           timeout)
     if answer.lower().startswith('y'):
         return 0
 
