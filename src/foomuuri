@@ -3527,7 +3527,12 @@ def command_iplist_refresh(config=None, currently_active=None):
     # Read active set names from nft if not provided by "foomuuri start"
     if currently_active is None:
         currently_active = active_sets()
-        if not currently_active and not CONFIG['root_power']:
+
+        # Special case for testing (non-root) or faked nft_bin
+        if not currently_active and (
+                not CONFIG['root_power'] or
+                CONFIG['nft_bin'] == 'true'
+        ):
             currently_active = set(iplist)
 
     # Default to update all sets, "foomuuri iplist refresh setname" can filter
