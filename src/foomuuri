@@ -3734,10 +3734,23 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     verbose(f'{grouptarget} {name} changed state to {updown}, {extra}', 0)
     if history:
         verbose(f'{grouptarget} {name} history: {history}', 0)
-    cfg['state_time'] = now
+    cfg['state_time'] = cfg['last_down_interval'] = now
+    monitor_run_command(targets, groups, cfg, grouptarget, name,
+                        updown, extra, history)
 
-    # Run external command if configured. It will receive current state change
-    # event info and all states in environment variables.
+
+def monitor_run_command(targets, groups, cfg, grouptarget, name,
+                        updown, extra, history):
+    """Run monitor's external command if configured.
+
+    It will receive current state change event info and all states in
+    environment variables.
+    """
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
+    proc = cfg[f'command_{updown}']
+    if not proc:
+        return
     env = {
         # Change state event
         'FOOMUURI_CHANGE_TYPE': grouptarget,
@@ -3756,7 +3769,20 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     for group, icfg in groups.items():
         env[f'FOOMUURI_GROUP_{env_cleanup(group)}'] = (
             'up' if icfg.get('state', True) else 'down')
-    run_program_rc(cfg[f'command_{updown}'], env=env)
+    run_program_rc(proc, env=env)
+
+
+def monitor_down_interval(targets, groups, cfg, grouptarget, name):
+    """Group/target is still down, run command in regular intervals."""
+    now = time.time()
+    if now < cfg['last_down_interval'] + cfg['down_interval']:
+        return
+    cfg['last_down_interval'] = now
+    seconds = int(now - cfg['state_time'] + 0.5)
+    extra = f'previous change was {seconds_to_human(seconds)} ago'
+    verbose(f'{grouptarget} {name} is still down, {extra}', 0)
+    monitor_run_command(targets, groups, cfg, grouptarget, name,
+                        'down_interval', extra, None)
 
 
 def monitor_update_groups(targets, groups):
@@ -3768,10 +3794,13 @@ def monitor_update_groups(targets, groups):
     for group, cfg in groups.items():
         any_up = any(targets[target]['state'] for target in cfg['target'])
         state = cfg.get('state', not any_up)  # Undef in startup
-        if not any_up and state:
-            cfg['state'] = False
-            monitor_state_command(targets, groups, cfg, 'group', group)
-        elif any_up and not state:
+        if not any_up:
+            if state:  # Change from up to down
+                cfg['state'] = False
+                monitor_state_command(targets, groups, cfg, 'group', group)
+            else:  # Still down, check interval
+                monitor_down_interval(targets, groups, cfg, 'group', group)
+        elif any_up and not state:  # Change from down to up
             cfg['state'] = True
             monitor_state_command(targets, groups, cfg, 'group', group)
 
@@ -3789,6 +3818,8 @@ def monitor_update_target(targets, groups, target, state):
 
     # Target state can't change if added state is same as current state
     if cfg['state'] == state and not startup_change:
+        if not state:
+            monitor_down_interval(targets, groups, cfg, 'target', target)
         return
 
     # Check if target state is changed
@@ -3823,7 +3854,7 @@ def monitor_update_target(targets, groups, target, state):
 def monitor_parse_line(targets, groups, target, line):
     """Parse result line from monitor's command."""
     # Generic "OK" or "ERROR" reply
-    verbose(f'target {target} line: {line}', 2)
+    verbose(f'target {target}: {line}', 2)
     stat_ms = None  # Value for statistics, assume error
     if line in ('OK', 'ERROR'):
         state = line == 'OK'
@@ -3957,6 +3988,7 @@ def parse_config_targets(config):
             'command': [],
             'command_up': [],
             'command_down': [],
+            'command_down_interval': [],
             'consecutive_up': 20,    # last n were UP        => UP
             'consecutive_down': 10,  # last n were DOWN      => DOWN
             'history_up': 80,        # count of UPs => n     => UP
@@ -3964,9 +3996,12 @@ def parse_config_targets(config):
             'history_size': 100,
             'statistics_size': 300,     # Keep last 300 results
             'statistics_interval': 60,  # Write it once a minute
-            # Internal items:
-            # 'state': True,
-            # 'state_time': time(),
+            'down_interval': 600,    # How often to run command_down_interval
+
+            # Internal items, don't set in config:
+            # 'state': True,         # Up or down
+            # 'state_time': time(),  # Timestamp for last state change
+            # 'last_down_interval': time(),  # Still down timestamp
             # 'history': [True] * history_size,
             # 'proc': Popen()
             'proc_restart': 0,       # Start immediately
@@ -4011,6 +4046,8 @@ def parse_config_groups(config, targets):
             'target': [],
             'command_up': [],
             'command_down': [],
+            'command_down_interval': [],
+            'down_interval': 600,    # How often to run command_down_interval
         }
         fileline = ''
         for fileline, line in config.pop(f'group {name}'):
