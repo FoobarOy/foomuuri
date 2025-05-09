@@ -1477,7 +1477,8 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
             prefix += f'name "{rule["counter"]}" '
 
     # "log" in rule will log all packets matching this rule. This is usually
-    # used in final "drop log" rule. Default log text is "zone-zone STATEMENT".
+    # used in final "drop log" rule. Default log prefix is
+    # "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
         log_prefix = rule['log'] or '$(szone)-$(dzone) $(statement)'
         log_prefix = log_prefix.replace('$(szone)', szone)
