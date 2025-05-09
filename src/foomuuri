@@ -3823,13 +3823,17 @@ def monitor_update_target(targets, groups, target, state):
 def monitor_parse_line(targets, groups, target, line):
     """Parse result line from monitor's command."""
     # Generic "OK" or "ERROR" reply
+    verbose(f'target {target} line: {line}', 2)
     stat_ms = None  # Value for statistics, assume error
     if line in ('OK', 'ERROR'):
         state = line == 'OK'
         if state:
             stat_ms = 1  # There is no time, use 1
+    elif line.startswith('ICMP Unreachable (Communication Administratively'):
+        # fping reply for reject
+        state = False
     else:
-        # fping reply
+        # fping reply for ok / "timed out"
         match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
         if not match:
             return  # No match, ignore line
