@@ -1480,7 +1480,12 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # used in final "drop log" rule. Default log prefix is
     # "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
-        log_prefix = rule['log'] or '$(szone)-$(dzone) $(statement)'
+        log_prefix = '$(szone)-$(dzone) $(statement)'
+        if rule['log']:
+            if rule['log'].startswith('+ '):
+                log_prefix += rule['log'][2:]
+            else:
+                log_prefix = rule['log']
         log_prefix = log_prefix.replace('$(szone)', szone)
         log_prefix = log_prefix.replace('$(dzone)', dzone)
         log_prefix = log_prefix.replace('$(statement)',

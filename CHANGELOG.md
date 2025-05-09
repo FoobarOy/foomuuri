@@ -9,6 +9,7 @@
   Foomuuri Monitor will run that external command in regular intervals if
   network connectivity is still down.
 * Variables `$(szone)`, `$(dzone)` and `$(statement)` can be used in `log`.
+* More text to default log prefix can be added with `log + "mytext"`.
 
 ## 0.28 (2025-04-15)
 
