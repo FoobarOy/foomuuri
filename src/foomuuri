@@ -3970,15 +3970,13 @@ def parse_config_targets(config):
         }
         fileline = ''
         for fileline, line in config.pop(f'target {name}'):
-            if line[0] in ('command', 'command_up', 'command_down'):
+            if line[0] not in cfg:
+                fail(f'{fileline}Unknown keyword: {" ".join(line)}')
+            if isinstance(cfg[line[0]], list):
                 cfg[line[0]] = line[1:]
             else:
-                if len(line) != 2:
-                    fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
-                if line[0] not in cfg:
-                    fail(f'{fileline}Unknown keyword: {" ".join(line)}')
                 try:
-                    cfg[line[0]] = int(line[1])
+                    cfg[line[0]] = int(' '.join(line[1:]))
                 except ValueError:
                     fail(f'{fileline}Invalid value: {" ".join(line)}')
 
@@ -4005,19 +4003,25 @@ def parse_config_groups(config, targets):
     names = [item for item in config if item.startswith('group ')]
     for name in names:
         name = name[6:]
-        groups[name] = {
+        cfg = groups[name] = {
             'target': [],
             'command_up': [],
             'command_down': [],
         }
         fileline = ''
         for fileline, line in config.pop(f'group {name}'):
-            if line[0] not in groups[name]:
+            if line[0] not in cfg:
                 fail(f'{fileline}Unknown keyword: {" ".join(line)}')
-            groups[name][line[0]] = line[1:]
+            if isinstance(cfg[line[0]], list):
+                cfg[line[0]] = line[1:]
+            else:
+                try:
+                    cfg[line[0]] = int(' '.join(line[1:]))
+                except ValueError:
+                    fail(f'{fileline}Invalid value: {" ".join(line)}')
 
         # Verify section
-        target = groups[name].get('target')
+        target = cfg.get('target')
         if not target:
             fail(f'{fileline}Missing "target" keyword in "group {name}"')
         for item in target:
