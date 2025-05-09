@@ -1479,8 +1479,11 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log text is "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
-        log_prefix = rule['log'] or (f'{szone}-{dzone} '
-                                     f'{statement.split()[0].upper()}')
+        log_prefix = rule['log'] or '$(szone)-$(dzone) $(statement)'
+        log_prefix = log_prefix.replace('$(szone)', szone)
+        log_prefix = log_prefix.replace('$(dzone)', dzone)
+        log_prefix = log_prefix.replace('$(statement)',
+                                        statement.split()[0].upper())
         log_level = (CONFIG['log_level'] if rule['log_level'] is None else
                      rule['log_level'])
         log_nft = f'log prefix "{log_prefix} " {log_level}'

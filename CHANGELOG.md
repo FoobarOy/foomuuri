@@ -8,6 +8,7 @@
 * Add `command_down_interval` and `down_interval` to Foomuuri Monitor.
   Foomuuri Monitor will run that external command in regular intervals if
   network connectivity is still down.
+* Variables `$(szone)`, `$(dzone)` and `$(statement)` can be used in `log`.
 
 ## 0.28 (2025-04-15)
 
