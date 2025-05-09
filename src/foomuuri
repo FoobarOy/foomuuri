@@ -147,7 +147,7 @@ def run_program_rc(args, *, env=None, print_output=True, quiet=False):
             (proc.returncode or print_output or CONFIG['verbose'] > 0) and
             not quiet
     ):
-        print(output, flush=True)
+        verbose(output, 0)
     return proc.returncode
 
 
@@ -2370,7 +2370,7 @@ def apply_final():
         if ret:
             fail(f'Nftables failed to check ruleset, error code {ret}', False)
         else:
-            print('check success')
+            verbose('check success', 0)
         return ret
 
     # Run pre_start / pre_stop hook
@@ -2391,7 +2391,7 @@ def apply_final():
         CONFIG['_next_file'].rename(CONFIG['_good_file'])
     signal_childs()
     run_program_rc(CONFIG.get(f'post_{CONFIG["command"]}'))
-    print(f'{CONFIG["command"]} success')
+    verbose(f'{CONFIG["command"]} success', 0)
     return 0
 
 
@@ -2620,7 +2620,7 @@ class DbusCommon:
 
         This is currently always handled as "from all".
         """
-        print(f'Interface "{interface}" remove from zone "{zone}"', flush=True)
+        verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
         return self.change_interface_zone(interface, '')[0]
 
     def method_add_interface(self, zone, interface):
@@ -2630,13 +2630,13 @@ class DbusCommon:
         from previous zone if needed.
         """
         zone = self.parse_default_zone(interface, zone)
-        print(f'Interface "{interface}" add to zone "{zone}"', flush=True)
+        verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
         return self.change_interface_zone(interface, zone)[1]
 
     def method_change_zone_of_interface(self, zone, interface):
         """Change interface to zone."""
         zone = self.parse_default_zone(interface, zone)
-        print(f'Interface "{interface}" change to zone "{zone}"', flush=True)
+        verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
         return self.change_interface_zone(interface, zone)[0]
 
 
@@ -2770,7 +2770,7 @@ def command_dbus():
         save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
 
         # Start processing messages
-        print('D-Bus handler ready', flush=True)
+        verbose('D-Bus handler ready', 0)
         if HAVE_NOTIFY:
             notify('READY=1')
         mainloop.run()
@@ -3731,10 +3731,9 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
             history = ''.join('.' if item else '!' for item in cfg['history'])
     else:
         extra = 'startup change'
-    print(f'{grouptarget} {name} changed state to {updown}, {extra}',
-          flush=True)
+    verbose(f'{grouptarget} {name} changed state to {updown}, {extra}', 0)
     if history:
-        print(f'{grouptarget} {name} history: {history}', flush=True)
+        verbose(f'{grouptarget} {name} history: {history}', 0)
     cfg['state_time'] = now
 
     # Run external command if configured. It will receive current state change
@@ -3877,7 +3876,7 @@ def monitor_start_targets(targets, groups):
             verbose(f'target {target} monitoring command started')
             started_something = True
         except OSError as error:
-            print(f'target {target} monitoring command failed: {error}')
+            verbose(f'target {target} monitoring command failed: {error}', 0)
             cfg['proc'] = None
             cfg['proc_restart'] = time.time() + 30
 
@@ -3895,8 +3894,8 @@ def monitor_start_targets(targets, groups):
 def monitor_close_target(targets, groups, target):
     """Target monitoring command died. Mark it as down."""
     # Terminate proc and schedule restart
-    print(f'target {target} monitoring command died, restarting it in 30s',
-          flush=True)
+    verbose(f'target {target} monitoring command died, restarting it in 30s',
+            0)
     cfg = targets[target]
     cfg['proc'].terminate()
     cfg['proc'].wait(timeout=0.1)
@@ -4082,7 +4081,7 @@ def command_monitor():
                   [str(os.getpid())])
 
         # Start monitoring
-        print('Target monitor ready', flush=True)
+        verbose('Target monitor ready', 0)
         if HAVE_NOTIFY:
             notify('READY=1')
         stat_interval = min(cfg['statistics_interval']
