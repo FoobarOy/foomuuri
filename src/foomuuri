@@ -63,6 +63,7 @@ CONFIG = {
     'log_rpfilter': 'yes',
     'log_invalid': 'no',
     'log_smurfs': 'no',
+    'log_prefix': '$(szone)-$(dzone) $(statement)',
     'log_level': 'level info flags skuid',
     'localhost_zone': 'localhost',
     'dbus_zone': 'public',
@@ -1480,7 +1481,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # used in final "drop log" rule. Default log prefix is
     # "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
-        log_prefix = '$(szone)-$(dzone) $(statement)'
+        log_prefix = CONFIG['log_prefix']
         if rule['log']:
             if rule['log'].startswith('+ '):
                 log_prefix += rule['log'][2:]
