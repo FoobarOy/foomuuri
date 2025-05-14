@@ -2067,9 +2067,11 @@ def output_static_chain_logging(chain, statement):
 
 def output_header(chain_rules):
     """Output generic nft header."""
-    command_stop(False)  # Stop previous foomuuri
+    # Delete current foomuuri table and add new
+    out('table inet foomuuri')
+    out('delete table inet foomuuri')
     out('')
-    out('table inet foomuuri {')  # Add new foomuuri
+    out('table inet foomuuri {')
     out('')
 
     # Insert include files
@@ -2439,14 +2441,19 @@ def command_start():
     # Save known zones to file
     save_file(CONFIG['_zone_file'], zones.keys())
 
+    # Save and apply generated ruleset
+    save_final(CONFIG['_next_file'])
+    return apply_final()
 
-def command_stop(parse_config=True):
+
+def command_stop():
     """Process "stop" command. This will remove all foomuuri rules."""
-    if parse_config:  # Needed for pre_stop and post_stop hooks
-        config = minimal_config()
-        parse_config_hook(config)
+    config = minimal_config()  # Needed for pre_stop and post_stop hooks
+    parse_config_hook(config)
     out('table inet foomuuri')
     out('delete table inet foomuuri')
+    save_final(CONFIG['_next_file'])
+    return apply_final()
 
 
 def command_block():
@@ -4243,8 +4250,6 @@ def parse_command_line():
             CONFIG['command'] = arg
         else:
             CONFIG['parameters'].append(arg)
-    if not CONFIG['command']:
-        CONFIG['command'] = 'help'
     config_to_pathlib()  # Needed to read config files and for --set=x_dir=y
 
 
@@ -4256,7 +4261,7 @@ def run_command():
         return command_help()
 
     # Help doesn't need root
-    if CONFIG['command'] == 'help':
+    if not CONFIG['command'] or CONFIG['command'] == 'help':
         return command_help(error=False)
 
     # Warning if not running as root
@@ -4264,32 +4269,24 @@ def run_command():
     if not CONFIG['root_power']:
         warning('Foomuuri should be run as "root"')
 
-    # Run simple commands without ruleset output
+    # Run command
     handler = {
+        'start': command_start,
+        'stop': command_stop,
         'reload': command_reload,
         'try-reload': command_try_reload,
         'status': command_status,
+        'check': command_start,
         'block': command_block,
         'list': command_list,
-        'set': command_set,
         'iplist': command_iplist,
+        'set': command_set,
         'dbus': command_dbus,
         'monitor': command_monitor,
     }.get(CONFIG['command'])
-    if handler:
-        return handler()
-
-    # Run commands with ruleset output
-    if CONFIG['command'] in ('start', 'check'):
-        command_start()
-    elif CONFIG['command'] == 'stop':
-        command_stop()
-    else:
+    if not handler:
         fail(f'Unknown command: {CONFIG["command"]}')
-
-    # Save and apply changes
-    save_final(CONFIG['_next_file'])
-    return apply_final()
+    return handler()
 
 
 def main():
