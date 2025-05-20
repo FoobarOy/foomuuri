@@ -12,6 +12,8 @@
 * Variables `$(szone)`, `$(dzone)` and `$(statement)` can be used in log
   prefix.
 * More text to default log prefix can be added with `log + "mytext"`.
+* Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
+  services.
 
 ## 0.28 (2025-04-15)
 
