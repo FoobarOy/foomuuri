@@ -1,0 +1,94 @@
+# Foomuuri completion                              -*- shell-script -*-
+
+_comp_cmd_foomuuri()
+{
+    local cur prev words cword was_split comp_args
+    _comp_initialize -s -- "$@" || return
+
+    local option_count=0
+    for word in "${words[@]}"; do
+	if [ "${word}" != "" ]; then
+	    for option in "--version" "--verbose" "--quiet" "--force" "--soft" "--set"; do
+		if [ "$(echo ${word} | sed 's/=.*//')" = "${option}" ]; then
+		    option_count=$((option_count+1))
+		fi
+	    done
+	fi
+    done
+
+    case $((cword-option_count)) in
+	1)
+	    case ${prev} in
+		foomuuri | --verbose | --quiet | --soft | --force | --set=*)
+		    _comp_compgen -- -W '"help " "start " "stop " "reload " "try-reload " "status " "check " "block " "list " "iplist " "set " "--version " "--verbose " "--quiet " "--force " "--soft " "--set="'
+		    ;;
+	    esac
+	    ;;
+	2)
+	    case ${prev} in
+		list)
+		    zones=$(sudo foomuuri status | sed '/^  /!d; s/^  //; s/ .*//')
+		    if [[ ${cur} =~ "-" ]]; then
+			zone_to_zone=""
+			for szone in ${zones}; do
+			    for dzone in ${zones}; do
+				zone_to_zone="${zone_to_zone} \"${szone}-${dzone} \""
+			    done
+			done
+			_comp_compgen -- -W "\"macro \" \"counter \" ${zone_to_zone}"
+		    else
+			zones_with_dash=$(echo ${zones} | sed 's/ /- /g')-
+			_comp_compgen -- -W "\"macro \" \"counter \" ${zones_with_dash}"
+		    fi
+		    ;;
+		iplist)
+		    _comp_compgen -- -W '"list " "add " "del " "flush " "refresh "'
+		    ;;
+		set)
+		    _comp_compgen -- -W '"interface "'
+		    ;;
+	    esac
+	    ;;
+	3)
+	    case ${prev} in
+		interface)
+		    interfaces=$(ip link show | sed '/^[0-9]\+: /!d; s/[0-9]\+: /"/; /"lo:/d; s/:.*/ "/')
+		    _comp_compgen -- -W "${interfaces}"
+		    ;;
+		list | add | del | flush | refresh)
+		    iplists=$(sudo foomuuri iplist list | sed 's/ .*//; s/^/"/; s/$/ "/' | uniq)
+		    _comp_compgen -- -W "${iplists}"
+		    ;;
+		counter)
+		    counters=$(sudo foomuuri list counter | sed '/\tcounter/!d; s/\tcounter /"/; s/{/"/')
+		    _comp_compgen -- -W "${counters}"
+		    ;;
+		macro)
+		    macros=$(sudo foomuuri list macro | sed '/^  /!d; s/^  /"/; s/ .*//; s/$/ "/')
+		    _comp_compgen -- -W "${macros}"
+		    ;;
+		*)
+		    ;;
+	    esac
+	    ;;
+	4)
+	    interfaces=$(ip link show | sed '/^[0-9]\+: /!d; s/[0-9]\+: //; /lo:/d; s/:.*//')
+	    for intf in ${interfaces}; do
+		if [ "${prev}" = "${intf}" ]; then
+		    _comp_compgen -- -W '"zone "'
+		fi
+	    done
+	    ;;
+	5)
+	    case ${prev} in
+		zone)
+		    zones=$(sudo foomuuri status | sed '/^  /!d; s/^  /"/; s/ .*//; s/$/ "/;')
+		    _comp_compgen -- -W "\"- \" ${zones}"
+		    ;;
+	    esac
+	    ;;
+	esac
+} &&
+    complete -o nospace -F _comp_cmd_foomuuri foomuuri
+
+# ex: filetype=sh
