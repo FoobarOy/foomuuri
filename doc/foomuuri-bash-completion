@@ -8,21 +8,15 @@ _comp_cmd_foomuuri()
     local option_count=0
     for word in "${words[@]}"; do
 	if [ "${word}" != "" ]; then
-	    for option in "--version" "--verbose" "--quiet" "--force" "--soft" "--set"; do
-		if [ "$(echo ${word} | sed 's/=.*//')" = "${option}" ]; then
-		    option_count=$((option_count+1))
-		fi
-	    done
+	    if [[ "${word}" == --* ]]; then
+		option_count=$((option_count+1))
+	    fi
 	fi
     done
 
     case $((cword-option_count)) in
 	1)
-	    case ${prev} in
-		foomuuri | --verbose | --quiet | --soft | --force | --set=*)
-		    _comp_compgen -- -W '"help " "start " "stop " "reload " "try-reload " "status " "check " "block " "list " "iplist " "set " "--version " "--verbose " "--quiet " "--force " "--soft " "--set="'
-		    ;;
-	    esac
+	    _comp_compgen -- -W '"help " "start " "stop " "reload " "try-reload " "status " "check " "block " "list " "iplist " "set "'
 	    ;;
 	2)
 	    case ${prev} in
@@ -84,10 +78,19 @@ _comp_cmd_foomuuri()
 		zone)
 		    zones=$(sudo foomuuri status | sed '/^  /!d; s/^  /"/; s/ .*//; s/$/ "/;')
 		    _comp_compgen -- -W "\"- \" ${zones}"
+		    return  # "-" is not an option
 		    ;;
 	    esac
 	    ;;
-	esac
+    esac
+
+    [[ ${was_split} ]] && return
+
+    if [[ ${cur} == -* ]]; then
+        _comp_compgen_help
+	[[ ${COMPREPLY-} != *= ]] && compopt +o nospace
+    fi
+
 } &&
     complete -o nospace -F _comp_cmd_foomuuri foomuuri
 

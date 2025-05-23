@@ -14,6 +14,7 @@
 * More text to default log prefix can be added with `log + "mytext"`.
 * Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
   services.
+* Add bash-completion (requires v2.12 or newer) script.
 
 ## 0.28 (2025-04-15)
 
