@@ -107,7 +107,7 @@ HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 def fail(error=None, fatal=True):
     """Exit with error message."""
-    if error:
+    if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
     if fatal:
         sys.exit(1)

@@ -19,7 +19,7 @@ _comp_cmd_foomuuri()
 	2)
 	    case ${prev} in
 		list)
-		    zones=$(sudo foomuuri status | sed '/^  /!d; s/^  //; s/ .*//')
+		    zones=$(foomuuri --quiet --quiet status | sed '/^  /!d; s/^  //; s/ .*//')
 		    if [[ ${cur} =~ "-" ]]; then
 			for szone in ${zones}; do
 			    for dzone in ${zones}; do
@@ -44,23 +44,21 @@ _comp_cmd_foomuuri()
 	    ;;
 	3)
 	    case ${prev} in
-		interface)
+		interface)  # set
 		    interfaces=$(ip link show | sed '/^[0-9]\+: /!d; s/[0-9]\+: //; /lo:/d; s/:.*//')
 		    _comp_compgen -- -W "${interfaces}"
 		    ;;
-		list | add | del | flush | refresh)
-		    iplists=$(sudo foomuuri iplist list | sed 's/ .*//' | uniq)
+		list | add | del | flush | refresh)  # iplist
+		    iplists=$(foomuuri --quiet --quiet iplist list | sed 's/ .*//' | uniq)
 		    _comp_compgen -- -W "${iplists}"
 		    ;;
-		counter)
-		    counters=$(sudo foomuuri list counter | sed '/\tcounter/!d; s/\tcounter //; s/ {//')
+		counter)  # list
+		    counters=$(foomuuri --quiet --quiet list counter | sed '/\tcounter/!d; s/\tcounter //; s/ {//')
 		    _comp_compgen -- -W "${counters}"
 		    ;;
-		macro)
-		    macros=$(sudo foomuuri list macro | sed '/^  /!d; s/^  //; s/ .*//')
+		macro)  # list
+		    macros=$(foomuuri --quiet --quiet list macro | sed '/^  /!d; s/^  //; s/ .*//')
 		    _comp_compgen -- -W "${macros}"
-		    ;;
-		*)
 		    ;;
 	    esac
 	    ;;
@@ -75,7 +73,7 @@ _comp_cmd_foomuuri()
 	5)
 	    case ${prev} in
 		zone)
-		    zones=$(sudo foomuuri status | sed '/^  /!d; s/^  //; s/ .*//')
+		    zones=$(foomuuri --quiet --quiet status | sed '/^  /!d; s/^  //; s/ .*//')
 		    _comp_compgen -- -W "${zones} -"
 		    return  # "-" is not an option
 		    ;;
