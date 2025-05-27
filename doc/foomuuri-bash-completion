@@ -44,14 +44,6 @@ _comp_cmd_foomuuri()
 	    ;;
 	3)
 	    case ${prev} in
-		interface)  # set
-		    interfaces=$(ip link show | sed '/^[0-9]\+: /!d; s/[0-9]\+: //; /lo:/d; s/:.*//')
-		    _comp_compgen -- -W "${interfaces}"
-		    ;;
-		list | add | del | flush | refresh)  # iplist
-		    iplists=$(foomuuri --quiet --quiet iplist list | sed 's/ .*//' | uniq)
-		    _comp_compgen -- -W "${iplists}"
-		    ;;
 		counter)  # list
 		    counters=$(foomuuri --quiet --quiet list counter | sed '/\tcounter/!d; s/\tcounter //; s/ {//')
 		    _comp_compgen -- -W "${counters}"
@@ -59,6 +51,14 @@ _comp_cmd_foomuuri()
 		macro)  # list
 		    macros=$(foomuuri --quiet --quiet list macro | sed '/^  /!d; s/^  //; s/ .*//')
 		    _comp_compgen -- -W "${macros}"
+		    ;;
+		list | add | del | flush | refresh)  # iplist
+		    iplists=$(foomuuri --quiet --quiet iplist list | sed 's/ .*//' | uniq)
+		    _comp_compgen -- -W "${iplists}"
+		    ;;
+		interface)  # set
+		    interfaces=$(ip link show | sed '/^[0-9]\+: /!d; s/[0-9]\+: //; /lo:/d; s/:.*//')
+		    _comp_compgen -- -W "${interfaces}"
 		    ;;
 	    esac
 	    ;;
