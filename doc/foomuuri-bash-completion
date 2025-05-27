@@ -45,7 +45,7 @@ _comp_cmd_foomuuri()
 	3)
 	    case ${prev} in
 		counter)  # list
-		    counters=$(foomuuri --quiet --quiet list counter | sed '/\tcounter/!d; s/\tcounter //; s/ {//')
+		    counters=$(foomuuri --quiet --quiet list counter | sed 's/ .*//')
 		    _comp_compgen -- -W "${counters}"
 		    ;;
 		macro)  # list
@@ -53,7 +53,7 @@ _comp_cmd_foomuuri()
 		    _comp_compgen -- -W "${macros}"
 		    ;;
 		list | add | del | flush | refresh)  # iplist
-		    iplists=$(foomuuri --quiet --quiet iplist list | sed 's/ .*//' | uniq)
+		    iplists=$(foomuuri --quiet --quiet iplist list | sed 's/ .*//')
 		    _comp_compgen -- -W "${iplists}"
 		    ;;
 		interface)  # set

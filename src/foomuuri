@@ -3581,6 +3581,23 @@ def command_iplist():
     return command_help()
 
 
+def list_named_counter(command):
+    """Parse and print named counter values."""
+    data = nft_json(command)
+    if not data:
+        return 1
+
+    for toplevel in data.get('nftables', []):
+        counter = toplevel.get('counter')
+        name = (counter or {}).get('name')
+        if not name:
+            continue
+        packet_value = counter.get('packets', 0)
+        byte_value = counter.get('bytes', 0)
+        print(f'{name:21s}  {packet_value} packets, {byte_value} bytes')
+    return 0
+
+
 def command_list():
     """List currently active ruleset or other things."""
     # List all
@@ -3615,10 +3632,11 @@ def command_list():
     if list_type == 'counter':
         # List named counters
         if not list_params:
-            ret |= nft_command('list counters table inet foomuuri')
+            ret |= list_named_counter('list counters table inet foomuuri')
         else:
             for counter in list_params:
-                ret |= nft_command(f'list counter inet foomuuri {counter}')
+                ret |= list_named_counter(f'list counter inet foomuuri '
+                                          f'{counter}')
         return ret
 
     # List zone-zone rules
