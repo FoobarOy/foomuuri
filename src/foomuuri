@@ -3,7 +3,7 @@
 
 """Foomuuri - Multizone bidirectional nftables firewall.
 
-Copyright 2023, Kim B. Heino, Foobar Oy <b@bbbs.net>
+Copyright 2023-2025, Kim B. Heino, Foobar Oy <b@bbbs.net>
 
 License: GPL-2.0-or-later
 """
