@@ -48,6 +48,7 @@ emulation for NetworkManager's zone support.
 `--set=option=value`
 : set config option to value
 
+
 # COMMANDS
 
 **start**
@@ -114,10 +115,12 @@ old config if no reply
 **set interface {interface} zone -**
 : remove interface from all zones
 
+
 # FILES
 
 **Foomuuri** reads configuration files from */etc/foomuuri/\*.conf*.
-See full documentation for configuration syntax.
+See <https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall> for example
+configuration.
 
 
 # AUTHORS
