@@ -230,17 +230,29 @@ def shell_expansion(content, fileline):
     return content
 
 
+def find_config_files(basedir, mask):
+    """Find all config files in basedir, ignoring hidden and backups."""
+    files = sorted(basedir.rglob(mask))
+    return [item for item in files if not item.name.startswith(('.', '#'))]
+
+
 def read_config():
-    """Read att config files to config dict: section -> lines[].
+    """Read all config files to config dict: section -> lines[].
 
     Files are read in alphabetical order, ignoring backup and hidden files.
     """
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    configfiles = (sorted(list(CONFIG['_share_dir'].rglob('*.conf'))) +
-                   sorted(list(CONFIG['_etc_dir'].rglob('*.conf'))))
-    configfiles = [name for name in configfiles
-                   if name.name[0] not in ('.', '#')]
+
+    # Find all config files
+    share_config = find_config_files(CONFIG['_share_dir'], '*.conf')
+    etc_config = find_config_files(CONFIG['_etc_dir'], '*.conf')
+    if not etc_config:
+        fail(f'No configuration files "{CONFIG["_etc_dir"]}/*.conf" found\n'
+             '\n'
+             'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
+             'for example\n'
+             'configuration.')
 
     # There characters will combine to single word in shlex
     wordchars = ''.join(chr(letter) for letter in range(33, 256)
@@ -251,7 +263,7 @@ def read_config():
     config = {}        # Final config dict
     section = None     # Currently open section name
     section_line = {}  # Section_name -> filename_line for error messages
-    for filename in configfiles:
+    for filename in share_config + etc_config:
         try:
             content = filename.read_text(encoding='utf-8')
         except PermissionError as error:
@@ -2075,8 +2087,8 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    for filename in (sorted(list(CONFIG['_share_dir'].rglob('*.nft'))) +
-                     sorted(list(CONFIG['_etc_dir'].rglob('*.nft')))):
+    for filename in (find_config_files(CONFIG['_share_dir'], '*.nft') +
+                     find_config_files(CONFIG['_etc_dir'], '*.nft')):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
