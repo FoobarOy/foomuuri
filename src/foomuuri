@@ -1619,13 +1619,14 @@ def parse_maclist(rule, direction):
 
 def parse_interface_names(rule):
     """Parse iifname/oifname to nft rule."""
-    iifname = ''
-    if rule['iifname']:
-        iifname = f'iifname "{rule["iifname"]}" '
-    oifname = ''
-    if rule['oifname']:
-        oifname = f'oifname "{rule["oifname"]}" '
-    return iifname + oifname
+    ret = ''
+    for key in ('iifname', 'oifname'):
+        if not rule[key]:
+            continue
+        ret += f'{key} '
+        ret += single_or_set(rule[key], rule['fileline'], quote=True)
+        ret += ' '
+    return ret
 
 
 def parse_protocol_ports(rule, ipv, skip_icmp=True):
@@ -2026,7 +2027,7 @@ def output_special_chains(chain_rules):
                 continue
 
             # Output-chain must restore mark from conntrack if mark_set was
-            # used for locally generated packets (usually in multi-ISP's
+            # used for locally generated packets (usually in multiple ISP's
             # prerouting).
             #
             # Simply restore mark if mark_set was used in any chain. For that

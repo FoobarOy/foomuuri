@@ -26,7 +26,7 @@ via [discussions](https://github.com/FoobarOy/foomuuri/discussions).
 * Rate limiting
 * DNS hostname lookup and IP-list support with dynamic IP address refreshing
 * Country database support aka geolocation
-* Multi-ISP support with internal network connectivity monitor
+* Multiple ISP support with internal network connectivity monitor
 * IPsec matching support
 * Ability to map certain traffic to separate zones
 * D-Bus API
