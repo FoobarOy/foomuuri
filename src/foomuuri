@@ -3901,18 +3901,32 @@ def monitor_update_target(targets, groups, target, state):
 
 def monitor_parse_line(targets, groups, target, line):
     """Parse result line from monitor's command."""
-    # Generic "OK" or "ERROR" reply
     verbose(f'target {target}: {line}', 2)
     stat_ms = None  # Value for statistics, assume error
+
     if line in ('OK', 'ERROR'):
+        # Generic "OK" or "ERROR" reply
         state = line == 'OK'
         if state:
             stat_ms = 1  # There is no time, use 1
+
     elif line.startswith('ICMP Unreachable (Communication Administratively'):
-        # fping reply for reject
+        # fping reply if packet is rejected
         state = False
+
+    elif 'xmt/rcv/%loss' in line:
+        # fping with "--squiet"
+        if '0/0/0%' in line:
+            return  # --squiet is less than --interval, ignore line
+        state = '/100%' not in line  # It's up if loss is less than 100%
+        if state:
+            try:
+                stat_ms = float(line.split('/')[-1])
+            except ValueError:
+                pass
+
     else:
-        # fping reply for ok / "timed out"
+        # fping with "--interval"
         match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
         if not match:
             return  # No match, ignore line
@@ -3932,6 +3946,56 @@ def monitor_parse_line(targets, groups, target, line):
     cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size']:]
 
 
+def command_option_values(cmd):
+    """Quick and dirty parser for "--foo n" and "--foo=n"."""
+    ret = {}
+    for index, item in enumerate(cmd):
+        if not item.startswith('--'):
+            continue
+        if '=' in item:
+            item, value = item.split('=', 1)
+        else:
+            try:
+                value = cmd[index + 1]
+            except IndexError:
+                value = None
+        ret[item] = value
+    return ret
+
+
+def mangle_fping_command(target, cfg):
+    """Mangle fping's command line to contain needed options."""
+    cmd = cfg['command']
+    if 'fping' not in cmd[0]:
+        return cmd
+    options = command_option_values(cmd)
+
+    # --squiet works even if interface is down or missing. Automatically
+    # use it if missing (1s) or --interval=n000 is specified.
+    # Use plain --interval if value is not exact second.
+    squiet = options.get('--squiet', '')
+    interval = options.get('--interval', '')
+    if not squiet and not interval:  # Nothing, use 1s / 1000ms
+        cmd = cmd[:1] + ['--squiet=1', '--interval=1000'] + cmd[1:]
+    elif squiet and not interval:  # squiet specified, use it as interval
+        cmd = cmd[:1] + [f'--interval={squiet}000'] + cmd[1:]
+    elif not squiet and interval.endswith('000'):  # Use interval as squiet
+        cmd = cmd[:1] + [f'--squiet={interval[:-3]}'] + cmd[1:]
+    elif squiet and interval:
+        try:
+            if int(squiet) * 1000 != int(interval):
+                warning(f'Mismatching "--squiet" and "--interval" values in '
+                        f'target "{target}": {" ".join(cmd)}')
+        except ValueError:
+            pass
+
+    # Add --loop if missing to get continous reports
+    if '--loop' not in options:
+        cmd = cmd[:1] + ['--loop'] + cmd[1:]
+
+    return cmd
+
+
 def monitor_start_targets(targets, groups):
     """Start pinging all targets."""
     started_something = False
@@ -3940,16 +4004,13 @@ def monitor_start_targets(targets, groups):
         if cfg.get('proc') or cfg['proc_restart'] > time.time():
             continue
 
-        # fping requires --loop, add it if missing
-        cmd = cfg['command']
-        if 'fping' in cmd[0] and '--loop' not in cmd:
-            cmd = cmd[:1] + ['--loop'] + cmd[1:]
-
         # Assume it is up on first startup
         if 'state' not in cfg:
             cfg['state'] = True
 
         # Start command (pylint: disable=consider-using-with)
+        cmd = mangle_fping_command(target, cfg)
+        verbose(f'target {target} command: {" ".join(map(str, cmd))}', 2)
         try:
             cfg['proc'] = subprocess.Popen(cmd,
                                            stdin=subprocess.DEVNULL,

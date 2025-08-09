@@ -5,6 +5,9 @@
 * Add `try-reload` command to safely test new config. It will load new config,
   ask confirmation from user to keep new config, and revert back to old config
   if user didn't reply in 15 seconds.
+* Foomuuri Monitor supports and prefers fping's `--squiet=s` mode. It works
+  correctly even if the interface is down. fping command option `--interval=ms`
+  is automatically converted to correct value.
 * Add `command_down_interval` and `down_interval` to Foomuuri Monitor.
   Foomuuri Monitor will run that external command in regular intervals if
   network connectivity is still down.
