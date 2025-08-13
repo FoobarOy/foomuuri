@@ -1702,7 +1702,8 @@ def parse_to(rule, ipv):
         return None
     if len(target) > 1:
         fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(target)}')
-    return f' {"ip" if ipv == 4 else "ip6"} to {target[0]}'
+    to_text = 'prefix to' if '/' in target[0] else 'to'
+    return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target[0]}'
 
 
 def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):

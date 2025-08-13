@@ -17,6 +17,8 @@
 * More text to default log prefix can be added with `log + "mytext"`.
 * Multiple interfaces can be specified to `iifname` and `oifname` matchers.
   Negative matching also works.
+* Add IPv6-to-IPv6 Network Prefix Translation (NPTv6) support to `snat to`
+  statement.
 * Print `list counter` command output in pretty format.
 * Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
   services.
