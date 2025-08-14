@@ -793,7 +793,7 @@ def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
     # pylint: disable=too-many-branches
     for key, value in rule.items():
-        if value == '' and key not in ('queue', 'counter', 'log',
+        if value == '' and key not in ('to', 'queue', 'counter', 'log',
                                        'fileline', 'line'):
             fail(f'{fileline}"{key}" without value is not valid')
 
@@ -854,10 +854,7 @@ def verify_rule_sanity(rule, fileline):
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
     if rule['statement'].startswith(('snat', 'dnat')) and not rule['to']:
-        fail(f'{fileline}"{rule["statement"]}" without "to" is not valid')
-
-    if rule['statement'] == 'masquerade' and rule['to']:
-        fail(f'{fileline}"{rule["statement"]}" with "to" is not valid')
+        fail(f'{fileline}"{rule["statement"]}" without address is not valid')
 
     if rule['ct_status'] and rule['ct_status'] not in (
             'expected', 'seen-reply', 'assured', 'confirmed',
@@ -955,6 +952,10 @@ def parse_rule_line(fileline_line):
             if ret[keyword] is None:
                 ret[keyword] = ''
 
+        # Version 0.29 deprecates 'to' after 'snat' statement, ignore it
+        if keyword == 'to' and not ret['to'] and item == 'to':
+            continue
+
         # First item after start keyword is always a parameter for it, except
         # for "log" or "counter". Log will have good default value if not
         # defined. Counter without parameter will create anonymous counter.
@@ -965,9 +966,7 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'snat', 'dnat',
-                      'snat_prefix', 'dnat_prefix',
-                      'notrack'):
+                      'masquerade', 'notrack'):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1007,6 +1006,12 @@ def parse_rule_line(fileline_line):
             keyword = None
 
         # Start keywords
+        elif item in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
+            rule_item_only_one(ret, 'statement', item)
+            ret['statement'] = item
+            ret['plain'] = False
+            keyword = 'to'
+            ret[keyword] = ret[keyword] or ''
         elif item in ('protocol',
                       'saddr', 'sport',
                       'daddr', 'dport',
@@ -1020,7 +1025,6 @@ def parse_rule_line(fileline_line):
                       'uid', 'gid',
                       'szone', 'dzone',
                       'new_szone', 'new_dzone',
-                      'to',
                       'counter',
                       'helper',
                       'log',
@@ -1039,8 +1043,7 @@ def parse_rule_line(fileline_line):
                       'time',
                       ):
             keyword = item
-            if ret[keyword] is None:
-                ret[keyword] = ''
+            ret[keyword] = ret[keyword] or ''
             if item == 'queue':  # statement and start keyword
                 rule_item_only_one(ret, 'statement', item)
                 ret['statement'] = item
@@ -1702,13 +1705,15 @@ def parse_to(rule, ipv):
         else:
             check_ipv = is_ip_address(check)
         if check_ipv == 0:
-            fail(f'{rule["fileline"]}Invalid IP address in "to": {check}')
+            fail(f'{rule["fileline"]}Invalid IP address in '
+                 f'"{rule["statement"]}" target: {check}')
         if check_ipv == ipv:
             target.append(check)
     if not target:  # Nothing found for this ipv, don't generate rule
         return None
     if len(target) > 1:
-        fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(target)}')
+        fail(f'{rule["fileline"]}Multiple "{rule["statement"]}" '
+             f'targets: {" ".join(target)}')
     to_text = 'to'
     if rule['statement'] in ('snat_prefix', 'dnat_prefix'):
         to_text = 'prefix to'

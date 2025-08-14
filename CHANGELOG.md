@@ -2,6 +2,10 @@
 
 ## 0.29 (20xx-xx-xx)
 
+* Add `snat_prefix` and `dnat_prefix` statements for IPv6-to-IPv6 Network
+  Prefix Translation (NPTv6).
+* Deprecate unneeded `to` after `snat` and `dnat` statements. It's quietly
+  ignored.
 * Add `try-reload` command to safely test new config. It will load new config,
   ask confirmation from user to keep new config, and revert back to old config
   if user didn't reply in 15 seconds.
@@ -17,8 +21,6 @@
 * More text to default log prefix can be added with `log + "mytext"`.
 * Multiple interfaces can be specified to `iifname` and `oifname` matchers.
   Negative matching also works.
-* Add `snat_prefix` and `dnat_prefix` statements for IPv6-to-IPv6 Network
-  Prefix Translation (NPTv6).
 * Print `list counter` command output in pretty format.
 * Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
   services.

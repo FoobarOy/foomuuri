@@ -256,6 +256,10 @@ table inet foomuuri {
 		ip saddr 10.1.2.0/24 ip protocol tcp snat ip to 10.0.0.5:9999-11000
 		ip saddr 10.2.3.0/24 snat ip to 10.0.0.2/31
 		ip saddr 10.3.4.0/24 snat ip to 10.0.0.4-10.0.0.127
+		oifname "eth1" snat ip to 10.0.0.6
+		oifname "eth1" snat ip6 to 2a03:1111:222:6666::6
+		oifname "eth2" snat ip to 10.0.0.7
+		oifname "eth2" snat ip6 to 2a03:1111:222:7777::7
 	}
 
 	set _lograte_set_4 {
