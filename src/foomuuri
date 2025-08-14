@@ -853,7 +853,7 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if rule['statement'] in ('snat', 'dnat') and not rule['to']:
+    if rule['statement'].startswith(('snat', 'dnat')) and not rule['to']:
         fail(f'{fileline}"{rule["statement"]}" without "to" is not valid')
 
     if rule['statement'] == 'masquerade' and rule['to']:
@@ -965,7 +965,9 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'snat', 'dnat', 'notrack'):
+                      'masquerade', 'snat', 'dnat',
+                      'snat_prefix', 'dnat_prefix',
+                      'notrack'):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1460,7 +1462,12 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
                    do_lograte=True):
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
-    statement = force_statement or rule['statement']
+
+    # Map internal statement to nft statement
+    statement = force_statement or {
+        'snat_prefix': 'snat',
+        'dnat_prefix': 'dnat',
+    }.get(rule['statement'], rule['statement'])
 
     # queue can have optional flags
     if statement == 'queue' and rule[statement]:
@@ -1702,7 +1709,9 @@ def parse_to(rule, ipv):
         return None
     if len(target) > 1:
         fail(f'{rule["fileline"]}Multiple "to" targets: {" ".join(target)}')
-    to_text = 'prefix to' if '/' in target[0] else 'to'
+    to_text = 'to'
+    if rule['statement'] in ('snat_prefix', 'dnat_prefix'):
+        to_text = 'prefix to'
     return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target[0]}'
 
 
