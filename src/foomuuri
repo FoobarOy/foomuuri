@@ -76,7 +76,6 @@ CONFIG = {
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
-    'syslog': 'no',
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -100,6 +99,8 @@ CONFIG = {
     'root_power': True,
     'verbose': 0,
     'force': 0,
+    'fork': 0,
+    'syslog': 0,
 }
 
 OUT = []       # Generated nftables ruleset / commands
@@ -111,7 +112,7 @@ def fail(error=None, fatal=True):
     """Exit with error message."""
     if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
-        if CONFIG['syslog'] == 'yes':
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
@@ -121,7 +122,7 @@ def warning(text):
     """Print warning message."""
     if CONFIG['verbose'] >= 0:
         print(f'Warning: {text}', flush=True)
-        if CONFIG['syslog'] == 'yes':
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
@@ -129,7 +130,7 @@ def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
     if CONFIG['verbose'] >= level:
         print(line, flush=True)
-        if CONFIG['syslog'] == 'yes':
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
@@ -221,6 +222,40 @@ def nft_json(cmd):
         return json.loads(proc.stdout)
     except json.decoder.JSONDecodeError:
         return None
+
+
+def daemonize():
+    """Fork as a background daemon. Silently ignore errors."""
+    # Enabled in config?
+    if not CONFIG['fork']:
+        return
+    CONFIG['fork'] = 0  # Fork only once!
+
+    # Fork #1
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError:
+        return
+
+    # Run in a new session. Don't do "os.chdir('/')" so that relative paths
+    # work in development.
+    os.umask(0)
+    os.setsid()
+
+    # Fork #2
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError:
+        return
+
+    # Redirect stdin/out/err
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        devnull = os.open(os.devnull, os.O_RDWR)
+        os.dup2(devnull, stream.fileno())
 
 
 def shell_expansion(content, fileline):
@@ -2799,6 +2834,7 @@ def command_dbus():
         # Read minimal config
         config = minimal_config()
         zones = parse_config_zones(config)
+        daemonize()
 
         # Initialize D-Bus
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -4260,6 +4296,7 @@ def command_monitor():
                 notify('READY=1')
                 notify('STOPPING=1')
             return 0
+        daemonize()
 
         # Define reload/stop signal handler
         def signal_handler(sig, _dummy_frame):
@@ -4349,6 +4386,7 @@ def command_help(error=True):
     print('  --quiet          Be quiet')
     print('  --force          Force some operations, don\'t check anything')
     print('  --soft           Don\'t force operations, check more')
+    print('  --fork           Fork as a background daemon process')
     print('  --syslog         Enable syslog logging')
     print('  --set=option=value')
     print('                   Set config option to value')
@@ -4370,14 +4408,12 @@ def parse_command_line():
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--verbose', '--force'):
+        elif arg in ('--verbose', '--force', '--fork', '--syslog'):
             CONFIG[arg[2:]] += 1
         elif arg == '--quiet':
             CONFIG['verbose'] -= 1
         elif arg == '--soft':
             CONFIG['force'] -= 1
-        elif arg == '--syslog':
-            CONFIG['syslog'] = 'yes'
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
@@ -4404,7 +4440,7 @@ def run_command():
         return command_help(error=False)
 
     # Initialize syslogging
-    if CONFIG['syslog'] == 'yes':
+    if CONFIG['syslog']:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root

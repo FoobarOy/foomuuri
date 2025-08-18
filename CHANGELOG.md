@@ -25,6 +25,8 @@
 * Print `list counter` command output in pretty format.
 * Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
   services.
+* Add `--fork` command line option to fork as a background daemon process.
+  This applies to `monitor` and `dbus` only.
 * Add `--syslog` command line option to enable syslog logging.
 * Add bash-completion (requires v2.12 or newer) script.
 

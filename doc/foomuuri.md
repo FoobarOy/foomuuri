@@ -45,6 +45,9 @@ emulation for NetworkManager's zone support.
 `--soft`
 : don't force operations, check more
 
+`--fork`
+: fork as a background daemon process
+
 `--syslog`
 : enable syslog logging
 
