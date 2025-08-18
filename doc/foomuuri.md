@@ -45,6 +45,9 @@ emulation for NetworkManager's zone support.
 `--soft`
 : don't force operations, check more
 
+`--syslog`
+: enable syslog logging
+
 `--set=option=value`
 : set config option to value
 

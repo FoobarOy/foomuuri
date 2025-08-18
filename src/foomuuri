@@ -23,6 +23,7 @@ import signal
 import socket
 import subprocess
 import sys
+import syslog
 import time
 import unicodedata
 import dbus
@@ -75,6 +76,7 @@ CONFIG = {
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
+    'syslog': 'no',
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -109,6 +111,8 @@ def fail(error=None, fatal=True):
     """Exit with error message."""
     if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
+        if CONFIG['syslog'] == 'yes':
+            syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
 
@@ -117,12 +121,16 @@ def warning(text):
     """Print warning message."""
     if CONFIG['verbose'] >= 0:
         print(f'Warning: {text}', flush=True)
+        if CONFIG['syslog'] == 'yes':
+            syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
     if CONFIG['verbose'] >= level:
         print(line, flush=True)
+        if CONFIG['syslog'] == 'yes':
+            syslog.syslog(syslog.LOG_NOTICE, line)
 
 
 def out(line):
@@ -4341,6 +4349,7 @@ def command_help(error=True):
     print('  --quiet          Be quiet')
     print('  --force          Force some operations, don\'t check anything')
     print('  --soft           Don\'t force operations, check more')
+    print('  --syslog         Enable syslog logging')
     print('  --set=option=value')
     print('                   Set config option to value')
     print()
@@ -4367,6 +4376,8 @@ def parse_command_line():
             CONFIG['verbose'] -= 1
         elif arg == '--soft':
             CONFIG['force'] -= 1
+        elif arg == '--syslog':
+            CONFIG['syslog'] = 'yes'
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
@@ -4391,6 +4402,10 @@ def run_command():
     # Help doesn't need root
     if not CONFIG['command'] or CONFIG['command'] == 'help':
         return command_help(error=False)
+
+    # Initialize syslogging
+    if CONFIG['syslog'] == 'yes':
+        syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
     CONFIG['root_power'] = not os.getuid()
