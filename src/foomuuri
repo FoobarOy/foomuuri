@@ -853,7 +853,8 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if rule['statement'].startswith(('snat', 'dnat')) and not rule['to']:
+    if not rule['to'] and rule['statement'] in ('snat', 'dnat',
+                                                'snat_prefix', 'dnat_prefix'):
         fail(f'{fileline}"{rule["statement"]}" without address is not valid')
 
     if rule['ct_status'] and rule['ct_status'] not in (
@@ -923,6 +924,7 @@ def parse_rule_line(fileline_line):
         'nft': None,
         'mss': None,
         'template': None,
+        'tproxy': None,
         'mark_set': None,
         'mark_match': None,
         'priority_set': None,
@@ -1033,6 +1035,7 @@ def parse_rule_line(fileline_line):
                       'mss',
                       'template',
                       'queue',
+                      'tproxy',
                       'mark_set',
                       'mark_match',
                       'priority_set',
@@ -1684,16 +1687,10 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
     return f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol} '
 
 
-def parse_to(rule, ipv):
-    """Parse snat/dnat "to" rule to nft rule."""
-    if not rule['to']:
-        return ''
-    if rule['statement'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
-        return f' to {rule["to"]}'
-
-    # "to" can be IPv4+IPv6, find correct one
+def parse_iplist_to_single_ip(rule, key, value, ipv):
+    """Parse rule's iplist to single ipaddress, or None."""
     target = []
-    for check in rule['to'].split():
+    for check in value.split():
         if check.count(':') == 1 and is_ip_address(check.split(':')[0]) == 4:
             check_ipv = 4  # IPv4 address with port
         elif (
@@ -1706,18 +1703,34 @@ def parse_to(rule, ipv):
             check_ipv = is_ip_address(check)
         if check_ipv == 0:
             fail(f'{rule["fileline"]}Invalid IP address in '
-                 f'"{rule["statement"]}" target: {check}')
+                 f'"{key}" target: {check}')
         if check_ipv == ipv:
             target.append(check)
     if not target:  # Nothing found for this ipv, don't generate rule
         return None
     if len(target) > 1:
-        fail(f'{rule["fileline"]}Multiple "{rule["statement"]}" '
-             f'targets: {" ".join(target)}')
+        fail(f'{rule["fileline"]}Multiple "{key}" targets: {" ".join(target)}')
+    return target[0]
+
+
+def parse_to(rule, ipv):
+    """Parse snat/dnat "to" rule to nft rule."""
+    if not rule['to']:
+        return ''
+    if rule['statement'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
+        return f' to {rule["to"]}'
+
+    # "to" can be IPv4, IPv6 or both, find correct one
+    target = parse_iplist_to_single_ip(rule, rule['statement'], rule['to'],
+                                       ipv)
+    if not target:
+        return None
+
+    # Generate rule
     to_text = 'to'
     if rule['statement'] in ('snat_prefix', 'dnat_prefix'):
         to_text = 'prefix to'
-    return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target[0]}'
+    return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target}'
 
 
 def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
@@ -1775,6 +1788,14 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     if rule['priority_set']:
         meta_set += f'meta priority set "{rule["priority_set"]}" '
 
+    tproxy = ''
+    if rule['tproxy']:
+        tproxy_to = parse_iplist_to_single_ip(rule, 'tproxy', rule['tproxy'],
+                                              ipv)
+        if not tproxy_to:
+            return None
+        tproxy = f'tproxy {"ip" if ipv == 4 else "ip6"} to {tproxy_to} '
+
     dscp = ''
     if rule['dscp']:
         dscp = (f'{"ip" if ipv == 4 else "ip6"} dscp '
@@ -1798,7 +1819,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     # Return matcher string
     return (f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
             f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
-            f'{priority_match}{dscp}{uid}{gid}{meta_set}')
+            f'{priority_match}{dscp}{uid}{gid}{tproxy}{meta_set}')
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
