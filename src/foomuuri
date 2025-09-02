@@ -2134,6 +2134,7 @@ def output_special_chains(chain_rules):
             out(hook_nft)
             if need_mark_restore:
                 out('meta mark set ct mark')
+            output_options(rules, 4)
             output_rule_section_no_header(rules, section)
             out('}')
 
