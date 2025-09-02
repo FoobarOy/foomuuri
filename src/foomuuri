@@ -1921,8 +1921,11 @@ def output_options(rules, ipv):
     for rule in rules:
         if rule['mss'] and ipv == 4:
             match = rule_matchers(rule, ipv, skip_options=False)
+            mss = rule['mss']
+            if mss == 'pmtu':
+                mss = 'rt mtu'
             out(f'{match}tcp flags syn tcp option '
-                f'maxseg size set {rule["mss"]}')
+                f'maxseg size set {mss}')
 
 
 def output_zone(zonemap, szone, dzone, rules, ipv):
