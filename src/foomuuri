@@ -366,7 +366,7 @@ def read_config():
                         'template', 'target', 'group',
                         'snat', 'dnat',
                         'prerouting', 'postrouting',
-                        'forward', 'output'):
+                        'forward', 'input', 'output'):
                     fail(f'{fileline}Section "{tokens[0]}" does not take '
                          f'parameters: {" ".join(tokens)}')
 
@@ -672,6 +672,7 @@ def parse_config_special_chains(config):
             ('prerouting', 'filter', 'mangle'),
             ('postrouting', 'filter', 'mangle'),
             ('forward', 'filter', 'mangle'),
+            ('input', 'filter', 'mangle'),
             ('output', 'route', 'mangle'),
             ('invalid', None, None),
             ('rpfilter', None, None),
@@ -2103,7 +2104,7 @@ def output_special_chains(chain_rules):
     """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
     for prefix in ('snat', 'dnat',
                    'prerouting', 'postrouting',
-                   'forward', 'output'):
+                   'forward', 'input', 'output'):
         for (section, ftype, priority), rules in chain_rules.items():
             if prefix != section:
                 continue

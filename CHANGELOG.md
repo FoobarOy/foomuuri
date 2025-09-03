@@ -9,6 +9,8 @@
 * Add `tproxy` matcher for transparent proxying.
 * Add `mss pmtu` to calculate the MTU in runtime based on what the routing
   cache has observed via Path MTU Discovery.
+* Add `input` section. It processes incoming packets with destination
+  `localhost`.
 * Add `try-reload` command to safely test new config. It will load new config,
   ask confirmation from user to keep new config, and revert back to old config
   if user didn't reply in 15 seconds.
