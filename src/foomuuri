@@ -1514,10 +1514,14 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # pylint: disable=too-many-arguments
 
     # Map internal statement to nft statement
-    statement = force_statement or {
-        'snat_prefix': 'snat',
-        'dnat_prefix': 'dnat',
-    }.get(rule['statement'], rule['statement'])
+    if rule['mss']:
+        mss = 'rt mtu' if rule['mss'] == 'pmtu' else rule['mss']
+        statement = f'tcp flags syn tcp option maxseg size set {mss}'
+    else:
+        statement = force_statement or {
+            'snat_prefix': 'snat',
+            'dnat_prefix': 'dnat',
+        }.get(rule['statement'], rule['statement'])
 
     # queue can have optional flags
     if statement == 'queue' and rule[statement]:
@@ -1791,7 +1795,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
         return None  # broadcast is ipv4 only
     if skip_icmp and rule['protocol'] in ('icmp', 'icmpv6'):
         return None
-    if skip_options and rule['mss']:
+    if skip_options and rule['mss']:  # Handled in output_options()
         return None
 
     # IPv4/6 specific rule?
@@ -1920,18 +1924,16 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         out(f'{match}jump {new_szone}-{new_dzone}_{ipv}')
 
 
-def output_options(rules, ipv):
-    """Output "mss" etc options."""
+def output_options(szone, dzone, rules, ipv):
+    """Output "mss" etc options as first rules."""
     for rule in rules:
         if rule['mss']:
             match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
                 continue
-            mss = rule['mss']
-            if mss == 'pmtu':
-                mss = 'rt mtu'
-            out(f'{match}tcp flags syn tcp option '
-                f'maxseg size set {mss}')
+            statement = rule_statement(szone, dzone, rule, ipv,
+                                       do_lograte=False)
+            out(f'{match}{statement}')
 
 
 def output_zone(zonemap, szone, dzone, rules, ipv):
@@ -1939,7 +1941,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     # Header + zonemap jumps + options
     out(f'chain {szone}-{dzone}_{ipv} {{')
     output_zonemap(zonemap, szone, dzone, ipv)
-    output_options(rules, ipv)
+    output_options(szone, dzone, rules, ipv)
 
     # Rules with "-conntrack" or plain "log"/"counter" rule. Output these
     # before conntrack and icmp so that they see all traffic.
@@ -2082,7 +2084,7 @@ def output_rule_section_no_header(rules, section):
             to_rule = parse_to(rule, ipv)
             if to_rule is None:
                 continue
-            match = rule_matchers(rule, ipv)
+            match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
                 continue
             statement = rule_statement(section.upper(), '', rule, ipv,
@@ -2140,7 +2142,6 @@ def output_special_chains(chain_rules):
             out(hook_nft)
             if need_mark_restore:
                 out('meta mark set ct mark')
-            output_options(rules, 4)
             output_rule_section_no_header(rules, section)
             out('}')
 

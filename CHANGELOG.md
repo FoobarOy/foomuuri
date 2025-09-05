@@ -9,6 +9,7 @@
 * Add `tproxy` matcher for transparent proxying.
 * Add `mss pmtu` to calculate the MTU in runtime based on what the routing
   cache has observed via Path MTU Discovery.
+* Fix: `mss` applies to IPv4 and IPv6. Previously it was only for IPv4.
 * Add `input` section. It processes incoming packets with destination
   `localhost`.
 * Add `try-reload` command to safely test new config. It will load new config,
