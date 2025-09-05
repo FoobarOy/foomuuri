@@ -1778,7 +1778,10 @@ def parse_to(rule, ipv):
 
 
 def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
-    """Parse rule's matchers to nft rule."""
+    """Parse rule's matchers to nft rule.
+
+    Return value "None" is "no match, skip rule".
+    """
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
@@ -1920,8 +1923,10 @@ def output_zonemap(zonemap, szone, dzone, ipv):
 def output_options(rules, ipv):
     """Output "mss" etc options."""
     for rule in rules:
-        if rule['mss'] and ipv == 4:
+        if rule['mss']:
             match = rule_matchers(rule, ipv, skip_options=False)
+            if match is None:
+                continue
             mss = rule['mss']
             if mss == 'pmtu':
                 mss = 'rt mtu'
