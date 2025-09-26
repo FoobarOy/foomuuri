@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.29 (20xx-xx-xx)
+## 0.29 (2025-09-26)
 
 * Add `snat_prefix` and `dnat_prefix` statements for IPv6-to-IPv6 Network
   Prefix Translation (NPTv6).
