@@ -9,15 +9,15 @@
 * Add `tproxy` matcher for transparent proxying.
 * Add `mss pmtu` to calculate the MTU in runtime based on what the routing
   cache has observed via Path MTU Discovery.
-* Fix: `mss` applies to IPv4 and IPv6. Previously it was only for IPv4.
+* Fix `mss` to apply to IPv4 and IPv6. Previously it was only for IPv4.
 * Add `input` section. It processes incoming packets with destination
   `localhost`.
-* Add `try-reload` command to safely test new config. It will load new config,
-  ask confirmation from user to keep new config, and revert back to old config
-  if user didn't reply in 15 seconds.
+* Add `try-reload` command to safely test new config. It loads new config,
+  asks confirmation from user to keep it, and reverts back to old config
+  if user didn't reply within 15 seconds.
 * Foomuuri Monitor supports and prefers fping's `--squiet=s` mode. It works
   correctly even if the interface is down. fping command option `--interval=ms`
-  is automatically converted to correct value.
+  is automatically converted to `--squiet=s` if possible.
 * Add `command_down_interval` and `down_interval` to Foomuuri Monitor.
   Foomuuri Monitor will run that external command in regular intervals if
   network connectivity is still down.
@@ -27,7 +27,7 @@
 * More text to default log prefix can be added with `log + "mytext"`.
 * Multiple interfaces can be specified to `iifname` and `oifname` matchers.
   Negative matching also works.
-* Print `list counter` command output in pretty format.
+* Use human readable output format in `list counter` command.
 * Add `prometheus`, `prometheus-*` and `alertmanager` macros to default
   services.
 * Add `--fork` command line option to fork as a background daemon process.
