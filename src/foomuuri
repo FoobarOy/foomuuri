@@ -3779,6 +3779,7 @@ def input_timeout(prompt, timeout):
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.signal(signal.SIGHUP, alarm_handler)
     signal.signal(signal.SIGINT, alarm_handler)
+    signal.signal(signal.SIGTERM, alarm_handler)
     signal.alarm(timeout)
     try:
         return input(prompt)
