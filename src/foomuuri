@@ -3777,10 +3777,12 @@ def alarm_handler(_dummy_signum, _dummy_frame):
 def input_timeout(prompt, timeout):
     """Ask something from user with timeout."""
     signal.signal(signal.SIGALRM, alarm_handler)
+    signal.signal(signal.SIGHUP, alarm_handler)
+    signal.signal(signal.SIGINT, alarm_handler)
     signal.alarm(timeout)
     try:
         return input(prompt)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print()
         print('Timeout')
     finally:
