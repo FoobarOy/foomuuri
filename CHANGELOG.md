@@ -2,7 +2,7 @@
 
 ## 0.30 (20xx-xx-xx)
 
-* Add `prometheus-foobar` macro to default services.
+* Add more `prometheus-*` macros to default services.
 
 ## 0.29 (2025-09-26)
 
