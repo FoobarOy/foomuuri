@@ -26,10 +26,16 @@ import sys
 import syslog
 import time
 import unicodedata
-import dbus
-import dbus.mainloop.glib
-import dbus.service
-from gi.repository import GLib
+
+# dbus is optional but highly recommended for dynamic zone/interface changes
+try:
+    import dbus
+    import dbus.mainloop.glib
+    import dbus.service
+    from gi.repository import GLib
+    HAVE_DBUS = True
+except ImportError:
+    HAVE_DBUS = False
 
 # requests is optional, used by iplist http download
 try:
@@ -2620,10 +2626,11 @@ def command_status():
     return 0
 
 
-class FoomuuriDbusException(dbus.DBusException):
-    """Exception class for D-Bus interface."""
+if HAVE_DBUS:
+    class FoomuuriDbusException(dbus.DBusException):
+        """Exception class for D-Bus interface."""
 
-    _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
+        _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
 
 
 class DbusCommon:
@@ -2760,86 +2767,88 @@ class DbusCommon:
         return self.change_interface_zone(interface, zone)[0]
 
 
-class DbusFoomuuri(dbus.service.Object, DbusCommon):
-    """D-Bus server for Foomuuri."""
+if HAVE_DBUS:
+    class DbusFoomuuri(dbus.service.Object, DbusCommon):
+        """D-Bus server for Foomuuri."""
 
-    # pylint: disable=invalid-name  # dbus method names
+        # pylint: disable=invalid-name  # dbus method names
 
-    @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                         in_signature='', out_signature='as')
-    def getZones(self):
-        """Get list of available zones."""
-        return self.method_get_zones()
+        @dbus.service.method('fi.foobar.Foomuuri1.zone',
+                             in_signature='', out_signature='as')
+        def getZones(self):
+            """Get list of available zones."""
+            return self.method_get_zones()
 
-    @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                         in_signature='ss', out_signature='s')
-    def removeInterface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty.
+        @dbus.service.method('fi.foobar.Foomuuri1.zone',
+                             in_signature='ss', out_signature='s')
+        def removeInterface(self, zone, interface):
+            """Remove interface from zone, or from all if zone is empty.
 
-        Return: previous zone
-        """
-        return self.method_remove_interface(zone, interface)
+            Return: previous zone
+            """
+            return self.method_remove_interface(zone, interface)
 
-    @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                         in_signature='ss', out_signature='s')
-    def addInterface(self, zone, interface):
-        """Add interface to zone.
+        @dbus.service.method('fi.foobar.Foomuuri1.zone',
+                             in_signature='ss', out_signature='s')
+        def addInterface(self, zone, interface):
+            """Add interface to zone.
 
-        Return: new zone
-        """
-        return self.method_add_interface(zone, interface)
+            Return: new zone
+            """
+            return self.method_add_interface(zone, interface)
 
-    @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                         in_signature='ss', out_signature='s')
-    def changeZoneOfInterface(self, zone, interface):
-        """Change interface to zone.
+        @dbus.service.method('fi.foobar.Foomuuri1.zone',
+                             in_signature='ss', out_signature='s')
+        def changeZoneOfInterface(self, zone, interface):
+            """Change interface to zone.
 
-        Return: previous zone
-        """
-        return self.method_change_zone_of_interface(zone, interface)
+            Return: previous zone
+            """
+            return self.method_change_zone_of_interface(zone, interface)
 
+    class DbusFirewallD(dbus.service.Object, DbusCommon):
+        """D-Bus server for FirewallD emulation."""
 
-class DbusFirewallD(dbus.service.Object, DbusCommon):
-    """D-Bus server for FirewallD emulation."""
+        # pylint: disable=invalid-name  # dbus method names
 
-    # pylint: disable=invalid-name  # dbus method names
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='', out_signature='as')
+        def getZones(self):
+            """Get list of available zones."""
+            return self.method_get_zones()
 
-    @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                         in_signature='', out_signature='as')
-    def getZones(self):
-        """Get list of available zones."""
-        return self.method_get_zones()
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='ss', out_signature='s')
+        def removeInterface(self, zone, interface):
+            """Remove interface from zone, or from all if zone is empty.
 
-    @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                         in_signature='ss', out_signature='s')
-    def removeInterface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty.
+            Return: previous zone
+            """
+            return self.method_remove_interface(zone, interface)
 
-        Return: previous zone
-        """
-        return self.method_remove_interface(zone, interface)
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='ss', out_signature='s')
+        def addInterface(self, zone, interface):
+            """Add interface to zone.
 
-    @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                         in_signature='ss', out_signature='s')
-    def addInterface(self, zone, interface):
-        """Add interface to zone.
+            Return: new zone
+            """
+            return self.method_add_interface(zone, interface)
 
-        Return: new zone
-        """
-        return self.method_add_interface(zone, interface)
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='ss', out_signature='s')
+        def changeZoneOfInterface(self, zone, interface):
+            """Change interface to zone.
 
-    @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                         in_signature='ss', out_signature='s')
-    def changeZoneOfInterface(self, zone, interface):
-        """Change interface to zone.
-
-        Return: previous zone
-        """
-        return self.method_change_zone_of_interface(zone, interface)
+            Return: previous zone
+            """
+            return self.method_change_zone_of_interface(zone, interface)
 
 
 def command_dbus():
     """Start D-Bus daemon."""
+    if not HAVE_DBUS:
+        fail('No python-dbus installed')
     CONFIG['keep_going'] = True
     while CONFIG['keep_going']:
         # Read minimal config
@@ -2909,6 +2918,8 @@ def command_dbus():
 
 def command_set():
     """Modify runtime config by calling D-Bus methods."""
+    if not HAVE_DBUS:
+        fail('No python-dbus installed')
     if (
             len(sys.argv) != 6 or
             sys.argv[2] != 'interface' or
