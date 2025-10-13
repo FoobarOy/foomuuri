@@ -3215,10 +3215,17 @@ def iplist_url_filters(url, text):
             text = run_program_pipe([spec[6:]], text)
         elif spec.startswith('json:'):
             text = run_program_pipe(['jq', '--raw-output', spec[5:]], text)
-        elif spec.startswith('html:') and HAVE_LXML:
-            text = lxml_parser(url, lxml.etree.HTMLParser(), spec[5:], text)
-        elif spec.startswith('xml:') and HAVE_LXML:
-            text = lxml_parser(url, lxml.etree.XMLParser(), spec[4:], text)
+        elif spec.startswith('html:'):
+            if HAVE_LXML:
+                text = lxml_parser(url, lxml.etree.HTMLParser(), spec[5:],
+                                   text)
+            else:
+                warning('No python-lxml installed')
+        elif spec.startswith('xml:'):
+            if HAVE_LXML:
+                text = lxml_parser(url, lxml.etree.XMLParser(), spec[4:], text)
+            else:
+                warning('No python-lxml installed')
     return text
 
 
