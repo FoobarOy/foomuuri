@@ -2,6 +2,7 @@
 
 ## 0.30 (20xx-xx-xx)
 
+* Include `group` states to `foomuuri-monitor` statistics file.
 * Add more `prometheus-*` macros to default services.
 * Make `python-dbus` optional for small systems. It is still highly
   recommended. Now Foomuuri can be run without any additional Python modules.

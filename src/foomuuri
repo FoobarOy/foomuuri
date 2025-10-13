@@ -4293,10 +4293,22 @@ def parse_config_groups(config, targets):
     return groups
 
 
-def monitor_write_statistics(targets):
+def monitor_write_statistics(targets, groups):
     """Write statistics file."""
-    stats = {
-        target: {
+    stats = {}
+    for group, cfg in groups.items():
+        stats[group] = {
+            'type': 'group',
+            # Config
+            'target': cfg['target'],
+            # State
+            'state': cfg['state'],
+            'history': [],  # Dummy fields to be compatible with targets
+            'time': [],
+        }
+    for target, cfg in targets.items():
+        stats[target] = {
+            'type': 'target',
             # Config
             'consecutive_up': cfg['consecutive_up'],
             'consecutive_down': cfg['consecutive_down'],
@@ -4305,11 +4317,8 @@ def monitor_write_statistics(targets):
             # State
             'state': cfg['state'],
             'history': cfg.get('history', []),
-            # fping time
-            'time': cfg['time'],
+            'time': cfg['time'],  # fping time
         }
-        for target, cfg in targets.items()
-    }
     save_file(CONFIG['_monitor_statistics_file'], stats)
 
 
@@ -4360,7 +4369,7 @@ def command_monitor():
             # Periodic statistics file update
             if stat_interval and time.time() >= next_stat:
                 next_stat += stat_interval
-                monitor_write_statistics(targets)
+                monitor_write_statistics(targets, groups)
 
         monitor_terminate_targets(targets)
 
