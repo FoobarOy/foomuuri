@@ -1,0 +1,14 @@
+[Unit]
+Description=Export Foomuuri statistics to Prometheus
+After=foomuuri-monitor.service
+After=network-online.target
+
+[Service]
+Environment=OPTIONS=
+EnvironmentFile=/etc/default/foomuuri_exporter
+User=root
+Restart=on-failure
+ExecStart=/usr/bin/foomuuri_exporter $OPTIONS
+
+[Install]
+WantedBy=multi-user.target

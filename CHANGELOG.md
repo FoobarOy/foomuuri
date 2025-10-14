@@ -2,6 +2,9 @@
 
 ## 0.30 (20xx-xx-xx)
 
+* Add `foomuuri_exporter` binary to collect statistics and export them
+  to Prometheus. Similar Munin collector is included to Munin contrib
+  repository.
 * Include `group` states to `foomuuri-monitor` statistics file.
 * Add more `prometheus-*` macros to default services.
 * Make `python-dbus` optional for small systems. It is still highly
