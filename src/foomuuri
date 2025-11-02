@@ -2342,7 +2342,7 @@ def output_iplist_sets(iplist):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
             out('flags interval,timeout')
-            if not name in no_auto_merge_list:
+            if name not in no_auto_merge_list:
                 out('auto-merge')
             out('}')
 
