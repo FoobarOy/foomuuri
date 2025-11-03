@@ -2956,21 +2956,17 @@ def resolve_one_hostname(hostname):
 
 def resolve_all_hostnames(resolve, cache):
     """Resolve hostnames to IP addresses and save them to cache."""
-    # pylint: disable=too-many-locals
-
     # Collect list of hostnames to resolve
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = int(time.time())
     todo = set()
     for hostname, (timeout, refresh) in resolve.items():
         cachevalue = cache.get(hostname, {}).get('ip', {})
         cacherefresh = cache.get(hostname, {}).get('refresh')
         if cachevalue and cacherefresh:
-            host_timeout = cacherefresh + datetime.timedelta(seconds=timeout)
-            next_refresh = cacherefresh + datetime.timedelta(seconds=refresh)
-            if now >= host_timeout:
+            if now >= cacherefresh + timeout:  # Expired entry
                 cache[hostname]['ip'] = {}
                 cache[hostname]['dirty'] = True
-            elif now < next_refresh and CONFIG['force'] < 0:
+            elif now < cacherefresh + refresh and CONFIG['force'] < 0:
                 verbose(f'Using cached value for '
                         f'"{remove_filters(hostname)}"')
                 continue
@@ -2994,7 +2990,7 @@ def resolve_all_hostnames(resolve, cache):
                 iplist_cache_init(cache, hostname)
                 cache[hostname]['dirty'] = True
                 cache[hostname]['refresh'] = now
-                expire = now + datetime.timedelta(seconds=resolve[hostname][0])
+                expire = now + resolve[hostname][0]
                 for addr in addrlist:
                     cache[hostname]['ip'][addr] = expire
                 verbose(f'Hostname "{remove_filters(hostname)}" resolved '
@@ -3140,8 +3136,8 @@ def command_iplist_add():
         fail(f'Unknown iplist name: {setname}')
     timeout = max(timeouts[setname]['url_timeout'],
                   timeouts[setname]['dns_timeout'])
-    now = datetime.datetime.now(datetime.timezone.utc)
-    expire = now + datetime.timedelta(seconds=timeout)
+    now = int(time.time())
+    expire = now + timeout
 
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
@@ -3154,12 +3150,11 @@ def command_iplist_add():
             timeout = parse_hour_min(address, 0)
             if not timeout:
                 fail(f'Invalid IP address {address}')
-            expire = now + datetime.timedelta(seconds=timeout)
+            expire = now + timeout
             if timeout > 630720000:  # More than 20 years is "forever"
-                expire = datetime.datetime(year=2100, month=1, day=1,
-                                           tzinfo=datetime.timezone.utc)
+                expire = 4000000000  # year 2096
 
-    return iplist_output_values(iplist, cache, active_sets(), {setname})
+    return iplist_output_values(iplist, cache, {setname}, {setname})
 
 
 def command_iplist_del():
@@ -3179,7 +3174,7 @@ def command_iplist_del():
         cache[f'manual.{setname}']['ip'].pop(address, None)
         cache[f'manual.{setname}']['dirty'] = True
 
-    return iplist_output_values(iplist, cache, active_sets(), {setname})
+    return iplist_output_values(iplist, cache, {setname}, {setname})
 
 
 def command_iplist_flush():
@@ -3200,7 +3195,7 @@ def command_iplist_flush():
         cache[f'manual.{setname}']['ip'] = {}
         cache[f'manual.{setname}']['dirty'] = True
 
-    return iplist_output_values(iplist, cache, active_sets(), update_only)
+    return iplist_output_values(iplist, cache, update_only, update_only)
 
 
 def lxml_parser(url, parser, path, text):
@@ -3264,16 +3259,14 @@ def iplist_cleanup_file(url, text):
 
 def get_url_or_file(url, timeout, refresh, cache):
     """Get URL or file content with cache check."""
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = int(time.time())
     cachevalue = cache.get(url, {}).get('ip', {})
     cacherefresh = cache.get(url, {}).get('refresh')
     if cachevalue and cacherefresh:
-        url_timeout = cacherefresh + datetime.timedelta(seconds=timeout)
-        next_refresh = cacherefresh + datetime.timedelta(seconds=refresh)
-        if now >= url_timeout:
+        if now >= cacherefresh + timeout:  # Expired entry
             cache[url]['ip'] = {}
             cache[url]['dirty'] = True
-        elif now < next_refresh and CONFIG['force'] < 0:
+        elif now < cacherefresh + refresh and CONFIG['force'] < 0:
             verbose(f'Using cached value for "{url}"')
             return
 
@@ -3285,11 +3278,11 @@ def get_url_or_file(url, timeout, refresh, cache):
     if value is not None:
         # Replace list, don't append. These lists are always complete
         # address lists.
-        expire = now + datetime.timedelta(seconds=timeout)
+        expire = now + timeout
         cache[url] = {
             'ip': {addr: expire for addr in iplist_cleanup_file(url, value)},
             'dirty': True,
-            'refresh': datetime.datetime.now(datetime.timezone.utc),
+            'refresh': now,
         }
         verbose(f'Iplist content for "{url}" refreshed, '
                 f'{len(cache[url]["ip"])} entries')
@@ -3316,6 +3309,13 @@ def iplist_parse_timeout(fileline, timeouts, setting, extra):
     else:  # refresh
         timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_hour_min(
             value, timeouts['dns_refresh'])
+
+
+def str_to_time(timestamp):
+    """Convert time string to unix timestamp."""
+    obj = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')
+    obj = obj.replace(tzinfo=datetime.timezone.utc)
+    return int(obj.timestamp())
 
 
 def read_old_iplist_format(cache):
@@ -3347,11 +3347,10 @@ def read_old_iplist_format(cache):
             setname = f'manual.@{items[4][:-2]}'
 
             if len(items) == 12:
-                timeout = items[11]  # iplist_manual_file has expire stamp
+                # iplist_manual_file has expire stamp.
+                timeout = str_to_time(items[11])
             else:
-                timeout = (datetime.datetime.now(datetime.timezone.utc) +
-                           datetime.timedelta(seconds=parse_hour_min(
-                               items[8], 0))).strftime('%Y-%m-%dT%H:%M:%S')
+                timeout = int(time.time()) + parse_hour_min(items[8], 0)
             iplist_cache_init(cache, setname)
             cache[setname]['ip'][items[6]] = timeout
 
@@ -3369,7 +3368,7 @@ def read_iplist_cache(iplist):
     except FileNotFoundError:
         read_old_iplist_format(cache)
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = int(time.time())
     for key in list(cache):
         if (
                 (key.startswith('@') and key not in iplist) or
@@ -3383,27 +3382,22 @@ def read_iplist_cache(iplist):
 
         # Check top level refresh. Missing or invalid value is ok.
         try:
-            refresh = datetime.datetime.strptime(
-                cache[key]['refresh'], '%Y-%m-%dT%H:%M:%S')
-            refresh = refresh.replace(tzinfo=datetime.timezone.utc)
-        except (ValueError, KeyError, TypeError):
-            refresh = now
-        cache[key]['refresh'] = refresh
+            if isinstance(cache[key]['refresh'], str):
+                cache[key]['refresh'] = str_to_time(cache[key]['refresh'])
+        except KeyError:
+            cache[key]['refresh'] = now
 
         # Check IP address timeouts
-        for value in list(cache[key]['ip']):
-            try:
-                timeout = datetime.datetime.strptime(
-                    cache[key]['ip'][value], '%Y-%m-%dT%H:%M:%S')
-                timeout = timeout.replace(tzinfo=datetime.timezone.utc)
-            except (ValueError, KeyError):
-                warning(f'Invalid iplist "{key}" entry "{value}" timestamp '
-                        f'in cache')
-                timeout = now  # Gets deleted
-            cache[key]['ip'][value] = timeout
+        dellist = set()
+        for addr, timeout in cache[key]['ip'].items():
+            if isinstance(timeout, str):
+                timeout = str_to_time(timeout)
+                cache[key]['ip'][addr] = timeout
             if now >= timeout:
-                verbose(f'Deleting expired iplist "{key}" entry "{value}"')
-                del cache[key]['ip'][value]
+                dellist.add(addr)
+        for addr in dellist:
+            verbose(f'Deleting expired iplist "{key}" entry "{addr}"')
+            del cache[key]['ip'][addr]
 
         # Don't keep empty sets
         if not cache[key]['ip']:
@@ -3417,11 +3411,6 @@ def write_iplist_cache(cache):
         cache[key].pop('dirty', None)
         if key.startswith(('@', 'manual.@')):
             del cache[key]['refresh']
-        else:
-            cache[key]['refresh'] = cache[key]['refresh'].strftime(
-                '%Y-%m-%dT%H:%M:%S')
-        for address, value in cache[key]['ip'].items():
-            cache[key]['ip'][address] = value.strftime('%Y-%m-%dT%H:%M:%S')
 
     save_file(CONFIG['_iplist_cache_file'], cache)
 
@@ -3528,7 +3517,7 @@ def iplist_cache_init(cache, setname):
         return
     cache[setname] = {
         'ip': {},
-        'refresh': datetime.datetime.now(datetime.timezone.utc),
+        'refresh': int(time.time()),
     }
 
 
@@ -3557,7 +3546,10 @@ def iplist_output_add_element(cache, setname, now):
         6: set(),
     }
     for address in cache[setname]['ip']:
-        updates[is_ip_address(address)].add(address)
+        if ':' in address:
+            updates[6].add(address)
+        else:
+            updates[4].add(address)
 
     # Output add to sets
     out('')
@@ -3569,7 +3561,7 @@ def iplist_output_add_element(cache, setname, now):
         out(f'add element inet foomuuri {setname[1:]}_{ipv} {{')
         for address in sorted(updates[ipv]):
             timeout = cache[setname]['ip'][address]
-            seconds = max(1, int((timeout - now).total_seconds()))
+            seconds = max(1, timeout - now)
             if seconds > 630720000:  # 20 years, add without timeout
                 out(f'{address},')
             else:
@@ -3579,9 +3571,7 @@ def iplist_output_add_element(cache, setname, now):
 
 def iplist_output_values(iplist, cache, currently_active, update_only):
     """Output and apply nft commands to add iplist entries."""
-    forever = datetime.datetime(year=2100, month=1, day=1,
-                                tzinfo=datetime.timezone.utc)
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = int(time.time())
     error = 0
     for setname in sorted(iplist):
         setvalues = iplist[setname]
@@ -3594,7 +3584,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         for value in setvalues:
             # Static IP address doesn't need refresh, so timeout is forever
             if is_ip_address(value):
-                cache[setname]['ip'][value] = forever
+                cache[setname]['ip'][value] = 4000000000  # forever
                 cache[setname]['dirty'] = True
                 continue
 
