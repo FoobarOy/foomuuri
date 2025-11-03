@@ -82,6 +82,7 @@ CONFIG = {
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
+    'no_auto_merge': '',
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -2335,12 +2336,14 @@ def output_logrates():
 
 def output_iplist_sets(iplist):
     """Output empty iplist{} sets."""
+    no_auto_merge_list = CONFIG['no_auto_merge'].split()
     for name in sorted(iplist):
         for ipv in (4, 6):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
             out('flags interval,timeout')
-            out('auto-merge')
+            if name not in no_auto_merge_list:
+                out('auto-merge')
             out('}')
 
 
