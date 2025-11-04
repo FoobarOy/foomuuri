@@ -272,6 +272,28 @@ table inet foomuuri {
 		auto-merge
 	}
 
+	set empty_no_merge_4 {
+		type ipv4_addr
+		flags interval,timeout
+	}
+
+	set empty_no_merge_6 {
+		type ipv6_addr
+		flags interval,timeout
+	}
+
+	set one_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set one_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
 	set two_4 {
 		type ipv4_addr
 		flags interval,timeout
@@ -291,6 +313,15 @@ table inet foomuuri {
 
 flush set inet foomuuri empty_4
 flush set inet foomuuri empty_6
+
+flush set inet foomuuri empty_no_merge_4
+flush set inet foomuuri empty_no_merge_6
+
+flush set inet foomuuri one_4
+add element inet foomuuri one_4 {
+	10.0.0.1,
+}
+flush set inet foomuuri one_6
 
 flush set inet foomuuri two_4
 add element inet foomuuri two_4 {

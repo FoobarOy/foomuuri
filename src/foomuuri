@@ -82,7 +82,6 @@ CONFIG = {
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
-    'no_auto_merge': '',
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -712,8 +711,13 @@ def parse_config_special_chains(config):
 
 
 def parse_iplist_names(config):
-    """Return list of resolve{} or iplist{} set names from config."""
+    """Return list of resolve{} or iplist{} set names from config.
+
+    Parse "-merge" flag here as it's needed when creating sets in
+    initial ruleset, not when adding elements to it.
+    """
     ret = set()
+    CONFIG['_iplist_merge'] = set()
     for section in ('iplist', 'resolve'):
         for fileline, line in config.get(section, []):
             if line[0].startswith(('dns_timeout=', 'dns_refresh=',
@@ -725,6 +729,8 @@ def parse_iplist_names(config):
                 fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
             check_name(line[0][1:], fileline, '@')
             ret.add(line[0])
+            if '-merge' not in line[1:]:
+                CONFIG['_iplist_merge'].add(line[0])
     return ret
 
 
@@ -2336,13 +2342,12 @@ def output_logrates():
 
 def output_iplist_sets(iplist):
     """Output empty iplist{} sets."""
-    no_auto_merge_list = CONFIG['no_auto_merge'].split()
     for name in sorted(iplist):
         for ipv in (4, 6):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
             out('flags interval,timeout')
-            if name not in no_auto_merge_list:
+            if name in CONFIG['_iplist_merge']:
                 out('auto-merge')
             out('}')
 
@@ -3420,6 +3425,8 @@ def write_iplist_cache(cache):
 
 def iplist_parse_config(config):
     """Parse resolve{} and iplist{} sections from config."""
+    # pylint: disable=too-many-branches
+
     def_times = {
         'dns_timeout': 86400,   # 24h
         'dns_refresh': 900,     # 15m
@@ -3467,6 +3474,8 @@ def iplist_parse_config(config):
         this_value = []
         this_timeouts = timeouts.get(name, def_times).copy()
         for item in value:
+            if item == '-merge':
+                continue
             if '=' in item and item.split('=')[0] in def_times:
                 iplist_parse_timeout(fileline, this_timeouts, item, None)
             else:

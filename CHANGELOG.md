@@ -2,6 +2,10 @@
 
 ## 0.30 (20xx-xx-xx)
 
+* Add `-merge` option to `iplist` section line to disable IP address
+  auto-merge. It should be disabled in `fail2ban` alike scenarios, where
+  IP addresses are added and deleted by some external program.
+* Major speedup when handling large iplists.
 * Add `foomuuri_exporter` binary to collect statistics and export them
   to Prometheus. Similar Munin collector is included to Munin contrib
   repository.
