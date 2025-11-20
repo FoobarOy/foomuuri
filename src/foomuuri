@@ -2950,6 +2950,19 @@ def remove_filters(text):
     return text.split('|')[0]
 
 
+def iplist_verify_filters(name, values, fileline):
+    """Verify that iplist entry's filter is known."""
+    for value in values:
+        for spec in value.split('|')[1:]:
+            if not spec.startswith(('missing-ok',
+                                    'shell:',
+                                    'json:',
+                                    'html:',
+                                    'xml:')):
+                warning(f'{fileline}Unknown filter "|{spec}" in iplist '
+                        f'"{name} {value}"')
+
+
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
     ret = set()
@@ -3489,6 +3502,7 @@ def iplist_parse_config(config):
 
         iplist[name] = this_value
         timeouts[name] = this_timeouts
+        iplist_verify_filters(name, this_value, fileline)
     if CONFIG['verbose'] >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
