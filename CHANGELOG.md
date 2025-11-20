@@ -11,6 +11,9 @@
   repository.
 * Include `group` states to `foomuuri-monitor` statistics file.
 * Add `prometheus-*` and `sips` macros to default services.
+* If all iplist entries have `|missing-ok` filter then whole iplist is
+  considered as `Warning: Iplist is empty`. If any entry doesn't have
+  that filter then empty list is an error.
 * Make `python-dbus` optional for small systems. It is still highly
   recommended. Now Foomuuri can be run without any additional Python modules.
 

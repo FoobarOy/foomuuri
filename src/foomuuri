@@ -3003,7 +3003,9 @@ def resolve_all_hostnames(resolve, cache):
                     cache[hostname]['ip'][addr] = expire
                 verbose(f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}')
-            elif '|missing-ok' not in hostname:
+            elif '|missing-ok' in hostname:
+                CONFIG['_iplist_missing_ok'].add(hostname)
+            else:
                 warning(f'No IP address found for hostname '
                         f'"{remove_filters(hostname)}" in iplist')
 
@@ -3036,7 +3038,9 @@ def get_url(url):
                 err = f'status code: {response.status_code}'
     else:
         err = 'No python-requests installed'
-    if '|missing-ok' not in url:
+    if '|missing-ok' in url:
+        CONFIG['_iplist_missing_ok'].add(url)
+    else:
         warning(f'Can\'t download iplist URL "{remove_filters(url)}": {err}')
     return None
 
@@ -3046,7 +3050,9 @@ def get_file(wildcard):
     wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        if '|missing-ok' not in wildcard:
+        if '|missing-ok' in wildcard:
+            CONFIG['_iplist_missing_ok'].add(wildcard)
+        else:
             warning(f'Can\'t read iplist file "{remove_filters(wildcard)}": '
                     f'No such file')
         return None
@@ -3486,6 +3492,7 @@ def iplist_parse_config(config):
     if CONFIG['verbose'] >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
+    CONFIG['_iplist_missing_ok'] = set()
     return iplist, timeouts
 
 
@@ -3623,8 +3630,11 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
                 not cache[setname]['ip'] and
                 CONFIG['command'] == 'iplist'
         ):
-            fail(f'Iplist "{setname}" is empty', False)
-            error = 2
+            if all(name in CONFIG['_iplist_missing_ok'] for name in setvalues):
+                warning(f'Iplist "{setname}" is empty')
+            else:
+                fail(f'Iplist "{setname}" is empty', False)
+                error = 2
         else:
             verbose(f'Updating iplist "{setname}", '
                     f'{len(cache[setname]["ip"])} entries')
