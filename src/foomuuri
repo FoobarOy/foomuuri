@@ -90,12 +90,10 @@ CONFIG = {
     'run_dir': '/run/foomuuri',
     'good_file': 'good.fw',
     'next_file': 'next.fw',
-    'dbus_file': 'dbus.fw',
     'resolve_file': 'resolve.fw',  # old iplist/resolve
     'iplist_file': 'iplist.fw',  # old iplist/resolve
     'iplist_manual_file': 'iplist-manual.fw',  # old iplist/resolve
     'iplist_cache_file': 'iplist-cache.json',
-    'iplist_apply_file': 'iplist-cache.fw',
     'zone_file': 'zone',
     'monitor_statistics_file': 'monitor.statistics',
 
@@ -145,7 +143,8 @@ def out(line):
     OUT.append(line)
 
 
-def run_program_rc(args, *, env=None, print_output=True, quiet=False):
+def run_program_rc(args, *, env=None, stdin=None, print_output=True,
+                   quiet=False):
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
@@ -153,7 +152,7 @@ def run_program_rc(args, *, env=None, print_output=True, quiet=False):
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
-                              env=env, timeout=60)
+                              env=env, input=stdin, timeout=60)
     except (OSError, subprocess.TimeoutExpired) as error:
         fail(f'Failed to run command "{shlex.join(args)}": {error}', False)
         return 1
@@ -2464,7 +2463,9 @@ def save_final(filename):
             indent += 1
 
     # Save to "next" file
-    save_file(filename, lines)
+    if filename:
+        save_file(filename, lines)
+    return lines
 
 
 def signal_childs():
@@ -2659,8 +2660,8 @@ class DbusCommon:
     @staticmethod
     def apply_out():
         """Apply current OUT commands."""
-        save_final(CONFIG['_dbus_file'])
-        run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_dbus_file']])
+        lines = '\n'.join(save_final(None))
+        run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'], stdin=lines)
 
     @staticmethod
     def remove_interface(interface_zone, interface):
@@ -3665,9 +3666,8 @@ def iplist_apply_values(cache):
         return 0
 
     write_iplist_cache(cache)
-    save_final(CONFIG['_iplist_apply_file'])
-    ret = run_program_rc(CONFIG['_nft_bin'] +
-                         ['--file', CONFIG['_iplist_apply_file']])
+    lines = '\n'.join(save_final(None))
+    ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'], stdin=lines)
     if ret:
         fail(f'Failed to update iplists, nftables error code {ret}', False)
     return ret
