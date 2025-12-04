@@ -11,6 +11,7 @@
   that filter then empty list is an error.
 * Pipe commands to nft instead of reading them from `dbus.fw` or
   `iplist-cache.fw` files.
+* Use atomic write to `iplist-cache.json` and other files.
 * Add `foomuuri_exporter` binary to collect statistics and export them
   to Prometheus. Similar Munin collector is included to Munin contrib
   repository.

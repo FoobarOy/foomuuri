@@ -2421,15 +2421,19 @@ def output_footer():
 
 
 def save_file(filename, lines):
-    """Write lines to file."""
+    """Write lines to file. Use temporary file to make this atomic."""
+    if str(filename) == '/dev/null':
+        return
+    tmpfile = filename.with_suffix(f'{filename.suffix}.{os.getpid()}')
     try:
-        filename.unlink(missing_ok=True)
+        tmpfile.unlink(missing_ok=True)
         if isinstance(lines, dict):
-            filename.write_text(json.dumps(lines, indent=2, sort_keys=True) +
-                                '\n', 'utf-8')
+            tmpfile.write_text(json.dumps(lines, indent=2, sort_keys=True) +
+                               '\n', 'utf-8')
         else:
-            filename.write_text('\n'.join(lines) + '\n', 'utf-8')
-        filename.chmod(0o600)
+            tmpfile.write_text('\n'.join(lines) + '\n', 'utf-8')
+        tmpfile.chmod(0o600)
+        tmpfile.rename(filename)
     except PermissionError as error:
         fail(f'File {filename}: Can\'t write: {error}')
     except FileNotFoundError:  # Simultaneos saves and chmod gives error
