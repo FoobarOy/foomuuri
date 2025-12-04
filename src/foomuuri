@@ -3450,7 +3450,7 @@ def iplist_parse_config(config):
     def_times = {
         'dns_timeout': 86400,   # 24h
         'dns_refresh': 900,     # 15m
-        'url_timeout': 886400,  # 10d
+        'url_timeout': 864000,  # 10d
         'url_refresh': 86400,   # 24h
         'timeout': 0,           # Backward compability keyword (v0.27)
         'refresh': 0,           # Backward compability keyword
