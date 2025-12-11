@@ -9,7 +9,8 @@ for example configuration files.
 
 [Getting started](https://github.com/FoobarOy/foomuuri/wiki/Getting-Started)
 page contains quick instructions how to install Foomuuri. Help is available
-via [discussions](https://github.com/FoobarOy/foomuuri/discussions).
+via [discussions](https://github.com/FoobarOy/foomuuri/discussions) and
+IRC channel `#foomuuri` on Libera.Chat.
 
 
 ## Features
