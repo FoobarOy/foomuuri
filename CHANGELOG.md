@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.30 (20xx-xx-xx)
+## 0.30 (2025-12-12)
 
 * Add `-merge` option to `iplist` section line to disable IP address
   auto-merge. It should be disabled in `fail2ban` alike scenarios, where
