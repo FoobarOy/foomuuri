@@ -8,6 +8,7 @@
     state files there in your startup hook or Foomuuri Monitor event hook.
   * Change umask to 022 when using `--fork` to fork as a background daemon
     process.
+  * More strict IP address verify for iplist entries.
 
 ## 0.30 (2025-12-12)
 

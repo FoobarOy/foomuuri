@@ -753,34 +753,36 @@ def minimal_config():
     return config
 
 
-def is_ipv4_address(value):
+def is_ipv4_address(value, allow_network=True):
     """Is value IPv4 address, network or interval."""
     if value.count('-') == 1:  # Interval "IP-IP"
         addr_from, addr_to = value.split('-')
-        return is_ipv4_address(addr_from) and is_ipv4_address(addr_to)
+        return (is_ipv4_address(addr_from, False) and
+                is_ipv4_address(addr_to, False))
     try:  # Address "IP"
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv4Address)
     except ValueError:
         try:  # Network "IP/mask"
             return isinstance(ipaddress.ip_network(value, strict=False),
-                              ipaddress.IPv4Network)
+                              ipaddress.IPv4Network) and allow_network
         except ValueError:
             return False
 
 
-def is_ipv6_address(value):
+def is_ipv6_address(value, allow_network=True):
     """Is value IPv6 address, network or interval."""
     if value.count('/-') == 1:  # Suffix mask "IP/-mask"
         addr, maskstr = value.split('/-')
         try:
             mask = int(maskstr)
-            return 0 <= mask <= 128 and is_ipv6_address(addr)
+            return 0 <= mask <= 128 and is_ipv6_address(addr, False)
         except ValueError:
             return False
 
     if value.count('-') == 1:  # Interval "IP-IP"
         addr_from, addr_to = value.split('-')
-        return is_ipv6_address(addr_from) and is_ipv6_address(addr_to)
+        return (is_ipv6_address(addr_from, False) and
+                is_ipv6_address(addr_to, False))
 
     # Python's ipaddress library doesn't handle "[ipv6]" notation.
     # Strip [] before validating the address. nft handles [] fine, it will
@@ -796,18 +798,18 @@ def is_ipv6_address(value):
     except ValueError:
         try:  # Network "IP/mask"
             return isinstance(ipaddress.ip_network(value, strict=False),
-                              ipaddress.IPv6Network)
+                              ipaddress.IPv6Network) and allow_network
         except ValueError:
             return False
 
 
-def is_ip_address(value):
-    """Check if value is IPv4 or IPv6 address.
+def is_ip_address(value, *, allow_negative=True):
+    """Check if value is IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
     """
-    if value.startswith('-'):  # Negative is handled in single_or_set()
-        value = value[1:]
+    if value.startswith('-') and allow_negative:
+        value = value[1:]  # Negative is handled in single_or_set()
     if is_ipv4_address(value):
         return 4
     if is_ipv6_address(value):
@@ -3174,7 +3176,7 @@ def command_iplist_add():
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
     for address in CONFIG['parameters'][2:]:
-        ipv = is_ip_address(address)
+        ipv = is_ip_address(address, allow_negative=False)
         if ipv:
             cache[f'manual.{setname}']['ip'][address] = expire
             cache[f'manual.{setname}']['dirty'] = True
@@ -3282,7 +3284,7 @@ def iplist_cleanup_file(url, text):
         if ';' in line:
             line = line.split(';', 1)[0]
         for value in line.split():
-            if is_ip_address(value):
+            if is_ip_address(value, allow_negative=False):
                 values.append(value)
             else:
                 warning(f'Unknown entry in iplist "{url}": {value}')
@@ -3534,7 +3536,7 @@ def iplist_collect_resolve_list(iplist, timeouts):
                 else:
                     urls[value] = (timeouts[name]['url_timeout'],
                                    timeouts[name]['url_refresh'])
-            elif not is_ip_address(value):
+            elif not is_ip_address(value, allow_negative=False):
                 if value in hostnames:
                     hostnames[value] = (min(hostnames[value][0],
                                             timeouts[name]['dns_timeout']),
@@ -3621,7 +3623,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         }
         for value in setvalues:
             # Static IP address doesn't need refresh, so timeout is forever
-            if is_ip_address(value):
+            if is_ip_address(value, allow_negative=False):
                 cache[setname]['ip'][value] = 4000000000  # forever
                 cache[setname]['dirty'] = True
                 continue
