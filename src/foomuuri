@@ -246,7 +246,7 @@ def daemonize():
 
     # Run in a new session. Don't do "os.chdir('/')" so that relative paths
     # work in development.
-    os.umask(0)
+    os.umask(0o022)
     os.setsid()
 
     # Fork #2
