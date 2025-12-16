@@ -9,3 +9,4 @@ PartOf=foomuuri.service
 Type=notify
 ExecStart=foomuuri monitor
 ExecReload=kill -HUP $MAINPID
+ProtectSystem=full

@@ -16,6 +16,7 @@ RemainAfterExit=yes
 ExecStart=foomuuri start
 ExecReload=foomuuri reload
 ExecStop=foomuuri stop
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target

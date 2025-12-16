@@ -13,3 +13,4 @@ BindsTo=dbus.service
 Type=notify
 ExecStart=foomuuri dbus
 ExecReload=kill -HUP $MAINPID
+ProtectSystem=full

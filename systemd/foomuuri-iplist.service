@@ -5,3 +5,4 @@ Documentation=https://github.com/FoobarOy/foomuuri/wiki
 [Service]
 Type=oneshot
 ExecStart=foomuuri --soft iplist refresh
+ProtectSystem=full

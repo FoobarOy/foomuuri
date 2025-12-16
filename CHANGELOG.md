@@ -1,5 +1,11 @@
 # ChangeLog
 
+## 0.31 (20xx-xx-xx)
+
+* Add `ProtectSystem=full` to all systemd service files. This changes `/etc`
+  to read-only for all Foomuuri processes. Make sure you don't write any
+  state files there in your startup hook or Foomuuri Monitor event hook.
+
 ## 0.30 (2025-12-12)
 
 * Add `-merge` option to `iplist` section line to disable IP address
