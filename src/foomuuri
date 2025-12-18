@@ -2167,7 +2167,9 @@ def output_static_chain_logging(chain, statement):
         return
     if lograte.lower() == 'yes':  # "yes" means use standard log rate
         lograte = CONFIG['log_rate']
-    flags = ' flags ip options' if chain == 'invalid' else ''
+    flags = ''
+    if chain == 'invalid' and 'group ' not in CONFIG['log_level']:
+        flags = ' flags ip options'  # flags and group are mutually exclusive
     flags += f' {CONFIG["log_level"]}'
     chain = chain.upper()
     statement = statement.upper()
