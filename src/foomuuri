@@ -2644,208 +2644,218 @@ def command_status():
 
 
 if HAVE_DBUS:
+
     class FoomuuriDbusException(dbus.DBusException):
         """Exception class for D-Bus interface."""
 
         _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
 
+    class DbusCommon:
+        """D-Bus server - Common Functions."""
 
-class DbusCommon:
-    """D-Bus server - Common Functions."""
+        zones = None
+        polkit = None
 
-    zones = None
-    polkit = None
+        def set_data(self, zones):
+            """Save config data: zone list is static."""
+            self.zones = zones
 
-    def set_data(self, zones):
-        """Save config data: zone list is static."""
-        self.zones = zones
+        @staticmethod
+        def clean_out():
+            """Remove all entries from current OUT[] variable."""
+            while OUT:
+                del OUT[0]
 
-    @staticmethod
-    def clean_out():
-        """Remove all entries from current OUT[] variable."""
-        while OUT:
-            del OUT[0]
+        @staticmethod
+        def apply_out():
+            """Apply current OUT commands."""
+            lines = '\n'.join(save_final(None))
+            return run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'],
+                                  stdin=lines)
 
-    @staticmethod
-    def apply_out():
-        """Apply current OUT commands."""
-        lines = '\n'.join(save_final(None))
-        return run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'],
-                              stdin=lines)
+        @staticmethod
+        def verify_interface_name(interface):
+            """Check that interface name is valid.
 
-    @staticmethod
-    def verify_interface_name(interface):
-        """Check that interface name is valid.
+            Linux accepts also \\ and " characters. Reject them here as they
+            would break JSONs without quoting.
+            """
+            if any(letter <= ' ' for letter in interface):
+                return False  # Reject whitespace/control chars as Linux does
+            if '/' in interface:
+                return False  # Linux rejects this
+            if '\\' in interface or '"' in interface:
+                return False  # Linux accepts these
+            return 1 <= len(interface) <= 15  # IFNAMSIZ=16 including NUL
 
-        Linux accepts also \\ and " characters. Reject them here as they
-        would break JSONs without quoting.
-        """
-        if any(letter <= ' ' for letter in interface):
-            return False  # Reject whitespace and control chars as Linux does
-        if '/' in interface:
-            return False  # Linux rejects this
-        if '\\' in interface or '"' in interface:
-            return False  # Linux accepts these
-        return 1 <= len(interface) <= 15  # IFNAMSIZ = 16 including NUL, so 15
-
-    def verify_polkit_privilege(self, sender, privilege):
-        """Verify authorization from PolicyKit."""
-        # Initialize polkit connections
-        if not self.polkit:
-            try:
-                self.polkit = dbus.Interface(
-                    dbus.SystemBus().get_object(
-                        'org.freedesktop.PolicyKit1',
-                        '/org/freedesktop/PolicyKit1/Authority'),
-                    'org.freedesktop.PolicyKit1.Authority')
-            except dbus.DBusException:
-                # No polkit, fallback to check that UID == 0
-                iface = dbus.Interface(
-                    dbus.SystemBus().get_object('org.freedesktop.DBus',
-                                                '/org/freedesktop/DBus'),
-                    'org.freedesktop.DBus')
+        def verify_polkit_privilege(self, sender, privilege):
+            """Verify authorization from PolicyKit."""
+            # Initialize polkit connections
+            if not self.polkit:
                 try:
-                    if int(iface.GetConnectionUnixUser(sender)) == 0:
-                        return
-                except ValueError:
-                    pass
-                raise FoomuuriDbusException('Authorization failed') from None
+                    self.polkit = dbus.Interface(
+                        dbus.SystemBus().get_object(
+                            'org.freedesktop.PolicyKit1',
+                            '/org/freedesktop/PolicyKit1/Authority'),
+                        'org.freedesktop.PolicyKit1.Authority')
+                except dbus.DBusException:
+                    # No polkit, fallback to check that UID == 0
+                    iface = dbus.Interface(
+                        dbus.SystemBus().get_object('org.freedesktop.DBus',
+                                                    '/org/freedesktop/DBus'),
+                        'org.freedesktop.DBus')
+                    try:
+                        if int(iface.GetConnectionUnixUser(sender)) == 0:
+                            return
+                    except ValueError:
+                        pass
+                    raise FoomuuriDbusException('Authorization failed') \
+                        from None
 
-        # Verify authorization from polkit
-        try:
-            result = self.polkit.CheckAuthorization(
-                ('system-bus-name', {'name': sender}),
-                privilege, {}, 1, '', timeout=60)
-            is_authorized = result[0]
-            if is_authorized:
-                return
-        except dbus.DBusException as error:
-            warning(error)
-            self.polkit = None  # Reconnect on next call
-        raise FoomuuriDbusException('Authorization failed') from None
+            # Verify authorization from polkit
+            try:
+                result = self.polkit.CheckAuthorization(
+                    ('system-bus-name', {'name': sender}),
+                    privilege, {}, 1, '', timeout=60)
+                is_authorized = result[0]
+                if is_authorized:
+                    return
+            except dbus.DBusException as error:
+                warning(error)
+                self.polkit = None  # Reconnect on next call
+            raise FoomuuriDbusException('Authorization failed') from None
 
-    @staticmethod
-    def remove_interface(interface_zone, interface):
-        """Remove interface from all zones."""
-        # Get interface's current zone
-        zone = interface_zone.get(interface)
-        if not zone:
-            return ''
+        @staticmethod
+        def remove_interface(interface_zone, interface):
+            """Remove interface from all zones."""
+            # Get interface's current zone
+            zone = interface_zone.get(interface)
+            if not zone:
+                return ''
 
-        # Remove from input and output
-        out(f'delete element inet foomuuri input_zones '
-            f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
-        out(f'delete element inet foomuuri output_zones '
-            f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
+            # Remove from input and output
+            out(f'delete element inet foomuuri input_zones '
+                f'{{ "{interface}" : jump '
+                f'{zone}-{CONFIG["localhost_zone"]} }}')
+            out(f'delete element inet foomuuri output_zones '
+                f'{{ "{interface}" : jump '
+                f'{CONFIG["localhost_zone"]}-{zone} }}')
 
-        # Remove from forward
-        for other, otherzone in interface_zone.items():
-            out(f'delete element inet foomuuri forward_zones '
-                f'{{ "{other}" . "{interface}" : jump {otherzone}-{zone} }}')
-            if other != interface:
+            # Remove from forward
+            for other, otherzone in interface_zone.items():
                 out(f'delete element inet foomuuri forward_zones '
-                    f'{{ "{interface}" . "{other}" : '
-                    f'jump {zone}-{otherzone} }}')
-        return zone
-
-    @staticmethod
-    def add_interface(interface_zone, interface, zone):
-        """Add interface to zone. It must be already removed from others."""
-        # Add to input and output
-        out(f'add element inet foomuuri input_zones '
-            f'{{ "{interface}" : jump {zone}-{CONFIG["localhost_zone"]} }}')
-        out(f'add element inet foomuuri output_zones '
-            f'{{ "{interface}" : jump {CONFIG["localhost_zone"]}-{zone} }}')
-
-        # Add to forward
-        for other, otherzone in interface_zone.items():
-            if other != interface:
-                out(f'add element inet foomuuri forward_zones '
-                    f'{{ "{other}" . "{interface}" : '
-                    f'jump {otherzone}-{zone} }}')
-                out(f'add element inet foomuuri forward_zones '
-                    f'{{ "{interface}" . "{other}" : '
-                    f'jump {zone}-{otherzone} }}')
-        out(f'add element inet foomuuri forward_zones '
-            f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}')
-
-    def change_interface_zone(self, interface, new_zone):
-        """Change interface to new_zone, or delete if new_zone is empty."""
-        interface, new_zone = str(interface), str(new_zone)
-        if new_zone and new_zone not in self.zones:
-            warning(f'Zone "{new_zone}" is unknown')
-            raise FoomuuriDbusException(f'Zone "{new_zone}" is unknown')
-        if interface == 'lo':
-            # Interface "lo" must stay in "localhost" zone.
-            # Other interfaces can be added to "localhost" only if
-            # "localhost-localhost" section is defined.
-            if new_zone != CONFIG['localhost_zone']:
-                warning(f'Can\'t change interface "lo" to zone "{new_zone}"')
-                raise FoomuuriDbusException(f'Can\'t change interface "lo" '
-                                            f'to zone "{new_zone}"')
-            return '', ''
-        interface_zone = parse_active_interface_zone()
-        self.clean_out()
-        old_zone = self.remove_interface(interface_zone, interface)
-        if new_zone:
-            self.add_interface(interface_zone, interface, new_zone)
-        if self.apply_out():
-            raise FoomuuriDbusException('Failed to modify interface. '
-                                        'See journal for more information.')
-        return old_zone, new_zone
-
-    def parse_default_zone(self, interface, zone):
-        """Return zone, or dbus_zone if empty."""
-        interface, zone = str(interface), str(zone)
-        if zone:
+                    f'{{ "{other}" . "{interface}" : jump '
+                    f'{otherzone}-{zone} }}')
+                if other != interface:
+                    out(f'delete element inet foomuuri forward_zones '
+                        f'{{ "{interface}" . "{other}" : '
+                        f'jump {zone}-{otherzone} }}')
             return zone
 
-        # Fallback to zones section, or to foomuuri.dbus_zone
-        for key, value in self.zones.items():
-            if interface in value['interface']:
-                return key
-        return CONFIG['dbus_zone']
+        @staticmethod
+        def add_interface(interface_zone, interface, zone):
+            """Add interface to zone.
 
-    def method_get_zones(self):
-        """Get list of available zones.
+            It must be already removed from other zones."""
+            # Add to input and output
+            out(f'add element inet foomuuri input_zones '
+                f'{{ "{interface}" : jump '
+                f'{zone}-{CONFIG["localhost_zone"]} }}')
+            out(f'add element inet foomuuri output_zones '
+                f'{{ "{interface}" : jump '
+                f'{CONFIG["localhost_zone"]}-{zone} }}')
 
-        "localhost" can't have any interfaces so don't include it.
-        """
-        return [name for name in self.zones
-                if name != CONFIG['localhost_zone']]
+            # Add to forward
+            for other, otherzone in interface_zone.items():
+                if other != interface:
+                    out(f'add element inet foomuuri forward_zones '
+                        f'{{ "{other}" . "{interface}" : '
+                        f'jump {otherzone}-{zone} }}')
+                    out(f'add element inet foomuuri forward_zones '
+                        f'{{ "{interface}" . "{other}" : '
+                        f'jump {zone}-{otherzone} }}')
+            out(f'add element inet foomuuri forward_zones '
+                f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}')
 
-    def method_remove_interface(self, zone, interface):
-        """Remove interface from zone, or from all if zone is empty.
+        def change_interface_zone(self, interface, new_zone):
+            """Change interface to new_zone, or delete if new_zone is empty."""
+            interface, new_zone = str(interface), str(new_zone)
+            if new_zone and new_zone not in self.zones:
+                warning(f'Zone "{new_zone}" is unknown')
+                raise FoomuuriDbusException(f'Zone "{new_zone}" is unknown')
+            if interface == 'lo':
+                # Interface "lo" must stay in "localhost" zone.
+                # Other interfaces can be added to "localhost" only if
+                # "localhost-localhost" section is defined.
+                if new_zone != CONFIG['localhost_zone']:
+                    warning(f'Can\'t change interface "lo" to zone '
+                            f'"{new_zone}"')
+                    raise FoomuuriDbusException(f'Can\'t change interface '
+                                                f'"lo" to zone "{new_zone}"')
+                return '', ''
+            interface_zone = parse_active_interface_zone()
+            self.clean_out()
+            old_zone = self.remove_interface(interface_zone, interface)
+            if new_zone:
+                self.add_interface(interface_zone, interface, new_zone)
+            if self.apply_out():
+                raise FoomuuriDbusException('Failed to modify interface. See '
+                                            'journal for more information.')
+            return old_zone, new_zone
 
-        This is currently always handled as "from all".
-        """
-        if not self.verify_interface_name(interface):
-            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
-        verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
-        return self.change_interface_zone(interface, '')[0]
+        def parse_default_zone(self, interface, zone):
+            """Return zone, or dbus_zone if empty."""
+            interface, zone = str(interface), str(zone)
+            if zone:
+                return zone
 
-    def method_add_interface(self, zone, interface):
-        """Add interface to zone.
+            # Fallback to zones section, or to foomuuri.dbus_zone
+            for key, value in self.zones.items():
+                if interface in value['interface']:
+                    return key
+            return CONFIG['dbus_zone']
 
-        There can be only one zone per interface so it will be removed
-        from previous zone if needed.
-        """
-        if not self.verify_interface_name(interface):
-            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
-        zone = self.parse_default_zone(interface, zone)
-        verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
-        return self.change_interface_zone(interface, zone)[1]
+        def method_get_zones(self):
+            """Get list of available zones.
 
-    def method_change_zone_of_interface(self, zone, interface):
-        """Change interface to zone."""
-        if not self.verify_interface_name(interface):
-            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
-        zone = self.parse_default_zone(interface, zone)
-        verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
-        return self.change_interface_zone(interface, zone)[0]
+            "localhost" can't have any interfaces so don't include it.
+            """
+            return [name for name in self.zones
+                    if name != CONFIG['localhost_zone']]
 
+        def method_remove_interface(self, zone, interface):
+            """Remove interface from zone, or from all if zone is empty.
 
-if HAVE_DBUS:
+            This is currently always handled as "from all".
+            """
+            if not self.verify_interface_name(interface):
+                raise FoomuuriDbusException(f'Invalid interface name: '
+                                            f'{interface}')
+            verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
+            return self.change_interface_zone(interface, '')[0]
+
+        def method_add_interface(self, zone, interface):
+            """Add interface to zone.
+
+            There can be only one zone per interface so it will be removed
+            from previous zone if needed.
+            """
+            if not self.verify_interface_name(interface):
+                raise FoomuuriDbusException(f'Invalid interface name: '
+                                            f'{interface}')
+            zone = self.parse_default_zone(interface, zone)
+            verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
+            return self.change_interface_zone(interface, zone)[1]
+
+        def method_change_zone_of_interface(self, zone, interface):
+            """Change interface to zone."""
+            if not self.verify_interface_name(interface):
+                raise FoomuuriDbusException(f'Invalid interface name: '
+                                            f'{interface}')
+            zone = self.parse_default_zone(interface, zone)
+            verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
+            return self.change_interface_zone(interface, zone)[0]
+
     class DbusFoomuuri(dbus.service.Object, DbusCommon):
         """D-Bus server for Foomuuri."""
 
@@ -2938,97 +2948,103 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
+    def command_dbus():
+        """Start D-Bus daemon."""
+        CONFIG['keep_going'] = True
+        while CONFIG['keep_going']:
+            # Read minimal config
+            config = minimal_config()
+            zones = parse_config_zones(config)
+            daemonize()
 
-def command_dbus():
-    """Start D-Bus daemon."""
-    if not HAVE_DBUS:
-        fail('No python-dbus installed')
-    CONFIG['keep_going'] = True
-    while CONFIG['keep_going']:
-        # Read minimal config
-        config = minimal_config()
-        zones = parse_config_zones(config)
-        daemonize()
+            # Initialize D-Bus
+            dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+            bus = dbus.SystemBus()
 
-        # Initialize D-Bus
-        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        bus = dbus.SystemBus()
-
-        # Foomuuri D-Bus calls
-        try:
-            foomuuri_name = dbus.service.BusName('fi.foobar.Foomuuri1', bus)
-            foomuuri_name.get_name()  # Dummy call to get rid of pylint
-        except dbus.exceptions.DBusException:
-            fail('Can\'t bind to system D-Bus: fi.foobar.Foomuuri1')
-        foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1')
-        foomuuri_object.set_data(zones)
-
-        # FirewallD emulation calls, if enabled in foomuuri{} config
-        firewalld_object = None
-        if CONFIG['dbus_firewalld'] == 'yes':
+            # Foomuuri D-Bus calls
             try:
-                firewalld_name = dbus.service.BusName(
-                    'org.fedoraproject.FirewallD1', bus)
-                firewalld_name.get_name()  # Dummy call to get rid of pylint
+                foomuuri_name = dbus.service.BusName(
+                    'fi.foobar.Foomuuri1', bus)
+                foomuuri_name.get_name()  # Dummy call to get rid of pylint
             except dbus.exceptions.DBusException:
-                fail('Can\'t bind to system D-Bus: '
-                     'org.federaproject.FirewallD1')
-            firewalld_object = DbusFirewallD(bus,
-                                             '/org/fedoraproject/FirewallD1')
-            firewalld_object.set_data(zones)
+                fail('Can\'t bind to system D-Bus: fi.foobar.Foomuuri1')
+            foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1')
+            foomuuri_object.set_data(zones)
 
-        # Define reload/stop signal handler
-        mainloop = GLib.MainLoop()
+            # FirewallD emulation calls, if enabled in foomuuri{} config
+            firewalld_object = None
+            if CONFIG['dbus_firewalld'] == 'yes':
+                try:
+                    firewalld_name = dbus.service.BusName(
+                        'org.fedoraproject.FirewallD1', bus)
+                    firewalld_name.get_name()  # Dummy call for pylint
+                except dbus.exceptions.DBusException:
+                    fail('Can\'t bind to system D-Bus: '
+                         'org.federaproject.FirewallD1')
+                firewalld_object = DbusFirewallD(
+                    bus, '/org/fedoraproject/FirewallD1')
+                firewalld_object.set_data(zones)
 
-        def signal_handler(sig, _dummy_frame):
-            if sig == signal.SIGINT:
-                CONFIG['keep_going'] = False
-                if HAVE_NOTIFY:
-                    notify('STOPPING=1')
-            elif HAVE_NOTIFY:
-                notify('RELOADING=1')
-            mainloop.quit()
+            # Define reload/stop signal handler
+            mainloop = GLib.MainLoop()
 
-        signal.signal(signal.SIGHUP, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid', [str(os.getpid())])
+            def signal_handler(sig, _dummy_frame):
+                if sig == signal.SIGINT:
+                    CONFIG['keep_going'] = False
+                    if HAVE_NOTIFY:
+                        notify('STOPPING=1')
+                elif HAVE_NOTIFY:
+                    notify('RELOADING=1')
+                mainloop.quit()
 
-        # Start processing messages
-        verbose('D-Bus handler ready', 0)
-        if HAVE_NOTIFY:
-            notify('READY=1')
-        mainloop.run()
+            signal.signal(signal.SIGHUP, signal_handler)
+            signal.signal(signal.SIGINT, signal_handler)
+            save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid',
+                      [str(os.getpid())])
 
-        # Reload signal received. Disconnect from D-Bus.
-        foomuuri_object.remove_from_connection()
-        del foomuuri_object
-        del foomuuri_name
-        if firewalld_object:
-            firewalld_object.remove_from_connection()
-            del firewalld_object
-            del firewalld_name
-        del bus
+            # Start processing messages
+            verbose('D-Bus handler ready', 0)
+            if HAVE_NOTIFY:
+                notify('READY=1')
+            mainloop.run()
 
+            # Reload signal received. Disconnect from D-Bus.
+            foomuuri_object.remove_from_connection()
+            del foomuuri_object
+            del foomuuri_name
+            if firewalld_object:
+                firewalld_object.remove_from_connection()
+                del firewalld_object
+                del firewalld_name
+            del bus
 
-def command_set():
-    """Modify runtime config by calling D-Bus methods."""
-    if not HAVE_DBUS:
+    def command_set():
+        """Modify runtime config by calling D-Bus methods."""
+        if (
+                len(sys.argv) != 6 or
+                sys.argv[2] != 'interface' or
+                sys.argv[4] != 'zone'
+        ):
+            command_help()
+        try:
+            bus = dbus.SystemBus()
+            obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
+            if sys.argv[5] in ('', '-'):
+                obj.removeInterface('', sys.argv[3])
+            else:
+                obj.changeZoneOfInterface(sys.argv[5], sys.argv[3])
+        except dbus.exceptions.DBusException as error:
+            fail(error)
+
+else:  # HAVE_DBUS is false
+
+    def command_dbus():
+        """Start D-Bus daemon."""
         fail('No python-dbus installed')
-    if (
-            len(sys.argv) != 6 or
-            sys.argv[2] != 'interface' or
-            sys.argv[4] != 'zone'
-    ):
-        command_help()
-    try:
-        bus = dbus.SystemBus()
-        obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
-        if sys.argv[5] in ('', '-'):
-            obj.removeInterface('', sys.argv[3])
-        else:
-            obj.changeZoneOfInterface(sys.argv[5], sys.argv[3])
-    except dbus.exceptions.DBusException as error:
-        fail(error)
+
+    def command_set():
+        """Modify runtime config by calling D-Bus methods."""
+        fail('No python-dbus installed')
 
 
 def remove_filters(text):
