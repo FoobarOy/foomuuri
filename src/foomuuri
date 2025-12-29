@@ -2670,7 +2670,8 @@ class DbusCommon:
     def apply_out():
         """Apply current OUT commands."""
         lines = '\n'.join(save_final(None))
-        run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'], stdin=lines)
+        return run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'],
+                              stdin=lines)
 
     @staticmethod
     def verify_interface_name(interface):
@@ -2788,7 +2789,9 @@ class DbusCommon:
         old_zone = self.remove_interface(interface_zone, interface)
         if new_zone:
             self.add_interface(interface_zone, interface, new_zone)
-        self.apply_out()
+        if self.apply_out():
+            raise FoomuuriDbusException('Failed to modify interface. '
+                                        'See journal for more information.')
         return old_zone, new_zone
 
     def parse_default_zone(self, interface, zone):
