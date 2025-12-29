@@ -51,7 +51,9 @@ install:
 	mkdir -p $(DESTDIR)/run/foomuuri/
 	mkdir -p $(DESTDIR)/var/lib/foomuuri/
 	mkdir -p $(DESTDIR)/usr/share/dbus-1/system.d/
+	mkdir -p $(DESTDIR)/usr/share/polkit-1/actions/
 	cp systemd/fi.foobar.Foomuuri1.conf $(DESTDIR)/usr/share/dbus-1/system.d/
+	cp systemd/fi.foobar.Foomuuri1.policy $(DESTDIR)/usr/share/polkit-1/actions/
 	cp firewalld/fi.foobar.Foomuuri-FirewallD.conf $(DESTDIR)/usr/share/dbus-1/system.d/
 	cp firewalld/dbus-firewalld.conf $(DESTDIR)/usr/share/foomuuri/
 	mkdir -p $(DESTDIR)/usr/share/man/man8

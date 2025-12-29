@@ -2654,6 +2654,7 @@ class DbusCommon:
     """D-Bus server - Common Functions."""
 
     zones = None
+    polkit = None
 
     def set_data(self, zones):
         """Save config data: zone list is static."""
@@ -2685,6 +2686,42 @@ class DbusCommon:
         if '\\' in interface or '"' in interface:
             return False  # Linux accepts these
         return 1 <= len(interface) <= 15  # IFNAMSIZ = 16 including NUL, so 15
+
+    def verify_polkit_privilege(self, sender, privilege):
+        """Verify authorization from PolicyKit."""
+        # Initialize polkit connections
+        if not self.polkit:
+            try:
+                self.polkit = dbus.Interface(
+                    dbus.SystemBus().get_object(
+                        'org.freedesktop.PolicyKit1',
+                        '/org/freedesktop/PolicyKit1/Authority'),
+                    'org.freedesktop.PolicyKit1.Authority')
+            except dbus.DBusException:
+                # No polkit, fallback to check that UID == 0
+                iface = dbus.Interface(
+                    dbus.SystemBus().get_object('org.freedesktop.DBus',
+                                                '/org/freedesktop/DBus'),
+                    'org.freedesktop.DBus')
+                try:
+                    if int(iface.GetConnectionUnixUser(sender)) == 0:
+                        return
+                except ValueError:
+                    pass
+                raise FoomuuriDbusException('Authorization failed') from None
+
+        # Verify authorization from polkit
+        try:
+            result = self.polkit.CheckAuthorization(
+                ('system-bus-name', {'name': sender}),
+                privilege, {}, 1, '', timeout=60)
+            is_authorized = result[0]
+            if is_authorized:
+                return
+        except dbus.DBusException as error:
+            warning(error)
+            self.polkit = None  # Reconnect on next call
+        raise FoomuuriDbusException('Authorization failed') from None
 
     @staticmethod
     def remove_interface(interface_zone, interface):
@@ -2812,36 +2849,44 @@ if HAVE_DBUS:
         # pylint: disable=invalid-name  # dbus method names
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='', out_signature='as')
-        def getZones(self):
+                             in_signature='', out_signature='as',
+                             sender_keyword='sender')
+        def getZones(self, sender=None):
             """Get list of available zones."""
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s')
-        def removeInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def removeInterface(self, zone, interface, sender=None):
             """Remove interface from zone, or from all if zone is empty.
 
             Return: previous zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_remove_interface(zone, interface)
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s')
-        def addInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def addInterface(self, zone, interface, sender=None):
             """Add interface to zone.
 
             Return: new zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_add_interface(zone, interface)
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s')
-        def changeZoneOfInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def changeZoneOfInterface(self, zone, interface, sender=None):
             """Change interface to zone.
 
             Return: previous zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
     class DbusFirewallD(dbus.service.Object, DbusCommon):
@@ -2850,36 +2895,44 @@ if HAVE_DBUS:
         # pylint: disable=invalid-name  # dbus method names
 
         @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='', out_signature='as')
-        def getZones(self):
+                             in_signature='', out_signature='as',
+                             sender_keyword='sender')
+        def getZones(self, sender=None):
             """Get list of available zones."""
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
 
         @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s')
-        def removeInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def removeInterface(self, zone, interface, sender=None):
             """Remove interface from zone, or from all if zone is empty.
 
             Return: previous zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_remove_interface(zone, interface)
 
         @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s')
-        def addInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def addInterface(self, zone, interface, sender=None):
             """Add interface to zone.
 
             Return: new zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_add_interface(zone, interface)
 
         @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s')
-        def changeZoneOfInterface(self, zone, interface):
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def changeZoneOfInterface(self, zone, interface, sender=None):
             """Change interface to zone.
 
             Return: previous zone
             """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
 
