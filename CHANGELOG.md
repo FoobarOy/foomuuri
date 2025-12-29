@@ -2,6 +2,7 @@
 
 ## 0.31 (20xx-xx-xx)
 
+* CVE-2025-67858: Verify `interface` input parameter on D-Bus methods.
 * Security hardening:
   * Add `ProtectSystem=full` to all systemd service files. This changes `/etc`
     to read-only for all Foomuuri processes. Make sure you don't write any

@@ -2672,6 +2672,21 @@ class DbusCommon:
         run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'], stdin=lines)
 
     @staticmethod
+    def verify_interface_name(interface):
+        """Check that interface name is valid.
+
+        Linux accepts also \\ and " characters. Reject them here as they
+        would break JSONs without quoting.
+        """
+        if any(letter <= ' ' for letter in interface):
+            return False  # Reject whitespace and control chars as Linux does
+        if '/' in interface:
+            return False  # Linux rejects this
+        if '\\' in interface or '"' in interface:
+            return False  # Linux accepts these
+        return 1 <= len(interface) <= 15  # IFNAMSIZ = 16 including NUL, so 15
+
+    @staticmethod
     def remove_interface(interface_zone, interface):
         """Remove interface from all zones."""
         # Get interface's current zone
@@ -2764,6 +2779,8 @@ class DbusCommon:
 
         This is currently always handled as "from all".
         """
+        if not self.verify_interface_name(interface):
+            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
         verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
         return self.change_interface_zone(interface, '')[0]
 
@@ -2773,12 +2790,16 @@ class DbusCommon:
         There can be only one zone per interface so it will be removed
         from previous zone if needed.
         """
+        if not self.verify_interface_name(interface):
+            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
         zone = self.parse_default_zone(interface, zone)
         verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
         return self.change_interface_zone(interface, zone)[1]
 
     def method_change_zone_of_interface(self, zone, interface):
         """Change interface to zone."""
+        if not self.verify_interface_name(interface):
+            raise FoomuuriDbusException(f'Invalid interface name: {interface}')
         zone = self.parse_default_zone(interface, zone)
         verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
         return self.change_interface_zone(interface, zone)[0]
