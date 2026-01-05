@@ -34,3 +34,27 @@ IRC channel `#foomuuri` on Libera.Chat.
 * FirewallD emulation for NetworkManager's zone support
 * Raw nftables rules can be used
 * Fresh design, written to use modern nftables's features
+
+
+## Example configuration
+
+Example configuration file to filter incoming traffic only:
+
+```
+zone {
+  localhost
+  public
+}
+
+public-localhost {  # Allow specified incoming traffic
+  dhcp-client
+  dhcpv6-client
+  ping
+  ssh
+  drop log
+}
+
+localhost-public {  # Allow all outgoing traffic
+  accept
+}
+```
