@@ -59,7 +59,7 @@ except ImportError:
     HAVE_NOTIFY = False
 
 
-VERSION = '0.30'
+VERSION = '0.31'
 
 CONFIG = {
     # Parsed foomuuri{} from config files

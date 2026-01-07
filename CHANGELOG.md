@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.31 (20xx-xx-xx)
+## 0.31 (2026-01-07)
 
 * CVE-2025-67603: Add PolicyKit authorization to D-Bus methods.
 * CVE-2025-67858: Verify `interface` input parameter on D-Bus methods.
