@@ -43,7 +43,7 @@ Example configuration file to filter incoming traffic only:
 ```
 zone {
   localhost
-  public
+  public  # Network interfaces are added by NetworkManager
 }
 
 public-localhost {  # Allow specified incoming traffic
