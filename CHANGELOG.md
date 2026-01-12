@@ -1,5 +1,10 @@
 # ChangeLog
 
+## 0.32 (20xx-xx-xx)
+
+* Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
+  with WireGuard interface, old `meta pkttype` does not.
+
 ## 0.31 (2026-01-07)
 
 * CVE-2025-67603: Add PolicyKit authorization to D-Bus methods.
