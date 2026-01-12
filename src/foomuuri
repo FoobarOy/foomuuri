@@ -2243,7 +2243,9 @@ def output_header(chain_rules):
     out('}')
 
 
-MERGES = [  # Preferred order for rules
+# Rules starting with these matchers can be merged.
+# List them in preferred order.
+MERGES = [
     'fib daddr type multicast udp dport',
     'fib daddr type broadcast udp dport',
     'udp dport',
@@ -2260,6 +2262,10 @@ def merge_accepts(accepts, linenum):
     ret = 0
     for accept in accepts:
         for key, ports in merge.items():
+            # Check if accept line is:
+            # "tcp dport number accept"
+            # "tcp dport { number, number } accept"
+            # "tcp dport number-number accept"
             regex = f'^{key} (\\{{ )?([-\\d, ]+)( \\}})? accept$'
             match = re.match(regex, accept)
             if match:  # Add "22" from "tcp dport 22 accept" to merged
@@ -2269,7 +2275,7 @@ def merge_accepts(accepts, linenum):
             OUT.insert(linenum + ret, accept)
             ret += 1
 
-    # Output merged
+    # Output merged accept ports in preferred order
     for key, ports in merge.items():
         if ports:
             OUT.insert(linenum, f'{key} {single_or_set(ports)} accept')
@@ -2282,6 +2288,22 @@ def optimize_accepts():
 
     This will change multiple accepts to single accept using set.
     """
+    # Remove duplicate accept rules
+    already_seen = set()
+    linenum = 0
+    while linenum < len(OUT):
+        line = OUT[linenum]
+        if line in already_seen:  # Already in seen, delete from ruleset
+            del OUT[linenum]
+            continue
+        if line.endswith(' accept'):  # Add accept to seen
+            already_seen.add(line)
+        else:  # Something else, reset seen
+            already_seen = set()
+        linenum += 1
+
+    # Merge multiple "tcp daddr x accept" rules to single
+    # rule "tcp daddr { x, y, z } accept".
     accepts = []
     linenum = 0
     while linenum < len(OUT):
@@ -2292,9 +2314,11 @@ def optimize_accepts():
                 line.endswith(' accept') and
                 line.startswith(tuple(MERGES) + ('ip ', 'ip6 '))
         ):
+            # Line is "tcp dport ... accept"
             accepts.append(line)
             del OUT[linenum]
         else:
+            # Line is something else, output merged accepts
             linenum += merge_accepts(accepts, linenum) + 1
             accepts = []
 

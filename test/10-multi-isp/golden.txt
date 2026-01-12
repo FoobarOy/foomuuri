@@ -386,7 +386,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		udp dport { 68 } accept
+		udp dport 68 accept
 		tcp dport 22 accept
 		ip protocol igmp ip daddr 224.0.0.22 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-internal REJECT " level info flags skuid

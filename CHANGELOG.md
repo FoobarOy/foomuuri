@@ -2,6 +2,7 @@
 
 ## 0.32 (20xx-xx-xx)
 
+* Optimize duplicate accept rules to single rule.
 * Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
   with WireGuard interface, old `meta pkttype` does not.
 
