@@ -170,9 +170,9 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype broadcast udp dport 68 accept
+		fib daddr type broadcast udp dport 68 accept
 		ip protocol igmp ip daddr 224.0.0.1 accept
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		udp dport 68 accept
 		tcp dport 22 update @_rate_set_3_4 { ip saddr limit rate 5/minute burst 5 packets } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
@@ -190,7 +190,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		ip6 daddr fe80::/10 udp sport 547 udp dport 546 accept
 		tcp dport 22 update @_rate_set_3_6 { ip6 saddr limit rate 5/minute burst 5 packets } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
@@ -215,12 +215,12 @@ table inet foomuuri {
 			untracked : jump smurfs_4
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
-		meta pkttype multicast ip daddr 224.0.0.251 udp dport 5353 accept
-		meta pkttype multicast ip daddr 224.0.0.251 ip protocol igmp accept
-		meta pkttype multicast ip daddr 239.255.255.250 udp dport 1900 accept
-		meta pkttype multicast ip daddr 239.255.255.250 ip protocol igmp accept
-		meta pkttype broadcast udp dport { 11430, 68 } accept
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type multicast ip daddr 224.0.0.251 udp dport 5353 accept
+		fib daddr type multicast ip daddr 224.0.0.251 ip protocol igmp accept
+		fib daddr type multicast ip daddr 239.255.255.250 udp dport 1900 accept
+		fib daddr type multicast ip daddr 239.255.255.250 ip protocol igmp accept
+		fib daddr type broadcast udp dport { 11430, 68 } accept
+		fib daddr type { broadcast, multicast } drop
 		udp dport 68 accept
 		udp sport { 1900, 5353 } accept
 		tcp dport 22 accept
@@ -238,9 +238,9 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast ip6 daddr ff02::fb udp dport 5353 accept
-		meta pkttype multicast ip6 daddr ff02::c udp dport 1900 accept
-		meta pkttype multicast drop
+		fib daddr type multicast ip6 daddr ff02::fb udp dport 5353 accept
+		fib daddr type multicast ip6 daddr ff02::c udp dport 1900 accept
+		fib daddr type multicast drop
 		udp sport { 1900, 5353 } accept
 		tcp dport 22 accept
 		ip6 daddr fe80::/10 udp sport 547 udp dport 546 accept
@@ -385,7 +385,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
 		drop
 	}
@@ -399,7 +399,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
 		drop
 	}
@@ -420,7 +420,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-home DROP " level info flags skuid
 		drop
 	}
@@ -434,7 +434,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-home DROP " level info flags skuid
 		drop
 	}
@@ -455,7 +455,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "home-public DROP " level info flags skuid
 		drop
 	}
@@ -469,7 +469,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "home-public DROP " level info flags skuid
 		drop
 	}
@@ -490,7 +490,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "home-home DROP " level info flags skuid
 		drop
 	}
@@ -504,7 +504,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "home-home DROP " level info flags skuid
 		drop
 	}

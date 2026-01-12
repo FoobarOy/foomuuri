@@ -1821,7 +1821,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     # Convert matchers to nft
     castmeta = ''
     if cast and rule['cast'] != 'unicast':
-        castmeta = f'meta pkttype {rule["cast"]} '
+        castmeta = f'fib daddr type {rule["cast"]} '
 
     ipsecmeta = ''
     if rule['sipsec']:
@@ -1984,10 +1984,10 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
 
     # Broadcast and multicast.
     #
-    # "meta pkttype" works only for incoming packets so skip these if
+    # "fib daddr type" works only for incoming packets so skip these if
     # szone=localhost (outgoing).
     #
-    # "meta pkttype" works also for forwarding packets so write those rules
+    # "fib daddr type" works also for forwarding packets so write those rules
     # too (see below for zonemap reason). Multicast can't really be forwarded
     # as it is local to ip/netmask. Proxying is ok, where software listens one
     # interface and writes it to another.
@@ -1995,9 +1995,9 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
         output_cast('multicast', szone, dzone, rules, ipv)
         output_cast('broadcast', szone, dzone, rules, ipv)
         if ipv == 4:
-            out('meta pkttype { broadcast, multicast } drop')
+            out('fib daddr type { broadcast, multicast } drop')
         else:
-            out('meta pkttype multicast drop')
+            out('fib daddr type multicast drop')
 
     # Unicast.
     #
@@ -2005,7 +2005,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     # output only unicast here for incoming.
     #
     # For forward/output add multicast rules without multicast matcher. This
-    # means that for forward packets both with and without "meta pkttype"
+    # means that for forward packets both with and without "fib daddr type"
     # rules will be outputted. This is needed for complex zonemap mangling
     # where szone=myservice might actually be from localhost.
     output_cast('unicast' if input_chain else None, szone, dzone, rules, ipv)
@@ -2244,8 +2244,8 @@ def output_header(chain_rules):
 
 
 MERGES = [  # Preferred order for rules
-    'meta pkttype multicast udp dport',
-    'meta pkttype broadcast udp dport',
+    'fib daddr type multicast udp dport',
+    'fib daddr type broadcast udp dport',
     'udp dport',
     'udp sport',
     'tcp dport',

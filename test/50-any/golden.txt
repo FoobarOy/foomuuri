@@ -162,7 +162,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 1000, 1002, 1003, 2000, 2002, 2003, 3000 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
 		drop
@@ -177,7 +177,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 1000, 1002, 1003, 2000, 2002, 2003, 3000 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-public DROP " level info flags skuid
 		drop
@@ -199,7 +199,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 1000, 1001, 3000 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "foo-public DROP " level info flags skuid
 		drop
@@ -214,7 +214,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 1000, 1001, 3000 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "foo-public DROP " level info flags skuid
 		drop
@@ -236,7 +236,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 1000, 1002, 3000 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "bar-public DROP " level info flags skuid
 		drop
@@ -251,7 +251,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 1000, 1002, 3000 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "bar-public DROP " level info flags skuid
 		drop
@@ -274,7 +274,7 @@ table inet foomuuri {
 			untracked : jump smurfs_4
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 2000, 2002, 2003, 3000 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
@@ -289,7 +289,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 2000, 2002, 2003, 3000 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
@@ -311,7 +311,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 2000, 2001, 3000, 3001, 3002 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-foo DROP " level info flags skuid
 		drop
@@ -326,7 +326,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 2000, 2001, 3000, 3001, 3002 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-foo DROP " level info flags skuid
 		drop
@@ -348,7 +348,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 2000, 2002, 3000 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-bar DROP " level info flags skuid
 		drop
@@ -363,7 +363,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 2000, 2002, 3000 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-bar DROP " level info flags skuid
 		drop
@@ -458,7 +458,7 @@ table inet foomuuri {
 			untracked : jump smurfs_4
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport 3000 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "foo-localhost DROP " level info flags skuid
 		drop
@@ -473,7 +473,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport 3000 accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "foo-localhost DROP " level info flags skuid
 		drop
@@ -495,7 +495,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 3000, 3001, 3002 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "foo-foo DROP " level info flags skuid
 		drop
@@ -510,7 +510,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 3000, 3001, 3002 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "foo-foo DROP " level info flags skuid
 		drop
@@ -532,7 +532,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport 3000 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "foo-bar DROP " level info flags skuid
 		drop
@@ -547,7 +547,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport 3000 accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "foo-bar DROP " level info flags skuid
 		drop
@@ -570,7 +570,7 @@ table inet foomuuri {
 			untracked : jump smurfs_4
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport 3000 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "bar-localhost DROP " level info flags skuid
 		drop
@@ -585,7 +585,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport 3000 accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "bar-localhost DROP " level info flags skuid
 		drop
@@ -607,7 +607,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport { 3000, 3001 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "bar-foo DROP " level info flags skuid
 		drop
@@ -622,7 +622,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport { 3000, 3001 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "bar-foo DROP " level info flags skuid
 		drop
@@ -644,7 +644,7 @@ table inet foomuuri {
 			new : jump smurfs_4,
 			untracked : jump smurfs_4
 		}
-		meta pkttype { broadcast, multicast } drop
+		fib daddr type { broadcast, multicast } drop
 		tcp dport 3000 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "bar-bar DROP " level info flags skuid
 		drop
@@ -659,7 +659,7 @@ table inet foomuuri {
 			new : jump smurfs_6,
 			untracked : jump smurfs_6
 		}
-		meta pkttype multicast drop
+		fib daddr type multicast drop
 		tcp dport 3000 accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "bar-bar DROP " level info flags skuid
 		drop
