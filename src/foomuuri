@@ -2972,6 +2972,39 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='s', out_signature='s',
+                             sender_keyword='sender')
+        def getZoneOfSource(self, source, sender=None):
+            """Get current zone of source.
+
+            These calls are used by netavark (run by Podman) to set
+            container's IP address to "trusted" zone. There is no such thing
+            in Foomuuri.
+            """
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
+            if not is_ip_address(source):
+                raise FoomuuriDbusException('Invalid source address')
+            return ''  # It's not in any zone
+
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def changeZoneOfSource(self, zone, source, sender=None):
+            """Change source to zone. See above getZoneOfSource()."""
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
+            raise FoomuuriDbusException(f'Not implemented: change {source} '
+                                        f'to "{zone}"')
+
+        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
+                             in_signature='ss', out_signature='s',
+                             sender_keyword='sender')
+        def removeSource(self, zone, source, sender=None):
+            """Remove source from zone. See above getZoneOfSource()."""
+            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
+            raise FoomuuriDbusException(f'Not implemented: remove {source} '
+                                        f'from "{zone}"')
+
     def command_dbus():
         """Start D-Bus daemon."""
         CONFIG['keep_going'] = True
