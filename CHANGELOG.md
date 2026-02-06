@@ -3,8 +3,10 @@
 ## 0.32 (20xx-xx-xx)
 
 * Optimize duplicate accept rules to single rule.
+* Add `prometheus-keepalived` macro to default services.
 * Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
   with WireGuard interface, old `meta pkttype` does not.
+* Fix: Allow unicast traffic in `ospf` macro.
 
 ## 0.31 (2026-01-07)
 
