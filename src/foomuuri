@@ -59,6 +59,7 @@ try:
 except ImportError:
     HAVE_NOTIFY = False
 
+URL_CHUNK_SIZE = 1048576
 
 VERSION = '0.31'
 
@@ -84,9 +85,8 @@ CONFIG = {
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
 
-    # Parsed iplist{} from config files
+    # Parsed in iplist{} from config files
     'url_max_size': 33554432,
-    'url_chunk_size': 1048576,
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -726,7 +726,7 @@ def parse_iplist_names(config):
         for fileline, line in config.get(section, []):
             if line[0].startswith(('dns_timeout=', 'dns_refresh=',
                                    'url_timeout=', 'url_refresh=',
-                                   'url_max_size=', 'url_chunk_size=')):
+                                   'url_max_size=')):
                 continue
             if line[0] in ('timeout', 'refresh'):
                 continue
@@ -3225,7 +3225,7 @@ def get_url(url):
                         )
                     content = io.BytesIO()
                     for chunk in response.iter_content(
-                        chunk_size=CONFIG['url_chunk_size'],
+                        chunk_size=URL_CHUNK_SIZE,
                         decode_unicode=False
                     ):
                         content.write(chunk)
@@ -3663,9 +3663,9 @@ def iplist_parse_config(config):
             iplist_parse_timeout(fileline, def_times, name, line[1:])
             continue
 
-        # Parse url fetcher limits
+        # Parse url size limit
         if  (
-            name.split('=')[0] in ('url_max_size', 'url_chunk_size') and
+            name.split('=')[0] == 'url_max_size' and
             len(line) == 1
         ):
             key, value = name.split('=')
