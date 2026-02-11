@@ -1702,14 +1702,26 @@ def parse_maclist(rule, direction):
 
 
 def parse_interface_names(rule):
-    """Parse iifname/oifname to nft rule."""
+    """Parse iifname/oifname to nft rule.
+
+    Interface "lo" is special:
+    "iifname lo" or "iif lo" doesn't work in most chains. This is also
+    visible in kernel logging: "IN=<empty>". Use "iif 0" instead. It works
+    as long as "lo" is the first interface. As far as I know, it is so on
+    all Linux distributions.
+    """
     ret = ''
     for key in ('iifname', 'oifname'):
         if not rule[key]:
             continue
-        ret += f'{key} '
-        ret += single_or_set(rule[key], rule['fileline'], quote=True)
-        ret += ' '
+        if key == 'iifname' and rule[key] == 'lo':
+            ret += 'iif 0 '
+        elif key == 'oifname' and rule[key] == 'lo':
+            ret += 'oif 0 '
+        else:
+            ret += f'{key} '
+            ret += single_or_set(rule[key], rule['fileline'], quote=True)
+            ret += ' '
     return ret
 
 

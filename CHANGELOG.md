@@ -8,6 +8,8 @@
 * Add `prometheus-keepalived` macro to default services.
 * Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
   with WireGuard interface, old `meta pkttype` does not.
+* Fix: Interface `lo` is special. Nftables matcher `iifname lo` does not work
+  in most chains. Output that as `iif 0` instead.
 * Fix: Allow unicast traffic in `ospf` macro.
 
 ## 0.31 (2026-01-07)
