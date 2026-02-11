@@ -3223,7 +3223,7 @@ def get_url(url):
                 time.sleep(10)
             try:
                 with requests.get(
-                    remove_filters(url), timeout=(6.1,50), stream=True
+                    remove_filters(url), timeout=(6.1, 30), stream=True
                 ) as response:
                     if response.status_code != 200:
                         raise requests.ConnectionError(
