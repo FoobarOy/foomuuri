@@ -1926,7 +1926,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
                      f'{rule["helper"]}')
             HELPERS.append((rule['helper'], rule['protocol'], rule['dport']))
             kernelname = rule['helper'].split('-')[0].replace('_', '-')
-            out(f'ct helper \"{kernelname}\" {rule["statement"]}')
+            out(f'ct helper "{kernelname}" {rule["statement"]}')
 
 
 def output_zonemap(zonemap, szone, dzone, ipv):
@@ -2422,7 +2422,7 @@ def output_helpers():
         kernelname = name.split('-')[0].replace('_', '-')
         out(f'ct helper {name} {{')
         for proto in protos:
-            out(f'type \"{kernelname}\" protocol {proto}')
+            out(f'type "{kernelname}" protocol {proto}')
         out('}')
 
     # Output prerouting
@@ -2432,7 +2432,7 @@ def output_helpers():
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
-                f'ct helper set \"{name}\"')
+                f'ct helper set "{name}"')
     out('}')
 
 
