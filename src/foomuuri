@@ -59,8 +59,6 @@ try:
 except ImportError:
     HAVE_NOTIFY = False
 
-URL_CHUNK_SIZE = 1048576
-
 VERSION = '0.31'
 
 CONFIG = {
@@ -85,10 +83,8 @@ CONFIG = {
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
 
-    # Parsed in iplist{} from config files
-    'url_max_size': 33554432,
-
     # Directories and files. Files are relative to state_dir.
+    # These can be changed by foomuuri{} in config files.
     'etc_dir': '/etc/foomuuri',
     'share_dir': '/usr/share/foomuuri',
     'state_dir': '/var/lib/foomuuri',
@@ -102,26 +98,31 @@ CONFIG = {
     'zone_file': 'zone',
     'monitor_statistics_file': 'monitor.statistics',
 
-    # Parsed command line parameters - used internally
-    'command': '',
-    'parameters': [],
-    'root_power': True,
-    'verbose': 0,
-    'force': 0,
-    'fork': 0,
-    'syslog': 0,
+    # Parsed command line - used internally
+    '_command': '',     # Command to run: "start" etc
+    '_parameters': [],  # Parameters for command
+    '_verbose': 0,      # --verbose
+    '_force': 0,        # --force
+    '_fork': 0,         # --fork
+    '_syslog': 0,       # --syslog
+
+    # Other internally used values
+    '_root_power': True,        # Running as user "root"?
+    '_url_max_size': 33554432,  # Parsed in iplist{} from config files
 }
 
 OUT = []       # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
 HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
+URL_CHUNK_SIZE = 1048576
+
 
 def fail(error=None, fatal=True):
     """Exit with error message."""
-    if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
+    if error and CONFIG['_verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
-        if CONFIG['syslog']:
+        if CONFIG['_syslog']:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
@@ -129,17 +130,17 @@ def fail(error=None, fatal=True):
 
 def warning(text):
     """Print warning message."""
-    if CONFIG['verbose'] >= 0:
+    if CONFIG['_verbose'] >= 0:
         print(f'Warning: {text}', flush=True)
-        if CONFIG['syslog']:
+        if CONFIG['_syslog']:
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
-    if CONFIG['verbose'] >= level:
+    if CONFIG['_verbose'] >= level:
         print(line, flush=True)
-        if CONFIG['syslog']:
+        if CONFIG['_syslog']:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
@@ -164,7 +165,7 @@ def run_program_rc(args, *, env=None, stdin=None, print_output=True,
     output = proc.stdout.rstrip()
     if (
             output and
-            (proc.returncode or print_output or CONFIG['verbose'] > 0) and
+            (proc.returncode or print_output or CONFIG['_verbose'] > 0) and
             not quiet
     ):
         verbose(output, 0)
@@ -237,9 +238,9 @@ def nft_json(cmd):
 def daemonize():
     """Fork as a background daemon. Silently ignore errors."""
     # Enabled in config?
-    if not CONFIG['fork']:
+    if not CONFIG['_fork']:
         return
-    CONFIG['fork'] = 0  # Fork only once!
+    CONFIG['_fork'] = 0  # Fork only once!
 
     # Fork #1
     try:
@@ -409,8 +410,10 @@ def read_config():
 
 def config_to_pathlib():
     """Convert str paths in CONFIG{} to pathlib.Paths."""
-    # "*_dir" are needed for reading config files
+    # "path" will be converted to "_path". Find possible keys to convert.
     keys = [key for key in CONFIG if not key.startswith('_')]
+
+    # "*_dir" are needed for reading config files
     for key in keys:
         if key.endswith('_dir'):
             CONFIG[f'_{key}'] = pathlib.Path(CONFIG[key])
@@ -458,7 +461,7 @@ def parse_config_macros(config):
         if value[0] == '+':  # append
             macros[key] = macros.get(key, []) + value[1:]
         else:
-            if CONFIG['command'] == 'check' and macros.get(key):
+            if CONFIG['_command'] == 'check' and macros.get(key):
                 warning(f'{fileline}Overwriting macro "{key}" '
                         f'with value "{" ".join(value)}"')
             macros[key] = value  # overwrite
@@ -607,7 +610,7 @@ def parse_config_foomuuri(config):
     for fileline, line in config.pop('foomuuri', []):
         name = line[0]
         value = ' '.join(line[1:])
-        if name not in CONFIG:
+        if name not in CONFIG or name.startswith('_'):
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
         if value.startswith('+ '):  # append
             CONFIG[name] = f'{CONFIG[name]} {value[2:]}'
@@ -2528,8 +2531,8 @@ def signal_childs():
 def apply_final():
     """Use final ruleset."""
     # Check config
-    if CONFIG['command'] == 'check':
-        if CONFIG['root_power']:  # "nft check" requires root
+    if CONFIG['_command'] == 'check':
+        if CONFIG['_root_power']:  # "nft check" requires root
             ret = run_program_rc(CONFIG['_nft_bin'] + ['--check', '--file',
                                                        CONFIG['_next_file']])
         else:
@@ -2542,7 +2545,7 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program_rc(CONFIG.get(f'pre_{CONFIG["command"]}'))
+    run_program_rc(CONFIG.get(f'pre_{CONFIG["_command"]}'))
 
     # Load "next"
     ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_next_file']],
@@ -2554,12 +2557,12 @@ def apply_final():
         return 1
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
-    if CONFIG['command'] == 'start':
+    if CONFIG['_command'] == 'start':
         CONFIG['_good_file'].unlink(missing_ok=True)
         CONFIG['_next_file'].rename(CONFIG['_good_file'])
     signal_childs()
-    run_program_rc(CONFIG.get(f'post_{CONFIG["command"]}'))
-    verbose(f'{CONFIG["command"]} success', 0)
+    run_program_rc(CONFIG.get(f'post_{CONFIG["_command"]}'))
+    verbose(f'{CONFIG["_command"]} success', 0)
     return 0
 
 
@@ -3152,7 +3155,7 @@ def resolve_all_hostnames(resolve, cache):
             if now >= cacherefresh + timeout:  # Expired entry
                 cache[hostname]['ip'] = {}
                 cache[hostname]['dirty'] = True
-            elif now < cacherefresh + refresh and CONFIG['force'] < 0:
+            elif now < cacherefresh + refresh and CONFIG['_force'] < 0:
                 verbose(f'Using cached value for '
                         f'"{remove_filters(hostname)}"')
                 continue
@@ -3214,14 +3217,14 @@ def get_url(url):
                         raise requests.ConnectionError(
                             'status code: {response.status_code}'
                         )
-                    max_size = CONFIG['url_max_size']
+                    max_size = CONFIG['_url_max_size']
                     content_length = int(
                         response.headers.get('content-length', 0)
                     )
                     if content_length > max_size:
                         raise ValueError(
-                            f'content length {content_length}'
-                            ' exceeds {max_size}'
+                            f'content length {content_length} '
+                            f'exceeds {max_size}'
                         )
                     content = io.BytesIO()
                     for chunk in response.iter_content(
@@ -3321,7 +3324,7 @@ def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
     known = parse_iplist_names(config)
-    for setname in CONFIG['parameters'][1:] or sorted(known):
+    for setname in CONFIG['_parameters'][1:] or sorted(known):
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
@@ -3346,7 +3349,7 @@ def command_iplist_add():
     config = minimal_config()
     iplist, timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
-    setname = CONFIG['parameters'][1]
+    setname = CONFIG['_parameters'][1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
     if setname not in iplist:
@@ -3358,7 +3361,7 @@ def command_iplist_add():
 
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
-    for address in CONFIG['parameters'][2:]:
+    for address in CONFIG['_parameters'][2:]:
         ipv = is_ip_address(address, allow_negative=False)
         if ipv:
             cache[f'manual.{setname}']['ip'][address] = expire
@@ -3379,7 +3382,7 @@ def command_iplist_del():
     config = minimal_config()
     iplist, _dummy_timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
-    setname = CONFIG['parameters'][1]
+    setname = CONFIG['_parameters'][1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
     if setname not in iplist:
@@ -3387,7 +3390,7 @@ def command_iplist_del():
 
     # Delete entries from cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
-    for address in CONFIG['parameters'][2:]:
+    for address in CONFIG['_parameters'][2:]:
         cache[f'manual.{setname}']['ip'].pop(address, None)
         cache[f'manual.{setname}']['dirty'] = True
 
@@ -3401,7 +3404,7 @@ def command_iplist_flush():
     cache = read_iplist_cache(iplist)
     update_only = set()
 
-    for setname in CONFIG['parameters'][1:]:
+    for setname in CONFIG['_parameters'][1:]:
         if not setname.startswith('@'):
             setname = f'@{setname}'
         if setname not in iplist:
@@ -3483,7 +3486,7 @@ def get_url_or_file(url, timeout, refresh, cache):
         if now >= cacherefresh + timeout:  # Expired entry
             cache[url]['ip'] = {}
             cache[url]['dirty'] = True
-        elif now < cacherefresh + refresh and CONFIG['force'] < 0:
+        elif now < cacherefresh + refresh and CONFIG['_force'] < 0:
             verbose(f'Using cached value for "{url}"')
             return
 
@@ -3664,17 +3667,18 @@ def iplist_parse_config(config):
             continue
 
         # Parse url size limit
-        if  (
-            name.split('=')[0] == 'url_max_size' and
-            len(line) == 1
+        if (
+                '=' in name and
+                name.split('=')[0] == 'url_max_size' and
+                len(line) == 1
         ):
-            key, value = name.split('=')
+            key, value = name.split('=', 1)
             try:
-                CONFIG[key] = int(value)
-                if CONFIG[key] <= 0:
+                CONFIG['_' + key] = int(value)
+                if CONFIG['_' + key] <= 0:
                     raise ValueError
             except ValueError:
-                fail(f'{fileline}Invalid iplist{{}} {name}')
+                fail(f'{fileline}Invalid iplist{{}} line: {name}')
             continue
 
         # Name must be set name, check it
@@ -3707,7 +3711,7 @@ def iplist_parse_config(config):
         iplist[name] = this_value
         timeouts[name] = this_timeouts
         iplist_verify_filters(name, this_value, fileline)
-    if CONFIG['verbose'] >= 2:
+    if CONFIG['_verbose'] >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
     CONFIG['_iplist_missing_ok'] = set()
@@ -3716,7 +3720,7 @@ def iplist_parse_config(config):
 
 def iplist_collect_resolve_list(iplist, timeouts):
     """Collect URLs and hostnames to be resolved."""
-    if CONFIG['command'] != 'iplist':
+    if CONFIG['_command'] != 'iplist':
         # Don't resolve anything if called as "foomuuri start".
         # Use cached entries only.
         return {}, {}
@@ -3742,7 +3746,7 @@ def iplist_collect_resolve_list(iplist, timeouts):
                 else:
                     hostnames[value] = (timeouts[name]['dns_timeout'],
                                         timeouts[name]['dns_refresh'])
-    if CONFIG['verbose'] >= 2:
+    if CONFIG['_verbose'] >= 2:
         verbose(f'URLs:      {urls}')
         verbose(f'Hostnames: {hostnames}')
     return urls, hostnames
@@ -3838,7 +3842,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
             warning(f'Iplist "{setname}" does not exist in currently active '
                     f'firewall')
             continue
-        if not cache[setname].get('dirty') and CONFIG['force'] < 0:
+        if not cache[setname].get('dirty') and CONFIG['_force'] < 0:
             verbose(f'Iplist "{setname}" is clean, skipping update')
             continue
 
@@ -3846,7 +3850,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         if (
                 setvalues and
                 not cache[setname]['ip'] and
-                CONFIG['command'] == 'iplist'
+                CONFIG['_command'] == 'iplist'
         ):
             if all(name in CONFIG['_iplist_missing_ok'] for name in setvalues):
                 warning(f'Iplist "{setname}" is empty')
@@ -3865,7 +3869,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
 
 def iplist_apply_values(cache):
     """Save iplist changes to disk and use nft to apply it."""
-    if CONFIG['command'] != 'iplist' or not OUT:
+    if CONFIG['_command'] != 'iplist' or not OUT:
         return 0
 
     write_iplist_cache(cache)
@@ -3898,16 +3902,16 @@ def command_iplist_refresh(config=None, currently_active=None):
 
         # Special case for testing (non-root) or faked nft_bin
         if not currently_active and (
-                not CONFIG['root_power'] or
+                not CONFIG['_root_power'] or
                 CONFIG['nft_bin'] == 'true'
         ):
             currently_active = set(iplist)
 
     # Default to update all sets, "foomuuri iplist refresh setname" can filter
     update_only = None
-    if CONFIG['parameters'][1:]:
+    if CONFIG['_parameters'][1:]:
         update_only = []
-        for name in CONFIG['parameters'][1:]:
+        for name in CONFIG['_parameters'][1:]:
             if name.startswith('@'):
                 update_only.append(name)
             else:
@@ -3919,16 +3923,16 @@ def command_iplist_refresh(config=None, currently_active=None):
 
 def command_iplist():
     """Parse "foomuuri iplist" subcommand."""
-    if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'list':
-        return command_iplist_list()
-    if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'add':
-        return command_iplist_add()
-    if len(CONFIG['parameters']) >= 3 and CONFIG['parameters'][0] == 'del':
-        return command_iplist_del()
-    if len(CONFIG['parameters']) >= 2 and CONFIG['parameters'][0] == 'flush':
-        return command_iplist_flush()
-    if len(CONFIG['parameters']) >= 1 and CONFIG['parameters'][0] == 'refresh':
-        return command_iplist_refresh()
+    if CONFIG['_parameters']:
+        handler, min_args = {
+            'list': (command_iplist_list, 1),
+            'add': (command_iplist_add, 3),
+            'del': (command_iplist_del, 3),
+            'flush': (command_iplist_flush, 2),
+            'refresh': (command_iplist_refresh, 1),
+        }.get(CONFIG['_parameters'][0], (None, 0))
+        if handler and len(CONFIG['_parameters']) >= min_args:
+            return handler()
     return command_help()
 
 
@@ -3952,7 +3956,7 @@ def list_named_counter(command):
 def command_list():
     """List currently active ruleset or other things."""
     # List all
-    if not CONFIG['parameters']:
+    if not CONFIG['_parameters']:
         return nft_command('list ruleset')
 
     # Parse list of possible zone-zone pairs
@@ -3961,8 +3965,8 @@ def command_list():
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
     # Parse parameters
-    list_type = CONFIG['parameters'][0]
-    list_params = CONFIG['parameters'][1:]
+    list_type = CONFIG['_parameters'][0]
+    list_params = CONFIG['_parameters'][1:]
     ret = 0
 
     if list_type == 'macro':
@@ -3991,7 +3995,7 @@ def command_list():
         return ret
 
     # List zone-zone rules
-    for zone in CONFIG['parameters']:
+    for zone in CONFIG['_parameters']:
         if zone not in zonepairs:
             fail(f'Unknown zone-zone: {zone}')
         for ipv in (4, 6):
@@ -4671,51 +4675,51 @@ def command_help(error=True):
 
 
 def parse_command_line():
-    """Parse command line to CONFIG[command] and CONFIG[parameters]."""
+    """Parse command line to CONFIG[_command] and CONFIG[_parameters]."""
     for arg in sys.argv[1:]:
         if arg == '--help':
-            CONFIG['command'] = 'help'
+            CONFIG['_command'] = 'help'
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
         elif arg in ('--verbose', '--force', '--fork', '--syslog'):
-            CONFIG[arg[2:]] += 1
+            CONFIG['_' + arg[2:]] += 1
         elif arg == '--quiet':
-            CONFIG['verbose'] -= 1
+            CONFIG['_verbose'] -= 1
         elif arg == '--soft':
-            CONFIG['force'] -= 1
+            CONFIG['_force'] -= 1
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
             _dummy, option, value = arg.split('=', 2)
-            if option not in CONFIG:
+            if option not in CONFIG or option.startswith('_'):
                 fail(f'Unknown foomuuri{{}} option: {arg}')
             CONFIG[option] = value
-        elif not CONFIG['command']:
-            CONFIG['command'] = arg
+        elif not CONFIG['_command']:
+            CONFIG['_command'] = arg
         else:
-            CONFIG['parameters'].append(arg)
+            CONFIG['_parameters'].append(arg)
     config_to_pathlib()  # Needed to read config files and for --set=x_dir=y
 
 
 def run_command():
-    """Run CONFIG[command]."""
+    """Run CONFIG[_command]."""
     # Only some commands can take arguments
-    if CONFIG['parameters'] and CONFIG['command'] not in (
+    if CONFIG['_parameters'] and CONFIG['_command'] not in (
             'list', 'iplist', 'set', 'help'):
         return command_help()
 
     # Help doesn't need root
-    if not CONFIG['command'] or CONFIG['command'] == 'help':
+    if not CONFIG['_command'] or CONFIG['_command'] == 'help':
         return command_help(error=False)
 
     # Initialize syslogging
-    if CONFIG['syslog']:
+    if CONFIG['_syslog']:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
-    CONFIG['root_power'] = not os.getuid()
-    if not CONFIG['root_power']:
+    CONFIG['_root_power'] = not os.getuid()
+    if not CONFIG['_root_power']:
         warning('Foomuuri should be run as "root"')
 
     # Run command
@@ -4732,9 +4736,9 @@ def run_command():
         'set': command_set,
         'dbus': command_dbus,
         'monitor': command_monitor,
-    }.get(CONFIG['command'])
+    }.get(CONFIG['_command'])
     if not handler:
-        fail(f'Unknown command: {CONFIG["command"]}')
+        fail(f'Unknown command: {CONFIG["_command"]}')
     return handler()
 
 
