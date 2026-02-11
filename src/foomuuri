@@ -11,6 +11,7 @@ License: GPL-2.0-or-later
 import collections
 import concurrent.futures
 import datetime
+import io
 import ipaddress
 import itertools
 import json
@@ -58,6 +59,7 @@ try:
 except ImportError:
     HAVE_NOTIFY = False
 
+URL_CHUNK_SIZE = 1048576
 
 VERSION = '0.31'
 
@@ -82,6 +84,9 @@ CONFIG = {
     'dbus_firewalld': 'no',
     'nft_bin': 'nft',
     'try-reload_timeout': '15',
+
+    # Parsed in iplist{} from config files
+    'url_max_size': 33554432,
 
     # Directories and files. Files are relative to state_dir.
     'etc_dir': '/etc/foomuuri',
@@ -720,7 +725,8 @@ def parse_iplist_names(config):
     for section in ('iplist', 'resolve'):
         for fileline, line in config.get(section, []):
             if line[0].startswith(('dns_timeout=', 'dns_refresh=',
-                                   'url_timeout=', 'url_refresh=')):
+                                   'url_timeout=', 'url_refresh=',
+                                   'url_max_size=')):
                 continue
             if line[0] in ('timeout', 'refresh'):
                 continue
@@ -3201,13 +3207,38 @@ def get_url(url):
             if retry:
                 time.sleep(10)
             try:
-                response = requests.get(remove_filters(url), timeout=50)
+                with requests.get(
+                    remove_filters(url), timeout=50, stream=True
+                ) as response:
+                    if response.status_code != 200:
+                        raise requests.ConnectionError(
+                            'status code: {response.status_code}'
+                        )
+                    max_size = CONFIG['url_max_size']
+                    content_length = int(
+                        response.headers.get('content-length', 0)
+                    )
+                    if content_length > max_size:
+                        raise ValueError(
+                            f'content length {content_length}'
+                            ' exceeds {max_size}'
+                        )
+                    content = io.BytesIO()
+                    for chunk in response.iter_content(
+                        chunk_size=URL_CHUNK_SIZE,
+                        decode_unicode=False
+                    ):
+                        content.write(chunk)
+                        if content.tell() > max_size:
+                            raise ValueError(
+                                f'content length exceeds {max_size}'
+                            )
+                    return content.getvalue().decode('utf-8', errors='ignore')
             except OSError as error:
                 err = f'error: {error}'
-            else:
-                if response.status_code == 200:
-                    return response.text
-                err = f'status code: {response.status_code}'
+            except ValueError as error:
+                err = f'error: {error}'
+                break
     else:
         err = 'No python-requests installed'
     if '|missing-ok' in url:
@@ -3630,6 +3661,20 @@ def iplist_parse_config(config):
                 )
         ):
             iplist_parse_timeout(fileline, def_times, name, line[1:])
+            continue
+
+        # Parse url size limit
+        if  (
+            name.split('=')[0] == 'url_max_size' and
+            len(line) == 1
+        ):
+            key, value = name.split('=')
+            try:
+                CONFIG[key] = int(value)
+                if CONFIG[key] <= 0:
+                    raise ValueError
+            except ValueError:
+                fail(f'{fileline}Invalid iplist{{}} {name}')
             continue
 
         # Name must be set name, check it
