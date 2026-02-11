@@ -107,10 +107,10 @@ CONFIG = {
     '_syslog': 0,       # --syslog
 
     # Other internally used values
-    '_root_power': True,        # Running as user "root"?
-    '_url_max_size': 33554432,  # Parsed in iplist{} from config files
-    '_url_chunk_size': 1048576, # Constant
-    '_url_timeout': (6.1, 30),  # Constant
+    '_root_power': True,         # Running as user "root"?
+    '_url_max_size': 33554432,   # Parsed in iplist{} from config files
+    '_url_chunk_size': 1048576,  # Constant
+    '_url_get_timeout': (6.1, 30),  # Constant, connect and read timeout
 }
 
 OUT = []       # Generated nftables ruleset / commands
@@ -3224,7 +3224,7 @@ def get_url(url):
             try:
                 with requests.get(
                     remove_filters(url),
-                    timeout=CONFIG['_url_timeout'],
+                    timeout=CONFIG['_url_get_timeout'],
                     stream=True
                 ) as response:
                     if response.status_code != 200:
