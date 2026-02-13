@@ -3,9 +3,10 @@ SUBDIRS ?= $(sort $(wildcard ??-*))
 .PHONY: all clean distclean $(SUBDIRS)
 
 all: $(SUBDIRS)
-	flake8 ../src/foomuuri
-	pycodestyle ../src/foomuuri
-	pylint ../src/foomuuri
+	flake8 ../src/foomuuri ../src/tests/
+	pycodestyle ../src/foomuuri ../src/tests/
+	pylint ../src/foomuuri ../src/tests/
+	cd ../ ; python3 -m unittest
 
 clean distclean:
 	rm -f */*.fw
