@@ -3066,7 +3066,7 @@ if HAVE_DBUS:
             # Define reload/stop signal handler
             mainloop = GLib.MainLoop()
 
-            def signal_handler(sig, _dummy_frame):
+            def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
                     CONFIG['keep_going'] = False
                     if HAVE_NOTIFY:
