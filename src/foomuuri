@@ -10,6 +10,7 @@ License: GPL-2.0-or-later
 
 import collections
 import concurrent.futures
+import contextlib
 import datetime
 import io
 import ipaddress
@@ -589,19 +590,20 @@ def expand_macros(config):
 
 
 def remove_quotes(config):
-    """Change "foo" to foo in config entries.
+    """Change "foo" and 'foo' to foo in config files.
 
-    This is called after macro expansion so that '"ssh"' is 'ssh', not
-    'tcp 22'.
+    This function is called after macro expansion so that "ssh" is
+    changed to ssh, not tcp 22.
     """
     for section, lines in config.items():
         if section.startswith('_'):
             continue
         for _dummy_fileline, line in lines:
             for index, item in enumerate(line):
-                if item.startswith('"') and item.endswith('"'):  # "foo"
-                    line[index] = item[1:-1]
-                elif item.startswith("'") and item.endswith("'"):  # 'foo'
+                if len(item) >= 2 and (
+                        (item[0] == item[-1] == '"') or
+                        (item[0] == item[-1] == "'")
+                ):
                     line[index] = item[1:-1]
 
 
@@ -1318,10 +1320,7 @@ def suffix_mask(value, compare):
 def single_or_set(data, fileline='', quote=False):
     """Convert data to single item or set if multiple values."""
     # Convert to list
-    if isinstance(data, list):
-        values = data
-    else:
-        values = data.split()
+    values = data if isinstance(data, list) else data.split()
 
     # Handle negative: add "!=" to final rule
     neg = ''
@@ -2534,10 +2533,8 @@ def signal_childs():
             continue
 
         # Send reload-signal
-        try:
+        with contextlib.suppress(OSError):
             os.kill(pid, signal.SIGHUP)
-        except OSError:
-            pass
 
 
 def apply_final():
@@ -3504,10 +3501,8 @@ def get_url_or_file(url, timeout, refresh, cache):
             verbose(f'Using cached value for "{url}"')
             return
 
-    if url.startswith(('https:', 'http:')):
-        value = get_url(url)
-    else:
-        value = get_file(url)
+    value = (get_url(url) if url.startswith(('https:', 'http:')) else
+             get_file(url))
 
     if value is not None:
         # Replace list, don't append. These lists are always complete
@@ -4279,10 +4274,8 @@ def monitor_parse_line(targets, groups, target, line):
             return  # --squiet is less than --interval, ignore line
         state = '/100%' not in line  # It's up if loss is less than 100%
         if state:
-            try:
+            with contextlib.suppress(ValueError):
                 stat_ms = float(line.split('/')[-1])
-            except ValueError:
-                pass
 
     else:
         # fping with "--interval"
@@ -4292,10 +4285,8 @@ def monitor_parse_line(targets, groups, target, line):
         result = match.group(1)
         state = ' bytes, ' in result and ' ms (' in result
         if state:
-            try:
+            with contextlib.suppress(ValueError):
                 stat_ms = float(result.split()[2])
-            except ValueError:
-                pass
 
     # Update target state
     monitor_update_target(targets, groups, target, state)
