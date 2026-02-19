@@ -1,6 +1,7 @@
 """Basic unit tests of TypedConfig."""
 # pylint: disable=import-error
 
+import pathlib
 import unittest
 from dataclasses import dataclass, field
 
@@ -28,6 +29,7 @@ class TestTypedConfig(unittest.TestCase):
             initialized_untyped = 'init_value2'
             type_conversion_int: int = 0
             type_conversion_list: list = field(default_factory=list)
+            type_conversion_posixpath: pathlib.PosixPath = field(init=False)
             validation_str: str = field(
                 init=False, metadata={'validate': lambda v: v != ''}
             )
@@ -77,6 +79,11 @@ class TestTypedConfig(unittest.TestCase):
         self.assertEqual(
             self.assign_from_str('type_conversion_int', '123'), 123
         )
+        # Supported conversion, from str to pathlib.PosixPath
+        self.assertEqual(
+            self.assign_from_str('type_conversion_posixpath', '/tmp/'),
+            pathlib.PosixPath('/tmp/')
+        )
         # Assignment, str to str
         self.assertEqual(self.assign_from_str('initialized_str', '123'), '123')
         # Unsupported conversion, from str to list
@@ -99,6 +106,7 @@ class TestTypedConfig(unittest.TestCase):
             'initialized_str',
             'type_conversion_int',
             'type_conversion_list',
+            'type_conversion_posixpath',
             'uninitialized_str',
             'validation_str',
         ])

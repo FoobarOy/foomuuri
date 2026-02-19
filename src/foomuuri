@@ -141,6 +141,8 @@ class TypedConfig:
         target_type = self._get_field(name).type
         if target_type is int:
             value = int(value)
+        elif target_type is pathlib.PosixPath:
+            value = pathlib.PosixPath(value)
         elif not isinstance(value, target_type):
             raise TypeError(
                 f"{name}: value conversion to {target_type} not implemented"
@@ -197,10 +199,18 @@ class Config(TypedConfig):
 
     # Directories and files. Files are relative to state_dir.
     # These can be changed by foomuuri{} in config files.
-    etc_dir: str = '/etc/foomuuri'
-    share_dir: str = '/usr/share/foomuuri'
-    state_dir: str = '/var/lib/foomuuri'
-    run_dir: str = '/run/foomuuri'
+    etc_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/etc/foomuuri')
+    )
+    share_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/usr/share/foomuuri')
+    )
+    state_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/var/lib/foomuuri')
+    )
+    run_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/run/foomuuri')
+    )
     good_file: str = 'good.fw'
     next_file: str = 'next.fw'
     resolve_file: str = 'resolve.fw'  # old iplist/resolve
@@ -222,7 +232,6 @@ class Config(TypedConfig):
 
     # Other internally used values
     # Added without default value to prevent uninitialized use
-    _etc_dir: pathlib.PosixPath = dataclasses.field(init=False)
     _good_file: pathlib.PosixPath = dataclasses.field(init=False)
     _iplist_cache_file: pathlib.PosixPath = dataclasses.field(init=False)
     _iplist_file: pathlib.PosixPath = dataclasses.field(init=False)
@@ -242,9 +251,6 @@ class Config(TypedConfig):
     _root_power: bool = dataclasses.field(
         init=False
     )  # Running as user "root"?
-    _run_dir: pathlib.PosixPath = dataclasses.field(init=False)
-    _share_dir: pathlib.PosixPath = dataclasses.field(init=False)
-    _state_dir: pathlib.PosixPath = dataclasses.field(init=False)
     _zone_file: pathlib.PosixPath = dataclasses.field(init=False)
 
     # Url loader
@@ -445,10 +451,10 @@ def read_config():
     # pylint: disable=too-many-statements
 
     # Find all config files
-    share_config = find_config_files(CONFIG['_share_dir'], '*.conf')
-    etc_config = find_config_files(CONFIG['_etc_dir'], '*.conf')
+    share_config = find_config_files(CONFIG['share_dir'], '*.conf')
+    etc_config = find_config_files(CONFIG['etc_dir'], '*.conf')
     if not etc_config:
-        fail(f'No configuration files "{CONFIG["_etc_dir"]}/*.conf" found\n'
+        fail(f'No configuration files "{CONFIG["etc_dir"]}/*.conf" found\n'
              '\n'
              'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
              'for example\n'
@@ -557,20 +563,12 @@ def read_config():
 def config_to_pathlib():
     """Convert str paths in CONFIG{} to pathlib.Paths."""
     # "path" will be converted to "_path". Find possible keys to convert.
-    keys = [key for key in CONFIG if not key.startswith('_')]
-
-    # "*_dir" are needed for reading config files
-    for key in keys:
-        if key.endswith('_dir'):
-            CONFIG[f'_{key}'] = pathlib.Path(CONFIG[key])
-
-    # "*_file" are needed to save current state
-    for key in keys:
+    for key in [key for key in CONFIG if not key.startswith('_')]:
+        # "*_file" are needed to save current state
         if key.endswith('_file'):
-            CONFIG[f'_{key}'] = CONFIG['_state_dir'] / CONFIG[key]
+            CONFIG[f'_{key}'] = CONFIG['state_dir'] / CONFIG[key]
 
-    # "*_bin" are binaries with optional arguments
-    for key in keys:
+        # "*_bin" are binaries with optional arguments
         if key.endswith('_bin'):
             CONFIG[f'_{key}'] = shlex.split(CONFIG[key])
 
@@ -2367,8 +2365,8 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    for filename in (find_config_files(CONFIG['_share_dir'], '*.nft') +
-                     find_config_files(CONFIG['_etc_dir'], '*.nft')):
+    for filename in (find_config_files(CONFIG['share_dir'], '*.nft') +
+                     find_config_files(CONFIG['etc_dir'], '*.nft')):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
@@ -2679,7 +2677,7 @@ def signal_childs():
     """Signal foomuuri-dbus and foomuuri-monitor to reload."""
     for child in ('dbus', 'monitor'):
         # Read pid
-        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
         except PermissionError as error:
@@ -2783,7 +2781,7 @@ def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
     return run_program_rc(CONFIG['_nft_bin'] + [
-        '--file', CONFIG['_share_dir'] / 'block.fw'])
+        '--file', CONFIG['share_dir'] / 'block.fw'])
 
 
 def parse_active_interface_zone():
@@ -2815,7 +2813,7 @@ def command_status():
 
     # D-Bus, Monitor
     for child in ('dbus', 'monitor'):
-        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
             os.kill(pid, 0)
@@ -3229,7 +3227,7 @@ if HAVE_DBUS:
 
             signal.signal(signal.SIGHUP, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
-            save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid',
+            save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid',
                       [str(os.getpid())])
 
             # Start processing messages
@@ -4745,7 +4743,7 @@ def command_monitor():
         CONFIG['_keep_going'] = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['_run_dir'] / 'foomuuri-monitor.pid',
+        save_file(CONFIG['run_dir'] / 'foomuuri-monitor.pid',
                   [str(os.getpid())])
 
         # Start monitoring
