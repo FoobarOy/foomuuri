@@ -220,15 +220,17 @@ class Config(TypedConfig):
     zone_file: str = 'zone'
     monitor_statistics_file: str = 'monitor.statistics'
 
+    # Parsed foomuuri{} from config files, or command line
+    fork: int = 0          # --fork
+    verbose: int = 0       # --verbose
+    syslog: int = 0        # --syslog
+
     # Parsed command line - used internally
     _command: str = ''     # Command to run: "start" etc
     _parameters: list = dataclasses.field(
         default_factory=list
     )  # Parameters for command
-    _verbose: int = 0      # --verbose
     _force: int = 0        # --force
-    _fork: int = 0         # --fork
-    _syslog: int = 0       # --syslog
 
     # Other internally used values
     # Added without default value to prevent uninitialized use
@@ -272,9 +274,9 @@ HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 def fail(error=None, fatal=True):
     """Exit with error message."""
-    if error and CONFIG['_verbose'] >= -1:  # Double-quiet will supress output
+    if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
@@ -282,17 +284,17 @@ def fail(error=None, fatal=True):
 
 def warning(text):
     """Print warning message."""
-    if CONFIG['_verbose'] >= 0:
+    if CONFIG['verbose'] >= 0:
         print(f'Warning: {text}', flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
-    if CONFIG['_verbose'] >= level:
+    if CONFIG['verbose'] >= level:
         print(line, flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
@@ -317,7 +319,7 @@ def run_program_rc(args, *, env=None, stdin=None, print_output=True,
     output = proc.stdout.rstrip()
     if (
             output and
-            (proc.returncode or print_output or CONFIG['_verbose'] > 0) and
+            (proc.returncode or print_output or CONFIG['verbose'] > 0) and
             not quiet
     ):
         verbose(output, 0)
@@ -390,9 +392,9 @@ def nft_json(cmd):
 def daemonize():
     """Fork as a background daemon. Silently ignore errors."""
     # Enabled in config?
-    if not CONFIG['_fork']:
+    if not CONFIG['fork']:
         return
-    CONFIG['_fork'] = 0  # Fork only once!
+    CONFIG['fork'] = 0  # Fork only once!
 
     # Fork #1
     try:
@@ -3875,7 +3877,7 @@ def iplist_parse_config(config):
         iplist[name] = this_value
         timeouts[name] = this_timeouts
         iplist_verify_filters(name, this_value, fileline)
-    if CONFIG['_verbose'] >= 2:
+    if CONFIG['verbose'] >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
     CONFIG['_iplist_missing_ok'] = set()
@@ -3910,7 +3912,7 @@ def iplist_collect_resolve_list(iplist, timeouts):
                 else:
                     hostnames[value] = (timeouts[name]['dns_timeout'],
                                         timeouts[name]['dns_refresh'])
-    if CONFIG['_verbose'] >= 2:
+    if CONFIG['verbose'] >= 2:
         verbose(f'URLs:      {urls}')
         verbose(f'Hostnames: {hostnames}')
     return urls, hostnames
@@ -4833,22 +4835,25 @@ def command_help(error=True):
 
 def parse_command_line():
     """Parse command line to CONFIG[_command] and CONFIG[_parameters]."""
+    # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['_command'] = 'help'
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--verbose', '--force', '--fork', '--syslog'):
+        elif arg in ('--fork', '--verbose', '--syslog'):
+            CONFIG[arg[2:]] += 1
+        elif arg in ('--force'):
             CONFIG['_' + arg[2:]] += 1
         elif arg == '--quiet':
-            CONFIG['_verbose'] -= 1
+            CONFIG['verbose'] -= 1
         elif arg == '--soft':
             CONFIG['_force'] -= 1
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
-            _dummy, option, value = arg.split('=', 2)
+            _, option, value = arg.split('=', 2)
             if option not in CONFIG or option.startswith('_'):
                 fail(f'Unknown foomuuri{{}} option: {arg}')
             try:
@@ -4874,7 +4879,7 @@ def run_command():
         return command_help(error=False)
 
     # Initialize syslogging
-    if CONFIG['_syslog']:
+    if CONFIG['syslog']:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
