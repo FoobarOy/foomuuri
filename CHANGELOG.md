@@ -6,6 +6,8 @@
   size for downloaded IP address list. Default value is 33554432, 32 MiB.
 * Optimize duplicate accept rules to single rule.
 * Add `prometheus-keepalived` macro to default services.
+* Rename macro `gluster-client` to `gluster`. Old macro name is kept as an
+  alias.
 * Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
   with WireGuard interface, old `meta pkttype` does not.
 * Fix: Interface `lo` is special. Nftables matcher `iifname lo` does not work
