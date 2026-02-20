@@ -862,7 +862,7 @@ def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
     # pylint: disable=too-many-branches
     for key, value in rule.items():
-        if value == '' and key not in ('to', 'queue', 'counter', 'log',
+        if value == '' and key not in ('nat_to', 'queue', 'counter', 'log',
                                        'fileline', 'line'):
             fail(f'{fileline}"{key}" without value is not valid')
 
@@ -922,8 +922,8 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if not rule['to'] and rule['statement'] in ('snat', 'dnat',
-                                                'snat_prefix', 'dnat_prefix'):
+    if not rule['nat_to'] and rule['statement'] in (
+            'snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
         fail(f'{fileline}"{rule["statement"]}" without address is not valid')
 
     if rule['ct_status'] and rule['ct_status'] not in (
@@ -982,7 +982,7 @@ def parse_rule_line(fileline_line):
         'new_szone': None,
         'new_dzone': None,
         # Misc rules
-        'to': None,  # snat/dnat to
+        'nat_to': None,  # snat/dnat to
         'queue': None,  # optional queue flags
         'counter': None,
         'helper': None,
@@ -1025,7 +1025,7 @@ def parse_rule_line(fileline_line):
                 ret[keyword] = ''
 
         # Version 0.29 deprecates 'to' after 'snat' statement, ignore it
-        if keyword == 'to' and not ret['to'] and item == 'to':
+        if keyword == 'nat_to' and not ret['nat_to'] and item == 'to':
             continue
 
         # First item after start keyword is always a parameter for it, except
@@ -1082,7 +1082,7 @@ def parse_rule_line(fileline_line):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
-            keyword = 'to'
+            keyword = 'nat_to'
             ret[keyword] = ret[keyword] or ''
         elif item in ('protocol',
                       'saddr', 'sport',
@@ -1801,13 +1801,13 @@ def parse_iplist_to_single_ip(rule, key, value, ipv):
     return target[0]
 
 
-def parse_to(rule, ipv):
+def parse_nat_to(rule, ipv):
     """Parse snat/dnat "to" rule to nft rule."""
-    if not rule['to']:
+    if not rule['nat_to']:
         return ''
 
     # "to" can be IPv4, IPv6 or both, find correct one
-    target = parse_iplist_to_single_ip(rule, rule['statement'], rule['to'],
+    target = parse_iplist_to_single_ip(rule, rule['statement'], rule['nat_to'],
                                        ipv)
     if not target:
         return None
@@ -2122,8 +2122,8 @@ def output_rule_section_no_header(rules, section):
     ip_merger = set()
     for rule in rules:
         for ipv in (4, 6):
-            to_rule = parse_to(rule, ipv)
-            if to_rule is None:
+            to_rule = parse_nat_to(rule, ipv)
+            if to_rule is None:  # ipv == 6 and "nat to IPv4" mismatch
                 continue
             match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
