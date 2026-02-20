@@ -266,6 +266,7 @@ class Config(TypedConfig):
 
 
 CONFIG = Config()
+CONFIG_OVERRIDE = {}
 
 OUT = []       # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
@@ -754,6 +755,7 @@ def remove_quotes(config):
 
 def parse_config_foomuuri(config):
     """Parse foomuuri{} from config to CONFIG{}."""
+    # pylint: disable=too-many-branches
     for fileline, line in config.pop('foomuuri', []):
         name = line[0]
         value = ' '.join(line[1:])
@@ -771,6 +773,13 @@ def parse_config_foomuuri(config):
                 f'{fileline}Invalid foomuuri{{}} option value:'
                 f' {" ".join(line)}'
             )
+
+    # Overrides from CLI arguments
+    for name, value in CONFIG_OVERRIDE.items():
+        if name == 'verbose':
+            CONFIG[name] += value             # add
+        else:
+            CONFIG.set_from_str(name, value)  # replace
 
     config_to_pathlib()  # Redo as config files can change these
 
@@ -4842,12 +4851,19 @@ def parse_command_line():
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--fork', '--verbose', '--syslog'):
-            CONFIG[arg[2:]] += 1
+        elif arg in ('--verbose'):
+            option = arg[2:]
+            CONFIG[option] += 1
+            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
+        elif arg in ('--fork', '--syslog'):
+            CONFIG[arg[2:]] = 1
+            CONFIG_OVERRIDE[arg[2:]] = 1
         elif arg in ('--force'):
             CONFIG['_' + arg[2:]] += 1
         elif arg == '--quiet':
-            CONFIG['verbose'] -= 1
+            option = 'verbose'
+            CONFIG[option] -= 1
+            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
         elif arg == '--soft':
             CONFIG['_force'] -= 1
         elif arg.startswith('--set='):
@@ -4858,6 +4874,7 @@ def parse_command_line():
                 fail(f'Unknown foomuuri{{}} option: {arg}')
             try:
                 CONFIG.set_from_str(option, value)
+                CONFIG_OVERRIDE[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
         elif not CONFIG['_command']:
