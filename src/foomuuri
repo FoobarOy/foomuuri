@@ -1925,6 +1925,9 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             continue
         if match == '' and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
+        if rule['statement'] in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
+            fail(f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
+                 f'be used in \"{szone}-{dzone}\" section')
         statement = rule_statement(szone, dzone, rule, ipv,
                                    force_statement=rule['nft'])
 
@@ -3664,6 +3667,8 @@ def iplist_parse_config(config):
     }
     iplist = {}
     timeouts = {}
+    if config.get('resolve'):
+        warning('Section "resolve" is obsoleted, use "iplist" instead')
     for fileline, line in config.pop('resolve', []) + config.pop('iplist', []):
         name = line[0]
 
