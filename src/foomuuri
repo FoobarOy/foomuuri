@@ -1003,6 +1003,7 @@ def parse_rule_line(fileline_line):
         'ct_status': None,
         'time': None,
         'after_conntrack': True,
+        'warning': None,  # Print warning to user
 
         # Internal housekeeping
         'plain': True,  # Plain "log" or "counter" without anything else
@@ -1113,6 +1114,7 @@ def parse_rule_line(fileline_line):
                       'cgroup',
                       'ct_status',
                       'time',
+                      'warning',
                       ):
             keyword = item
             ret[keyword] = ret[keyword] or ''
@@ -1139,6 +1141,10 @@ def parse_rule_line(fileline_line):
         ret['statement'] = 'continue'
         ret['after_conntrack'] = False
     verify_rule_sanity(ret, fileline)
+
+    # Print warning, used mostly in old macros
+    if ret['warning']:
+        warning(f'{fileline}{ret["warning"]}')
     return ret
 
 
