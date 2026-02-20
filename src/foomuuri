@@ -1805,8 +1805,6 @@ def parse_to(rule, ipv):
     """Parse snat/dnat "to" rule to nft rule."""
     if not rule['to']:
         return ''
-    if rule['statement'] == 'queue':  # "to 3", "to 1-3", "to numgen", ...
-        return f' to {rule["to"]}'
 
     # "to" can be IPv4, IPv6 or both, find correct one
     target = parse_iplist_to_single_ip(rule, rule['statement'], rule['to'],
