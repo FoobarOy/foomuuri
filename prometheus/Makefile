@@ -19,17 +19,18 @@ clean distclean:
 
 # Install current source to DESTDIR
 
-BINDIR			?= /usr/bin
+EXPORTER_DIR		?= /usr/bin
+EXPORTER_NAME		?= foomuuri_exporter
 SYSTEMD_SYSTEM_LOCATION	?= /usr/lib/systemd/system
 SETTINGS_LOCATION	?= /etc/default
 
 install:
-	mkdir -p $(DESTDIR)$(BINDIR)/
-	cp foomuuri_exporter $(DESTDIR)$(BINDIR)/
+	mkdir -p $(DESTDIR)$(EXPORTER_DIR)/
+	cp foomuuri_exporter $(DESTDIR)$(EXPORTER_DIR)/$(EXPORTER_NAME)
 	mkdir -p $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
-	cp foomuuri_exporter.service $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/
+	cat foomuuri_exporter.service | sed s/foomuuri_exporter/$(EXPORTER_NAME)/g > $(DESTDIR)$(SYSTEMD_SYSTEM_LOCATION)/$(EXPORTER_NAME).service
 	mkdir -p $(DESTDIR)$(SETTINGS_LOCATION)/
-	cp foomuuri_exporter.default $(DESTDIR)$(SETTINGS_LOCATION)/foomuuri_exporter
+	cp foomuuri_exporter.default $(DESTDIR)$(SETTINGS_LOCATION)/$(EXPORTER_NAME)
 
 # Install current source to local system's root
 
