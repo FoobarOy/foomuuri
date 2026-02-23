@@ -3516,7 +3516,7 @@ def get_url_or_file(url, timeout, refresh, cache):
         # address lists.
         expire = now + timeout
         cache[url] = {
-            'ip': {addr: expire for addr in iplist_cleanup_file(url, value)},
+            'ip': dict.fromkeys(iplist_cleanup_file(url, value), expire),
             'dirty': True,
             'refresh': now,
         }
