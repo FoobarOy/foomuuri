@@ -259,23 +259,15 @@ class Config(TypedConfig):
 
     # Other internally used values
     # Added without default value to prevent uninitialized use
-    _good_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _iplist_cache_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _iplist_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _iplist_manual_file: pathlib.PosixPath = dataclasses.field(init=False)
     _iplist_merge: set = dataclasses.field(init=False)
     _iplist_missing_ok: set = dataclasses.field(init=False)
     _keep_going: int = dataclasses.field(init=False)
-    _monitor_statistics_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _next_file: pathlib.PosixPath = dataclasses.field(init=False)
     _post_start: list = dataclasses.field(init=False)
     _post_stop: list = dataclasses.field(init=False)
     _pre_start: list = dataclasses.field(init=False)
     _pre_stop: list = dataclasses.field(init=False)
     _priority_offset: str = dataclasses.field(init=False)
-    _resolve_file: pathlib.PosixPath = dataclasses.field(init=False)
     _root_power: bool = dataclasses.field(init=False)  # Running as "root"?
-    _zone_file: pathlib.PosixPath = dataclasses.field(init=False)
 
     # Url loader
     _url_max_size: int = dataclasses.field(
@@ -324,6 +316,15 @@ def verbose(line, level=1):
 def out(line):
     """Add single line to ruleset."""
     OUT.append(line)
+
+
+def state_file(key):
+    """Helper function to return CONFIG.state_dir / CONFIG.key.
+
+    All xxx_file variables are relative to state_dir.
+    Values "../filename" and "/full/path/filename" works too.
+    """
+    return CONFIG.state_dir / CONFIG[key]
 
 
 def run_program_rc(args, *, env=None, stdin=None, print_output=True,
@@ -585,15 +586,6 @@ def read_config():
     return config
 
 
-def config_to_pathlib():
-    """Convert str paths in CONFIG{} to pathlib.Paths."""
-    # "path" will be converted to "_path". Find possible keys to convert.
-    for key in [key for key in CONFIG if not key.startswith('_')]:
-        # "*_file" are needed to save current state
-        if key.endswith('_file'):
-            CONFIG[f'_{key}'] = CONFIG['state_dir'] / CONFIG[key]
-
-
 def parse_config_templates(config, macros, macroline):
     """Parse "template foo { ... }" rules and convert them to macros."""
     names = [item for item in config if item.startswith('template ')]
@@ -798,9 +790,6 @@ def parse_config_foomuuri(config):
             CONFIG[name] += value             # add
         else:
             CONFIG.set_from_str(name, value)  # replace
-
-    # Redo as config files can change state_dir
-    config_to_pathlib()
 
     # Convert chain priority offset to nft
     if CONFIG['priority_offset'] == 0:
@@ -2716,10 +2705,12 @@ def signal_childs():
 def apply_final():
     """Use final ruleset."""
     # Check config
+    good_file = state_file('good_file')
+    next_file = state_file('next_file')
     if CONFIG['_command'] == 'check':
         if CONFIG['_root_power']:  # "nft check" requires root
             ret = run_program_rc(CONFIG.nft_bin + ['--check', '--file',
-                                                   CONFIG['_next_file']])
+                                                   next_file])
         else:
             ret = 0
             warning('Not running as "root", skipping "nft check"')
@@ -2733,7 +2724,7 @@ def apply_final():
     run_program_rc(CONFIG.get(f'_pre_{CONFIG["_command"]}'))
 
     # Load "next"
-    ret = run_program_rc(CONFIG.nft_bin + ['--file', CONFIG['_next_file']],
+    ret = run_program_rc(CONFIG.nft_bin + ['--file', next_file],
                          print_output=False)
 
     # Check failure
@@ -2743,8 +2734,8 @@ def apply_final():
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
     if CONFIG['_command'] == 'start':
-        CONFIG['_good_file'].unlink(missing_ok=True)
-        CONFIG['_next_file'].rename(CONFIG['_good_file'])
+        good_file.unlink(missing_ok=True)
+        next_file.rename(good_file)
     signal_childs()
     run_program_rc(CONFIG.get(f'_post_{CONFIG["_command"]}'))
     verbose(f'{CONFIG["_command"]} success', 0)
@@ -2783,10 +2774,10 @@ def command_start():
     command_iplist_refresh(config, iplist)
 
     # Save known zones to file
-    save_file(CONFIG['_zone_file'], zones.keys())
+    save_file(state_file('zone_file'), zones.keys())
 
     # Save and apply generated ruleset
-    save_final(CONFIG['_next_file'])
+    save_final(state_file('next_file'))
     return apply_final()
 
 
@@ -2796,7 +2787,7 @@ def command_stop():
     parse_config_hook(config)
     out('table inet foomuuri')
     out('delete table inet foomuuri')
-    save_final(CONFIG['_next_file'])
+    save_final(state_file('next_file'))
     return apply_final()
 
 
@@ -3718,9 +3709,9 @@ def read_old_iplist_format(cache):
     add element inet foomuuri dynamic_4 { 10.0.0.4 timeout
       798169s } # 2024-12-11T17:16:28
     """
-    for file_key in ('_resolve_file', '_iplist_file', '_iplist_manual_file'):
+    for file_key in ('resolve_file', 'iplist_file', 'iplist_manual_file'):
         try:
-            manual = CONFIG[file_key].read_text('utf-8')
+            manual = state_file(file_key).read_text('utf-8')
         except OSError:
             continue  # Silently ignore all errors
 
@@ -3748,13 +3739,13 @@ def read_old_iplist_format(cache):
 def read_iplist_cache(iplist):
     """Read current iplist values from cache."""
     cache = {}
+    filename = state_file('iplist_cache_file')
     try:
-        cache = json.loads(CONFIG['_iplist_cache_file'].read_text('utf-8'))
+        cache = json.loads(filename.read_text('utf-8'))
     except json.decoder.JSONDecodeError as error:
-        warning(f'File {CONFIG["_iplist_cache_file"]}: Broken JSON '
-                f'format: {error}')
+        warning(f'File {filename}: Broken JSON format: {error}')
     except PermissionError as error:
-        fail(f'File {CONFIG["_iplist_cache_file"]}: Can\'t read: {error}')
+        fail(f'File {filename}: Can\'t read: {error}')
     except FileNotFoundError:
         read_old_iplist_format(cache)
 
@@ -3802,7 +3793,7 @@ def write_iplist_cache(cache):
         if key.startswith(('@', 'manual.@')):
             del cache[key]['refresh']
 
-    save_file(CONFIG['_iplist_cache_file'], cache)
+    save_file(state_file('iplist_cache_file'), cache)
 
 
 def iplist_parse_config(config):
@@ -4250,13 +4241,13 @@ def command_try_reload():
     # Revert to old ruleset and return errorcode 2
     warning('Revert to old config')
 
-    save_file(CONFIG['_good_file'], [
+    save_file(state_file('good_file'), [
         'table inet foomuuri',
         'delete table inet foomuuri',
         '',
         old_rules])
     return run_program_rc(CONFIG.nft_bin +
-                          ['--file', CONFIG['_good_file']]) + 2
+                          ['--file', state_file('good_file')]) + 2
 
 
 def seconds_to_human(seconds):
@@ -4716,7 +4707,7 @@ def monitor_write_statistics(targets, groups):
             'history': cfg.get('history', []),
             'time': cfg['time'],  # fping time
         }
-    save_file(CONFIG['_monitor_statistics_file'], stats)
+    save_file(state_file('monitor_statistics_file'), stats)
 
 
 def command_monitor():
@@ -4877,7 +4868,6 @@ def parse_command_line():
             CONFIG['_command'] = arg
         else:
             CONFIG['_parameters'].append(arg)
-    config_to_pathlib()  # Needed to read config files and for --set=x_dir=y
 
 
 def run_command():
