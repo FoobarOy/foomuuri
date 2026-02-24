@@ -273,9 +273,7 @@ class Config(TypedConfig):
     _pre_stop: list = dataclasses.field(init=False)
     _priority_offset: str = dataclasses.field(init=False)
     _resolve_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _root_power: bool = dataclasses.field(
-        init=False
-    )  # Running as user "root"?
+    _root_power: bool = dataclasses.field(init=False)  # Running as "root"?
     _zone_file: pathlib.PosixPath = dataclasses.field(init=False)
 
     # Url loader
@@ -804,10 +802,10 @@ def parse_config_foomuuri(config):
         else:
             CONFIG.set_from_str(name, value)  # replace
 
-    config_to_pathlib()  # Redo as config files can change these
+    # Redo as config files can change state_dir
+    config_to_pathlib()
 
-    # Convert chain priority offset to nft. It is already converted on D-Bus
-    # handler reload.
+    # Convert chain priority offset to nft
     if CONFIG['priority_offset'] == 0:
         CONFIG['_priority_offset'] = ''
     elif CONFIG['priority_offset'] > 0:
