@@ -4855,15 +4855,15 @@ def parse_command_line():
             option = arg[2:]
             CONFIG[option] += 1
             CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
+        elif arg == '--quiet':
+            option = 'verbose'
+            CONFIG[option] -= 1
+            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
         elif arg in ('--fork', '--syslog'):
             CONFIG[arg[2:]] = 1
             CONFIG_OVERRIDE[arg[2:]] = 1
         elif arg in ('--force'):
             CONFIG['_' + arg[2:]] += 1
-        elif arg == '--quiet':
-            option = 'verbose'
-            CONFIG[option] -= 1
-            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
         elif arg == '--soft':
             CONFIG['_force'] -= 1
         elif arg.startswith('--set='):
