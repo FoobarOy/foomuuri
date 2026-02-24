@@ -10,11 +10,12 @@ class TestValidators(unittest.TestCase):
     """Test assert helpers."""
     def test_assert_str_word(self):
         """Test invalid and valid outcomes."""
-        self.assertFalse(Validators.str_identifier(''))
-        self.assertFalse(Validators.str_identifier('word word'))
-        self.assertFalse(Validators.str_identifier('3word'))
-        self.assertFalse(Validators.str_identifier('w-ord'))
-        self.assertTrue(Validators.str_identifier('wo_123_rd'))
+        self.assertFalse(Validators.str_zone_name(''))
+        self.assertFalse(Validators.str_zone_name('word word'))
+        self.assertFalse(Validators.str_zone_name('3word'))
+        self.assertFalse(Validators.str_zone_name('w#ord'))
+        self.assertTrue(Validators.str_zone_name('wo_123_rd'))
+        self.assertTrue(Validators.str_zone_name('_./'))
 
         self.assertFalse(Validators.str_words(''))
         self.assertTrue(Validators.str_words('word'))
