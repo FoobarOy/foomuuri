@@ -67,11 +67,11 @@ VERSION = '0.31'
 class Validators:
     """Validators collection."""
     @staticmethod
-    def str_identifier(value: str):
-        """Assert value is an ascii identifier."""
+    def str_zone_name(value: str):
+        """Assert value is a valid zone name."""
         return all([
             value.isascii(),
-            value.isidentifier(),
+            re.match(r'^[a-zA-Z_][-a-zA-Z_0-9./]*$', value)
         ])
 
     @staticmethod
@@ -169,10 +169,10 @@ class Config(TypedConfig):
     log_prefix: str = '$(szone)-$(dzone) $(statement)'
     log_level: str = 'level info flags skuid'
     localhost_zone: str = dataclasses.field(
-        default='localhost', metadata={'validate': Validators.str_identifier}
+        default='localhost', metadata={'validate': Validators.str_zone_name}
     )
     dbus_zone: str = dataclasses.field(
-        default='public', metadata={'validate': Validators.str_identifier}
+        default='public', metadata={'validate': Validators.str_zone_name}
     )
     rpfilter: str = dataclasses.field(
         default='yes', metadata={'validate': Validators.str_words}
