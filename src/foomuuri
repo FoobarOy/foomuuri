@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-instance-attributes,too-many-lines
 
 """Foomuuri - Multizone bidirectional nftables firewall.
 
@@ -11,6 +11,7 @@ License: GPL-2.0-or-later
 import collections
 import concurrent.futures
 import contextlib
+import dataclasses
 import datetime
 import io
 import ipaddress
@@ -62,57 +63,210 @@ except ImportError:
 
 VERSION = '0.31'
 
-CONFIG = {
+
+class Validators:
+    """Validators collection."""
+    @staticmethod
+    def str_identifier(value: str):
+        """Assert value is an ascii identifier."""
+        return all([
+            value.isascii(),
+            value.isidentifier(),
+        ])
+
+    @staticmethod
+    def str_words(value: str):
+        """Assert value is one or more words."""
+        return len(value.split()) >= 1
+
+    @staticmethod
+    def int_positive_or_zero(value: int):
+        """Assert value is not negative."""
+        return value >= 0
+
+    @staticmethod
+    def int_positive(value: int):
+        """Assert value is positive."""
+        return value > 0
+
+    @staticmethod
+    def str_yes_no(value: str):
+        """Assert value is either 'yes' or 'no'."""
+        return value.lower() in ('yes', 'no')
+
+
+@dataclasses.dataclass
+class TypedConfig:
+    """Storage class with simple attribute type enforcement and validation."""
+    def __setattr__(self, name, value):
+        """Set attribute value."""
+        if (field := self._get_field(name)) is None:
+            raise AttributeError(f'{name}: unknown attribute')
+        if not isinstance(value, field.type):
+            raise TypeError(
+                f'{name}: expected value type {field.type}, got {type(value)}'
+            )
+        if validator := field.metadata.get('validate'):
+            if not validator(value):  # pylint: disable=not-callable
+                raise ValueError(
+                    f"{name}: value failed validation"
+                )
+        super().__setattr__(name, value)
+
+    def get(self, name, default=None):
+        """Get attribute value."""
+        return getattr(self, name, default)
+
+    def __getitem__(self, name):
+        """Get attribute value via index operator."""
+        return getattr(self, name)
+
+    def __setitem__(self, name, value):
+        """Set attribute value."""
+        self.__setattr__(name, value)
+
+    def __iter__(self):
+        """Return attributes list terator."""
+        # pylint: disable=no-member
+        return iter(list(self.__dataclass_fields__))
+
+    def set_from_str(self, name, value: str):
+        """Set attribute value from str with type conversion."""
+        if name not in self:
+            raise AttributeError(f'{name}: unknown attribute')
+        if not isinstance(value, str):
+            raise TypeError(
+                f'{name}: expected value type {str}, got {type(value)}'
+            )
+        target_type = self._get_field(name).type
+        if target_type is int:
+            value = int(value)
+        elif target_type is pathlib.PosixPath:
+            value = pathlib.PosixPath(value)
+        elif not isinstance(value, target_type):
+            raise TypeError(
+                f"{name}: value conversion to {target_type} not implemented"
+            )
+        setattr(self, name, value)
+
+    def _get_field(self, name, default=None):
+        """Get dataclass field by attribute name."""
+        # pylint: disable=no-member
+        return self.__dataclass_fields__.get(name, default)
+
+
+@dataclasses.dataclass
+class Config(TypedConfig):
+    """Config class with config, cli and internal variables."""
     # Parsed foomuuri{} from config files
-    'log_rate': '1/second burst 3',
-    'log_input': 'yes',
-    'log_output': 'yes',
-    'log_forward': 'yes',
-    'log_rpfilter': 'yes',
-    'log_invalid': 'no',
-    'log_smurfs': 'no',
-    'log_prefix': '$(szone)-$(dzone) $(statement)',
-    'log_level': 'level info flags skuid',
-    'localhost_zone': 'localhost',
-    'dbus_zone': 'public',
-    'rpfilter': 'yes',
-    'counter': 'no',
-    'set_size': '65535',
-    'recursion_limit': '10000',
-    'priority_offset': '5',
-    'dbus_firewalld': 'no',
-    'nft_bin': 'nft',
-    'try-reload_timeout': '15',
+    log_rate: str = '1/second burst 3'
+    log_input: str = 'yes'
+    log_output: str = 'yes'
+    log_forward: str = 'yes'
+    log_rpfilter: str = 'yes'
+    log_invalid: str = 'no'
+    log_smurfs: str = 'no'
+    log_prefix: str = '$(szone)-$(dzone) $(statement)'
+    log_level: str = 'level info flags skuid'
+    localhost_zone: str = dataclasses.field(
+        default='localhost', metadata={'validate': Validators.str_identifier}
+    )
+    dbus_zone: str = dataclasses.field(
+        default='public', metadata={'validate': Validators.str_identifier}
+    )
+    rpfilter: str = dataclasses.field(
+        default='yes', metadata={'validate': Validators.str_words}
+    )
+    counter: str = dataclasses.field(
+        default='no', metadata={'validate': Validators.str_yes_no}
+    )
+    set_size: int = dataclasses.field(
+        default=65535, metadata={'validate': Validators.int_positive}
+    )
+    recursion_limit: int = dataclasses.field(
+        default=10000, metadata={'validate': Validators.int_positive}
+    )
+    priority_offset: int = 5
+    dbus_firewalld: str = dataclasses.field(
+        default='no', metadata={'validate': Validators.str_yes_no}
+    )
+    nft_bin: str = dataclasses.field(
+        default='nft',  metadata={'validate': Validators.str_words}
+    )
+    try_reload_timeout: int = dataclasses.field(
+        default=15,  metadata={'validate': Validators.int_positive}
+    )
 
     # Directories and files. Files are relative to state_dir.
     # These can be changed by foomuuri{} in config files.
-    'etc_dir': '/etc/foomuuri',
-    'share_dir': '/usr/share/foomuuri',
-    'state_dir': '/var/lib/foomuuri',
-    'run_dir': '/run/foomuuri',
-    'good_file': 'good.fw',
-    'next_file': 'next.fw',
-    'resolve_file': 'resolve.fw',  # old iplist/resolve
-    'iplist_file': 'iplist.fw',  # old iplist/resolve
-    'iplist_manual_file': 'iplist-manual.fw',  # old iplist/resolve
-    'iplist_cache_file': 'iplist-cache.json',
-    'zone_file': 'zone',
-    'monitor_statistics_file': 'monitor.statistics',
+    etc_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/etc/foomuuri')
+    )
+    share_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/usr/share/foomuuri')
+    )
+    state_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/var/lib/foomuuri')
+    )
+    run_dir: pathlib.PosixPath = dataclasses.field(
+        default_factory=lambda: pathlib.PosixPath('/run/foomuuri')
+    )
+    good_file: str = 'good.fw'
+    next_file: str = 'next.fw'
+    resolve_file: str = 'resolve.fw'  # old iplist/resolve
+    iplist_file: str = 'iplist.fw'  # old iplist/resolve
+    iplist_manual_file: str = 'iplist-manual.fw'  # old iplist/resolve
+    iplist_cache_file: str = 'iplist-cache.json'
+    zone_file: str = 'zone'
+    monitor_statistics_file: str = 'monitor.statistics'
+
+    # Parsed foomuuri{} from config files, or command line
+    fork: int = 0          # --fork
+    verbose: int = 0       # --verbose
+    syslog: int = 0        # --syslog
 
     # Parsed command line - used internally
-    '_command': '',     # Command to run: "start" etc
-    '_parameters': [],  # Parameters for command
-    '_verbose': 0,      # --verbose
-    '_force': 0,        # --force
-    '_fork': 0,         # --fork
-    '_syslog': 0,       # --syslog
+    _command: str = ''     # Command to run: "start" etc
+    _parameters: list = dataclasses.field(
+        default_factory=list
+    )  # Parameters for command
+    _force: int = 0        # --force
 
     # Other internally used values
-    '_root_power': True,         # Running as user "root"?
-    '_url_max_size': 33554432,   # Parsed in iplist{} from config files
-    '_url_chunk_size': 1048576,  # Constant
-    '_url_get_timeout': (6.1, 30),  # Constant, connect and read timeout
-}
+    # Added without default value to prevent uninitialized use
+    _good_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _iplist_cache_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _iplist_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _iplist_manual_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _iplist_merge: set = dataclasses.field(init=False)
+    _iplist_missing_ok: set = dataclasses.field(init=False)
+    _keep_going: int = dataclasses.field(init=False)
+    _monitor_statistics_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _next_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _nft_bin: list = dataclasses.field(init=False)
+    _post_start: list = dataclasses.field(init=False)
+    _post_stop: list = dataclasses.field(init=False)
+    _pre_start: list = dataclasses.field(init=False)
+    _pre_stop: list = dataclasses.field(init=False)
+    _priority_offset: str = dataclasses.field(init=False)
+    _resolve_file: pathlib.PosixPath = dataclasses.field(init=False)
+    _root_power: bool = dataclasses.field(
+        init=False
+    )  # Running as user "root"?
+    _zone_file: pathlib.PosixPath = dataclasses.field(init=False)
+
+    # Url loader
+    _url_max_size: int = dataclasses.field(
+        default=33_554_432, metadata={'validate': Validators.int_positive}
+    )  # Parsed in iplist{} from config files
+    _url_chunk_size: int = dataclasses.field(
+        default=1_048_576, metadata={'validate': Validators.int_positive}
+    )  # Constant
+    _url_get_timeout: tuple = (6.1, 30)   # Constant, connect and read timeout
+
+
+CONFIG = Config()
+CONFIG_OVERRIDE = {}
 
 OUT = []       # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
@@ -121,9 +275,9 @@ HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 def fail(error=None, fatal=True):
     """Exit with error message."""
-    if error and CONFIG['_verbose'] >= -1:  # Double-quiet will supress output
+    if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
@@ -131,17 +285,17 @@ def fail(error=None, fatal=True):
 
 def warning(text):
     """Print warning message."""
-    if CONFIG['_verbose'] >= 0:
+    if CONFIG['verbose'] >= 0:
         print(f'Warning: {text}', flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
-    if CONFIG['_verbose'] >= level:
+    if CONFIG['verbose'] >= level:
         print(line, flush=True)
-        if CONFIG['_syslog']:
+        if CONFIG['syslog']:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
@@ -166,7 +320,7 @@ def run_program_rc(args, *, env=None, stdin=None, print_output=True,
     output = proc.stdout.rstrip()
     if (
             output and
-            (proc.returncode or print_output or CONFIG['_verbose'] > 0) and
+            (proc.returncode or print_output or CONFIG['verbose'] > 0) and
             not quiet
     ):
         verbose(output, 0)
@@ -239,9 +393,9 @@ def nft_json(cmd):
 def daemonize():
     """Fork as a background daemon. Silently ignore errors."""
     # Enabled in config?
-    if not CONFIG['_fork']:
+    if not CONFIG['fork']:
         return
-    CONFIG['_fork'] = 0  # Fork only once!
+    CONFIG['fork'] = 0  # Fork only once!
 
     # Fork #1
     try:
@@ -300,10 +454,10 @@ def read_config():
     # pylint: disable=too-many-statements
 
     # Find all config files
-    share_config = find_config_files(CONFIG['_share_dir'], '*.conf')
-    etc_config = find_config_files(CONFIG['_etc_dir'], '*.conf')
+    share_config = find_config_files(CONFIG['share_dir'], '*.conf')
+    etc_config = find_config_files(CONFIG['etc_dir'], '*.conf')
     if not etc_config:
-        fail(f'No configuration files "{CONFIG["_etc_dir"]}/*.conf" found\n'
+        fail(f'No configuration files "{CONFIG["etc_dir"]}/*.conf" found\n'
              '\n'
              'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
              'for example\n'
@@ -412,20 +566,12 @@ def read_config():
 def config_to_pathlib():
     """Convert str paths in CONFIG{} to pathlib.Paths."""
     # "path" will be converted to "_path". Find possible keys to convert.
-    keys = [key for key in CONFIG if not key.startswith('_')]
-
-    # "*_dir" are needed for reading config files
-    for key in keys:
-        if key.endswith('_dir'):
-            CONFIG[f'_{key}'] = pathlib.Path(CONFIG[key])
-
-    # "*_file" are needed to save current state
-    for key in keys:
+    for key in [key for key in CONFIG if not key.startswith('_')]:
+        # "*_file" are needed to save current state
         if key.endswith('_file'):
-            CONFIG[f'_{key}'] = CONFIG['_state_dir'] / CONFIG[key]
+            CONFIG[f'_{key}'] = CONFIG['state_dir'] / CONFIG[key]
 
-    # "*_bin" are binaries with optional arguments
-    for key in keys:
+        # "*_bin" are binaries with optional arguments
         if key.endswith('_bin'):
             CONFIG[f'_{key}'] = shlex.split(CONFIG[key])
 
@@ -583,7 +729,7 @@ def expand_macros(config):
 
             # Check for expansion loop
             recursion_limit.update([fileline])
-            if recursion_limit[fileline] > int(CONFIG['recursion_limit']):
+            if recursion_limit[fileline] > CONFIG['recursion_limit']:
                 fail(f'{fileline}Possible macro or template loop '
                      f'in "{section}": {" ".join(line[:10])} ...')
         config[section] = new_lines
@@ -609,33 +755,42 @@ def remove_quotes(config):
 
 def parse_config_foomuuri(config):
     """Parse foomuuri{} from config to CONFIG{}."""
+    # pylint: disable=too-many-branches
     for fileline, line in config.pop('foomuuri', []):
         name = line[0]
         value = ' '.join(line[1:])
+        if name == 'try-reload_timeout':    # backward compatibility
+            name = "try_reload_timeout"
         if name not in CONFIG or name.startswith('_'):
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
-        if value.startswith('+ '):  # append
-            CONFIG[name] = f'{CONFIG[name]} {value[2:]}'
+        try:
+            if value.startswith('+ '):  # append
+                CONFIG.set_from_str(name, f'{CONFIG[name]} {value[2:]}')
+            else:
+                CONFIG.set_from_str(name, value)  # overwrite
+        except ValueError:
+            fail(
+                f'{fileline}Invalid foomuuri{{}} option value:'
+                f' {" ".join(line)}'
+            )
+
+    # Overrides from CLI arguments
+    for name, value in CONFIG_OVERRIDE.items():
+        if name == 'verbose':
+            CONFIG[name] += value             # add
         else:
-            CONFIG[name] = value  # overwrite
+            CONFIG.set_from_str(name, value)  # replace
+
     config_to_pathlib()  # Redo as config files can change these
 
     # Convert chain priority offset to nft. It is already converted on D-Bus
     # handler reload.
-    if not CONFIG['priority_offset']:
-        priority = 0
+    if CONFIG['priority_offset'] == 0:
+        CONFIG['_priority_offset'] = ''
+    elif CONFIG['priority_offset'] > 0:
+        CONFIG['_priority_offset'] = f' + {CONFIG["priority_offset"]}'
     else:
-        try:
-            priority = int(CONFIG['priority_offset'].replace(' ', ''))
-        except ValueError:
-            fail(f'Invalid foomuuri{{}} priority_offset: '
-                 f'{CONFIG["priority_offset"]}')
-    if priority == 0:
-        CONFIG['priority_offset'] = ''
-    elif priority > 0:
-        CONFIG['priority_offset'] = f' + {priority}'
-    else:
-        CONFIG['priority_offset'] = f' - {-priority}'
+        CONFIG['_priority_offset'] = f' - {-CONFIG["priority_offset"]}'
 
     # Add "packets" to log rates
     for key in list(CONFIG):
@@ -679,7 +834,7 @@ def parse_config_special_chains(config):
     """Parse snat{}, dnat{}, prerouting{} etc. rules from config."""
     chain_rules = {
         # output+mangle is needed for mark restore in output_special_chains()
-        ('output', 'route', 'mangle' + CONFIG['priority_offset']): [],
+        ('output', 'route', 'mangle' + CONFIG['_priority_offset']): [],
     }
     for prefix, def_type, def_priority in (
             ('snat', 'nat', 'srcnat'),
@@ -706,7 +861,7 @@ def parse_config_special_chains(config):
                 ftype = def_type
                 priority = None
                 if def_priority:
-                    priority = def_priority + CONFIG['priority_offset']
+                    priority = def_priority + CONFIG['_priority_offset']
             else:
                 ftype = items[1]
                 priority = items[2]
@@ -752,7 +907,7 @@ def parse_config_hook(config):
                 'pre_stop', 'post_stop',
         ):
             fail(f'{fileline}Unknown hook: {" ".join(line)}')
-        CONFIG[line[0]] = line[1:]
+        CONFIG['_' + line[0]] = line[1:]
 
 
 def minimal_config():
@@ -2175,7 +2330,7 @@ def output_special_chains(chain_rules):
             }.get(section, section)
             hook_nft = f'type {ftype} hook {hook_chain} priority {priority}'
             chain_name = f'{ftype}_{hook_chain}_{priority}'
-            chain_name = chain_name.replace(CONFIG['priority_offset'], '')
+            chain_name = chain_name.replace(CONFIG['_priority_offset'], '')
             chain_name = chain_name.replace('+', '')
             chain_name = chain_name.replace(' ', '_')
             chain_name = chain_name.replace('__', '_')
@@ -2221,8 +2376,8 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    for filename in (find_config_files(CONFIG['_share_dir'], '*.nft') +
-                     find_config_files(CONFIG['_etc_dir'], '*.nft')):
+    for filename in (find_config_files(CONFIG['share_dir'], '*.nft') +
+                     find_config_files(CONFIG['etc_dir'], '*.nft')):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
@@ -2245,14 +2400,14 @@ def output_header(chain_rules):
 
     # input/output/forward jump chains
     out('chain input {')
-    out(f'type filter hook input priority filter{CONFIG["priority_offset"]}')
+    out(f'type filter hook input priority filter{CONFIG["_priority_offset"]}')
     out('iifname vmap @input_zones')
     output_static_chain_logging('input', 'drop')
     out('drop')
     out('}')
 
     out('chain output {')
-    out(f'type filter hook output priority filter{CONFIG["priority_offset"]}')
+    out(f'type filter hook output priority filter{CONFIG["_priority_offset"]}')
     out('oifname vmap @output_zones')
     # IGMP membership report and IPv6 equivalent must be allowed here too as
     # D-Bus interface change event might not be processed yet.
@@ -2263,7 +2418,9 @@ def output_header(chain_rules):
     out('}')
 
     out('chain forward {')
-    out(f'type filter hook forward priority filter{CONFIG["priority_offset"]}')
+    out(
+        f'type filter hook forward priority filter{CONFIG["_priority_offset"]}'
+    )
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
@@ -2446,7 +2603,7 @@ def output_helpers():
     # Output prerouting
     out('chain helper {')
     out(f'type filter hook prerouting priority filter'
-        f'{CONFIG["priority_offset"]}')
+        f'{CONFIG["_priority_offset"]}')
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
@@ -2460,7 +2617,7 @@ def output_rpfilter():
         return
     out('chain rpfilter {')
     out(f'type filter hook prerouting priority filter'
-        f'{CONFIG["priority_offset"]}')
+        f'{CONFIG["_priority_offset"]}')
     interfaces = ''
     if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
         interfaces = (f'iifname '
@@ -2531,7 +2688,7 @@ def signal_childs():
     """Signal foomuuri-dbus and foomuuri-monitor to reload."""
     for child in ('dbus', 'monitor'):
         # Read pid
-        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
         except PermissionError as error:
@@ -2561,7 +2718,7 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program_rc(CONFIG.get(f'pre_{CONFIG["_command"]}'))
+    run_program_rc(CONFIG.get(f'_pre_{CONFIG["_command"]}'))
 
     # Load "next"
     ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_next_file']],
@@ -2577,7 +2734,7 @@ def apply_final():
         CONFIG['_good_file'].unlink(missing_ok=True)
         CONFIG['_next_file'].rename(CONFIG['_good_file'])
     signal_childs()
-    run_program_rc(CONFIG.get(f'post_{CONFIG["_command"]}'))
+    run_program_rc(CONFIG.get(f'_post_{CONFIG["_command"]}'))
     verbose(f'{CONFIG["_command"]} success', 0)
     return 0
 
@@ -2635,7 +2792,7 @@ def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
     return run_program_rc(CONFIG['_nft_bin'] + [
-        '--file', CONFIG['_share_dir'] / 'block.fw'])
+        '--file', CONFIG['share_dir'] / 'block.fw'])
 
 
 def parse_active_interface_zone():
@@ -2667,7 +2824,7 @@ def command_status():
 
     # D-Bus, Monitor
     for child in ('dbus', 'monitor'):
-        filename = CONFIG['_run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
             os.kill(pid, 0)
@@ -3032,8 +3189,8 @@ if HAVE_DBUS:
 
     def command_dbus():
         """Start D-Bus daemon."""
-        CONFIG['keep_going'] = True
-        while CONFIG['keep_going']:
+        CONFIG['_keep_going'] = True
+        while CONFIG['_keep_going']:
             # Read minimal config
             config = minimal_config()
             zones = parse_config_zones(config)
@@ -3072,7 +3229,7 @@ if HAVE_DBUS:
 
             def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
-                    CONFIG['keep_going'] = False
+                    CONFIG['_keep_going'] = False
                     if HAVE_NOTIFY:
                         notify('STOPPING=1')
                 elif HAVE_NOTIFY:
@@ -3081,7 +3238,7 @@ if HAVE_DBUS:
 
             signal.signal(signal.SIGHUP, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
-            save_file(CONFIG['_run_dir'] / 'foomuuri-dbus.pid',
+            save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid',
                       [str(os.getpid())])
 
             # Start processing messages
@@ -3729,7 +3886,7 @@ def iplist_parse_config(config):
         iplist[name] = this_value
         timeouts[name] = this_timeouts
         iplist_verify_filters(name, this_value, fileline)
-    if CONFIG['_verbose'] >= 2:
+    if CONFIG['verbose'] >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
     CONFIG['_iplist_missing_ok'] = set()
@@ -3764,7 +3921,7 @@ def iplist_collect_resolve_list(iplist, timeouts):
                 else:
                     hostnames[value] = (timeouts[name]['dns_timeout'],
                                         timeouts[name]['dns_refresh'])
-    if CONFIG['_verbose'] >= 2:
+    if CONFIG['verbose'] >= 2:
         verbose(f'URLs:      {urls}')
         verbose(f'Hostnames: {hostnames}')
     return urls, hostnames
@@ -4087,10 +4244,7 @@ def command_try_reload():
         return error
 
     # Verify from user if ruleset is ok
-    try:
-        timeout = int(CONFIG['try-reload_timeout'])
-    except ValueError:
-        timeout = 15
+    timeout = CONFIG['try_reload_timeout']
     print(f'You have {timeout} seconds to accept the changes.')
     answer = input_timeout('Can you establish NEW connections (yes/no)? ',
                            timeout)
@@ -4571,8 +4725,8 @@ def monitor_write_statistics(targets, groups):
 
 def command_monitor():
     """Monitor targets and run command when their state changes up or down."""
-    CONFIG['keep_going'] = 1
-    while CONFIG['keep_going']:
+    CONFIG['_keep_going'] = 1
+    while CONFIG['_keep_going']:
         # Read minimal config
         config = minimal_config()
         targets = parse_config_targets(config)
@@ -4589,18 +4743,18 @@ def command_monitor():
         # Define reload/stop signal handler
         def signal_handler(sig, _dummy_frame):
             if sig == signal.SIGINT:
-                CONFIG['keep_going'] = 0
+                CONFIG['_keep_going'] = 0
                 if HAVE_NOTIFY:
                     notify('STOPPING=1')
             else:
-                CONFIG['keep_going'] = 2
+                CONFIG['_keep_going'] = 2
                 if HAVE_NOTIFY:
                     notify('RELOADING=1')
 
-        CONFIG['keep_going'] = 1
+        CONFIG['_keep_going'] = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['_run_dir'] / 'foomuuri-monitor.pid',
+        save_file(CONFIG['run_dir'] / 'foomuuri-monitor.pid',
                   [str(os.getpid())])
 
         # Start monitoring
@@ -4610,7 +4764,7 @@ def command_monitor():
         stat_interval = min(cfg['statistics_interval']
                             for cfg in targets.values())
         next_stat = time.time() + stat_interval / 5
-        while CONFIG['keep_going'] == 1:
+        while CONFIG['_keep_going'] == 1:
             monitor_read_targets(targets, groups)
 
             # Periodic statistics file update
@@ -4690,25 +4844,39 @@ def command_help(error=True):
 
 def parse_command_line():
     """Parse command line to CONFIG[_command] and CONFIG[_parameters]."""
+    # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
         if arg == '--help':
             CONFIG['_command'] = 'help'
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--verbose', '--force', '--fork', '--syslog'):
+        elif arg in ('--verbose'):
+            option = arg[2:]
+            CONFIG[option] += 1
+            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
+        elif arg in ('--fork', '--syslog'):
+            CONFIG[arg[2:]] = 1
+            CONFIG_OVERRIDE[arg[2:]] = 1
+        elif arg in ('--force'):
             CONFIG['_' + arg[2:]] += 1
         elif arg == '--quiet':
-            CONFIG['_verbose'] -= 1
+            option = 'verbose'
+            CONFIG[option] -= 1
+            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
         elif arg == '--soft':
             CONFIG['_force'] -= 1
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
-            _dummy, option, value = arg.split('=', 2)
+            _, option, value = arg.split('=', 2)
             if option not in CONFIG or option.startswith('_'):
                 fail(f'Unknown foomuuri{{}} option: {arg}')
-            CONFIG[option] = value
+            try:
+                CONFIG.set_from_str(option, value)
+                CONFIG_OVERRIDE[option] = value
+            except ValueError:
+                fail(f'Invalid foomuuri{{}} option {option} value: {value}')
         elif not CONFIG['_command']:
             CONFIG['_command'] = arg
         else:
@@ -4728,7 +4896,7 @@ def run_command():
         return command_help(error=False)
 
     # Initialize syslogging
-    if CONFIG['_syslog']:
+    if CONFIG['syslog']:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
