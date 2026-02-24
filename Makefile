@@ -21,6 +21,7 @@ devel:
 # Delete created files
 
 clean distclean:
+	rm -rf src/__pycache__ src/tests/__pycache__
 	rm -f foomuuri-*.tar.gz
 	$(MAKE) -C test $@
 
