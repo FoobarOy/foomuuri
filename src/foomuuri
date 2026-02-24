@@ -75,6 +75,14 @@ class Validators:
         ])
 
     @staticmethod
+    def str_iplist_name(value: str):
+        """Assert value is a valid iplist name, including @."""
+        return all([
+            value.isascii(),
+            re.fullmatch(r'@[a-zA-Z_][-a-zA-Z_0-9./]*', value)
+        ])
+
+    @staticmethod
     def str_words(value: str):
         """Assert value is one or more words."""
         return len(value.split()) >= 1
@@ -801,17 +809,12 @@ def parse_config_foomuuri(config):
             CONFIG[key] += ' packets'
 
 
-def check_name(name, fileline, prefix=''):
-    """Check that name starts with letter, not number."""
-    if not re.fullmatch(r'[a-zA-Z_]', name[:1]):
-        fail(f'{fileline}Invalid name: {prefix}{name}')
-
-
 def parse_config_zones(config):
     """Parse zone{} from config."""
     zones = {}
     for fileline, line in config.pop('zone', []):
-        check_name(line[0], fileline)
+        if not Validators.str_zone_name(line[0]):
+            fail(f'{fileline}Invalid zone name: {" ".join(line)}')
         if line[0] in zones:
             fail(f'{fileline}Zone is already defined: {line[0]}')
         zones[line[0]] = {'interface': line[1:]}
@@ -890,9 +893,8 @@ def parse_iplist_names(config):
                 continue
             if line[0] in ('timeout', 'refresh'):
                 continue
-            if not line[0].startswith('@') or line[0] == '@':
+            if not Validators.str_iplist_name(line[0]):
                 fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
-            check_name(line[0][1:], fileline, '@')
             ret.add(line[0])
             if '-merge' not in line[1:]:
                 CONFIG['_iplist_merge'].add(line[0])
@@ -3857,9 +3859,8 @@ def iplist_parse_config(config):
             continue
 
         # Name must be set name, check it
-        if not name.startswith('@') or name == '@':
+        if not Validators.str_iplist_name(name):
             fail(f'{fileline}Invalid iplist name: {" ".join(line)}')
-        check_name(name[1:], fileline, '@')
 
         # Parse line items to value[]
         if len(line) == 1 or line[1:] == ['-']:  # Empty set

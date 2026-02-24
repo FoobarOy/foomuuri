@@ -18,6 +18,15 @@ class TestValidators(unittest.TestCase):
         self.assertTrue(Validators.str_zone_name('wo_123_rd'))
         self.assertTrue(Validators.str_zone_name('w./_'))
 
+        self.assertFalse(Validators.str_iplist_name(''))
+        self.assertFalse(Validators.str_iplist_name('@'))
+        self.assertFalse(Validators.str_iplist_name('@w w'))
+        self.assertFalse(Validators.str_iplist_name('@kääk'))
+        self.assertFalse(Validators.str_iplist_name('@3word'))
+        self.assertTrue(Validators.str_iplist_name('@word'))
+        self.assertTrue(Validators.str_iplist_name('@_'))
+        self.assertTrue(Validators.str_iplist_name('@_./-'))
+
         self.assertFalse(Validators.str_words(''))
         self.assertTrue(Validators.str_words('word'))
         self.assertTrue(Validators.str_words('word word'))
