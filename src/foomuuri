@@ -164,6 +164,8 @@ class TypedConfig:
         target_type = self._get_field(name).type
         if target_type is int:
             value = int(value)
+        elif target_type is list and name.endswith('_bin'):
+            value = shlex.split(value)
         elif target_type is pathlib.PosixPath:
             value = pathlib.PosixPath(value)
         elif not isinstance(value, target_type):
@@ -213,8 +215,8 @@ class Config(TypedConfig):
     dbus_firewalld: str = dataclasses.field(
         default='no', metadata={'validate': Validators.str_yes_no}
     )
-    nft_bin: str = dataclasses.field(
-        default='nft',  metadata={'validate': Validators.str_words}
+    nft_bin: list = dataclasses.field(
+        default_factory=lambda: ['nft']
     )
     try_reload_timeout: int = dataclasses.field(
         default=15,  metadata={'validate': Validators.int_positive}
@@ -266,7 +268,6 @@ class Config(TypedConfig):
     _keep_going: int = dataclasses.field(init=False)
     _monitor_statistics_file: pathlib.PosixPath = dataclasses.field(init=False)
     _next_file: pathlib.PosixPath = dataclasses.field(init=False)
-    _nft_bin: list = dataclasses.field(init=False)
     _post_start: list = dataclasses.field(init=False)
     _post_stop: list = dataclasses.field(init=False)
     _pre_start: list = dataclasses.field(init=False)
@@ -387,14 +388,14 @@ def run_program_shell(args, fileline):
 
 def nft_command(cmd, **kwargs):
     """Run "nft cmd", wrapper to run_program_rc()."""
-    return run_program_rc(CONFIG['_nft_bin'] + [cmd], **kwargs)
+    return run_program_rc(CONFIG.nft_bin + [cmd], **kwargs)
 
 
 def nft_json(cmd):
     """Run "nft --json cmd", return its output as json, ignore errors."""
     if not cmd:
         return {}
-    args = CONFIG['_nft_bin'] + ['--json', cmd]
+    args = CONFIG.nft_bin + ['--json', cmd]
     verbose(' '.join(map(str, args)), 2)
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
@@ -591,10 +592,6 @@ def config_to_pathlib():
         # "*_file" are needed to save current state
         if key.endswith('_file'):
             CONFIG[f'_{key}'] = CONFIG['state_dir'] / CONFIG[key]
-
-        # "*_bin" are binaries with optional arguments
-        if key.endswith('_bin'):
-            CONFIG[f'_{key}'] = shlex.split(CONFIG[key])
 
 
 def parse_config_templates(config, macros, macroline):
@@ -2721,8 +2718,8 @@ def apply_final():
     # Check config
     if CONFIG['_command'] == 'check':
         if CONFIG['_root_power']:  # "nft check" requires root
-            ret = run_program_rc(CONFIG['_nft_bin'] + ['--check', '--file',
-                                                       CONFIG['_next_file']])
+            ret = run_program_rc(CONFIG.nft_bin + ['--check', '--file',
+                                                   CONFIG['_next_file']])
         else:
             ret = 0
             warning('Not running as "root", skipping "nft check"')
@@ -2736,7 +2733,7 @@ def apply_final():
     run_program_rc(CONFIG.get(f'_pre_{CONFIG["_command"]}'))
 
     # Load "next"
-    ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', CONFIG['_next_file']],
+    ret = run_program_rc(CONFIG.nft_bin + ['--file', CONFIG['_next_file']],
                          print_output=False)
 
     # Check failure
@@ -2806,7 +2803,7 @@ def command_stop():
 def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
-    return run_program_rc(CONFIG['_nft_bin'] + [
+    return run_program_rc(CONFIG.nft_bin + [
         '--file', CONFIG['share_dir'] / 'block.fw'])
 
 
@@ -2891,7 +2888,7 @@ if HAVE_DBUS:
         def apply_out():
             """Apply current OUT commands."""
             lines = '\n'.join(save_final(None))
-            return run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'],
+            return run_program_rc(CONFIG.nft_bin + ['--file', '-'],
                                   stdin=lines)
 
         def verify_polkit_privilege(self, sender, privilege):
@@ -4048,7 +4045,7 @@ def iplist_apply_values(cache):
 
     write_iplist_cache(cache)
     lines = '\n'.join(save_final(None))
-    ret = run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'], stdin=lines)
+    ret = run_program_rc(CONFIG.nft_bin + ['--file', '-'], stdin=lines)
     if ret:
         fail(f'Failed to update iplists, nftables error code {ret}', False)
     return ret
@@ -4077,7 +4074,7 @@ def command_iplist_refresh(config=None, currently_active=None):
         # Special case for testing (non-root) or faked nft_bin
         if not currently_active and (
                 not CONFIG['_root_power'] or
-                CONFIG['nft_bin'] == 'true'
+                CONFIG.nft_bin == ['true']
         ):
             currently_active = set(iplist)
 
@@ -4232,7 +4229,7 @@ def command_try_reload():
     """
     # Get copy of currently active ruleset
     minimal_config()
-    old_rules = run_program_pipe(CONFIG['_nft_bin'] +
+    old_rules = run_program_pipe(CONFIG.nft_bin +
                                  ['list', 'table', 'inet', 'foomuuri'], None)
     if not old_rules or not old_rules.startswith('table inet foomuuri {'):
         fail('Foomuuri is not running, use "foomuuri start" instead')
@@ -4258,7 +4255,7 @@ def command_try_reload():
         'delete table inet foomuuri',
         '',
         old_rules])
-    return run_program_rc(CONFIG['_nft_bin'] +
+    return run_program_rc(CONFIG.nft_bin +
                           ['--file', CONFIG['_good_file']]) + 2
 
 
