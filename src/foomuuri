@@ -83,6 +83,21 @@ class Validators:
         ])
 
     @staticmethod
+    def str_interface_name(value: str):
+        """Assert value is a valid network interface name.
+
+        Linux accepts also \\ and " characters. Reject them here as they
+        would break JSONs without quoting.
+        """
+        if any(letter <= ' ' for letter in value):
+            return False  # Reject whitespace/control chars as Linux does
+        if '/' in value:
+            return False  # Linux rejects this
+        if '\\' in value or '"' in value:
+            return False  # Linux accepts these
+        return 1 <= len(value) <= 15  # IFNAMSIZ=16 including NUL
+
+    @staticmethod
     def str_words(value: str):
         """Assert value is one or more words."""
         return len(value.split()) >= 1
@@ -2881,21 +2896,6 @@ if HAVE_DBUS:
             return run_program_rc(CONFIG['_nft_bin'] + ['--file', '-'],
                                   stdin=lines)
 
-        @staticmethod
-        def verify_interface_name(interface):
-            """Check that interface name is valid.
-
-            Linux accepts also \\ and " characters. Reject them here as they
-            would break JSONs without quoting.
-            """
-            if any(letter <= ' ' for letter in interface):
-                return False  # Reject whitespace/control chars as Linux does
-            if '/' in interface:
-                return False  # Linux rejects this
-            if '\\' in interface or '"' in interface:
-                return False  # Linux accepts these
-            return 1 <= len(interface) <= 15  # IFNAMSIZ=16 including NUL
-
         def verify_polkit_privilege(self, sender, privilege):
             """Verify authorization from PolicyKit."""
             # Initialize polkit connections
@@ -3036,7 +3036,7 @@ if HAVE_DBUS:
 
             This is currently always handled as "from all".
             """
-            if not self.verify_interface_name(interface):
+            if not Validators.str_interface_name(interface):
                 raise FoomuuriDbusException(f'Invalid interface name: '
                                             f'{interface}')
             verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
@@ -3048,7 +3048,7 @@ if HAVE_DBUS:
             There can be only one zone per interface so it will be removed
             from previous zone if needed.
             """
-            if not self.verify_interface_name(interface):
+            if not Validators.str_interface_name(interface):
                 raise FoomuuriDbusException(f'Invalid interface name: '
                                             f'{interface}')
             zone = self.parse_default_zone(interface, zone)
@@ -3057,7 +3057,7 @@ if HAVE_DBUS:
 
         def method_change_zone_of_interface(self, zone, interface):
             """Change interface to zone."""
-            if not self.verify_interface_name(interface):
+            if not Validators.str_interface_name(interface):
                 raise FoomuuriDbusException(f'Invalid interface name: '
                                             f'{interface}')
             zone = self.parse_default_zone(interface, zone)

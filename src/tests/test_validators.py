@@ -27,6 +27,17 @@ class TestValidators(unittest.TestCase):
         self.assertTrue(Validators.str_iplist_name('@_'))
         self.assertTrue(Validators.str_iplist_name('@_./-'))
 
+        self.assertFalse(Validators.str_interface_name(''))
+        self.assertFalse(Validators.str_interface_name('word word'))
+        self.assertFalse(Validators.str_interface_name('word\nword'))
+        self.assertFalse(Validators.str_interface_name('word/word'))
+        self.assertFalse(Validators.str_interface_name('word"word'))
+        self.assertFalse(Validators.str_interface_name('word\\word'))
+        self.assertTrue(Validators.str_interface_name('eth0'))
+        self.assertTrue(Validators.str_interface_name(':'))
+        self.assertTrue(Validators.str_interface_name('@'))
+        self.assertTrue(Validators.str_interface_name('kääk'))
+
         self.assertFalse(Validators.str_words(''))
         self.assertTrue(Validators.str_words('word'))
         self.assertTrue(Validators.str_words('word word'))
