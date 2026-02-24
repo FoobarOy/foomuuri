@@ -3191,7 +3191,7 @@ if HAVE_DBUS:
 
     def command_dbus():
         """Start D-Bus daemon."""
-        CONFIG['_keep_going'] = True
+        CONFIG['_keep_going'] = 1
         while CONFIG['_keep_going']:
             # Read minimal config
             config = minimal_config()
@@ -3231,7 +3231,7 @@ if HAVE_DBUS:
 
             def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
-                    CONFIG['_keep_going'] = False
+                    CONFIG['_keep_going'] = 0
                     if HAVE_NOTIFY:
                         notify('STOPPING=1')
                 elif HAVE_NOTIFY:
