@@ -14,8 +14,9 @@ class TestValidators(unittest.TestCase):
         self.assertFalse(Validators.str_zone_name('word word'))
         self.assertFalse(Validators.str_zone_name('3word'))
         self.assertFalse(Validators.str_zone_name('w#ord'))
+        self.assertFalse(Validators.str_zone_name('_./_'))
         self.assertTrue(Validators.str_zone_name('wo_123_rd'))
-        self.assertTrue(Validators.str_zone_name('_./'))
+        self.assertTrue(Validators.str_zone_name('w./_'))
 
         self.assertFalse(Validators.str_words(''))
         self.assertTrue(Validators.str_words('word'))
