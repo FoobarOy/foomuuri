@@ -182,8 +182,8 @@ class TypedConfig:
 
 @dataclasses.dataclass
 class Config(TypedConfig):
-    """Config class with config, cli and internal variables."""
-    # Parsed foomuuri{} from config files
+    """Parsed foomuuri{} section variables from config files."""
+    # Basic settings
     log_rate: str = '1/second burst 3'
     log_input: str = 'yes'
     log_output: str = 'yes'
@@ -223,7 +223,6 @@ class Config(TypedConfig):
     )
 
     # Directories and files. Files are relative to state_dir.
-    # These can be changed by foomuuri{} in config files.
     etc_dir: pathlib.PosixPath = dataclasses.field(
         default_factory=lambda: pathlib.PosixPath('/etc/foomuuri')
     )
@@ -245,42 +244,47 @@ class Config(TypedConfig):
     zone_file: str = 'zone'
     monitor_statistics_file: str = 'monitor.statistics'
 
-    # Parsed foomuuri{} from config files, or command line
+    # Variable in foomuuri{}, or command line
     fork: int = 0          # --fork
     verbose: int = 0       # --verbose
     syslog: int = 0        # --syslog
 
-    # Parsed command line - used internally
-    _command: str = ''     # Command to run: "start" etc
-    _parameters: list = dataclasses.field(
+
+@dataclasses.dataclass
+class Internal(TypedConfig):
+    """Internal variables and command line options."""
+    # Command line
+    command: str = ''     # Command to run: "start" etc
+    parameters: list = dataclasses.field(
         default_factory=list
     )  # Parameters for command
-    _force: int = 0        # --force
+    force: int = 0        # --force
 
-    # Other internally used values
+    # Other internally used variables
     # Added without default value to prevent uninitialized use
-    _iplist_merge: set = dataclasses.field(init=False)
-    _iplist_missing_ok: set = dataclasses.field(init=False)
-    _keep_going: int = dataclasses.field(init=False)
-    _post_start: list = dataclasses.field(init=False)
-    _post_stop: list = dataclasses.field(init=False)
-    _pre_start: list = dataclasses.field(init=False)
-    _pre_stop: list = dataclasses.field(init=False)
-    _priority_offset: str = dataclasses.field(init=False)
-    _root_power: bool = dataclasses.field(init=False)  # Running as "root"?
+    iplist_merge: set = dataclasses.field(init=False)
+    iplist_missing_ok: set = dataclasses.field(init=False)
+    keep_going: int = dataclasses.field(init=False)
+    post_start: list = dataclasses.field(init=False)
+    post_stop: list = dataclasses.field(init=False)
+    pre_start: list = dataclasses.field(init=False)
+    pre_stop: list = dataclasses.field(init=False)
+    priority_offset: str = dataclasses.field(init=False)
+    root_power: bool = dataclasses.field(init=False)  # Running as "root"?
 
     # Url loader
-    _url_max_size: int = dataclasses.field(
+    url_max_size: int = dataclasses.field(
         default=33_554_432, metadata={'validate': Validators.int_positive}
     )  # Parsed in iplist{} from config files
-    _url_chunk_size: int = dataclasses.field(
+    url_chunk_size: int = dataclasses.field(
         default=1_048_576, metadata={'validate': Validators.int_positive}
     )  # Constant
-    _url_get_timeout: tuple = (6.1, 30)   # Constant, connect and read timeout
+    url_get_timeout: tuple = (6.1, 30)   # Constant, connect and read timeout
 
 
 CONFIG = Config()
 CONFIG_OVERRIDE = {}
+INTERNAL = Internal()
 
 OUT = []       # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
@@ -618,7 +622,7 @@ def parse_config_macros(config):
         if value[0] == '+':  # append
             macros[key] = macros.get(key, []) + value[1:]
         else:
-            if CONFIG['_command'] == 'check' and macros.get(key):
+            if INTERNAL.command == 'check' and macros.get(key):
                 warning(f'{fileline}Overwriting macro "{key}" '
                         f'with value "{" ".join(value)}"')
             macros[key] = value  # overwrite
@@ -771,7 +775,7 @@ def parse_config_foomuuri(config):
         value = ' '.join(line[1:])
         if name == 'try-reload_timeout':    # backward compatibility
             name = "try_reload_timeout"
-        if name not in CONFIG or name.startswith('_'):
+        if name not in CONFIG:
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
         try:
             if value.startswith('+ '):  # append
@@ -793,11 +797,11 @@ def parse_config_foomuuri(config):
 
     # Convert chain priority offset to nft
     if CONFIG.priority_offset == 0:
-        CONFIG['_priority_offset'] = ''
+        INTERNAL.priority_offset = ''
     elif CONFIG.priority_offset > 0:
-        CONFIG['_priority_offset'] = f' + {CONFIG.priority_offset}'
+        INTERNAL.priority_offset = f' + {CONFIG.priority_offset}'
     else:
-        CONFIG['_priority_offset'] = f' - {-CONFIG.priority_offset}'
+        INTERNAL.priority_offset = f' - {-CONFIG.priority_offset}'
 
     # Add "packets" to log rates
     for key in list(CONFIG):
@@ -836,7 +840,7 @@ def parse_config_special_chains(config):
     """Parse snat{}, dnat{}, prerouting{} etc. rules from config."""
     chain_rules = {
         # output+mangle is needed for mark restore in output_special_chains()
-        ('output', 'route', 'mangle' + CONFIG['_priority_offset']): [],
+        ('output', 'route', 'mangle' + INTERNAL.priority_offset): [],
     }
     for prefix, def_type, def_priority in (
             ('snat', 'nat', 'srcnat'),
@@ -863,7 +867,7 @@ def parse_config_special_chains(config):
                 ftype = def_type
                 priority = None
                 if def_priority:
-                    priority = def_priority + CONFIG['_priority_offset']
+                    priority = def_priority + INTERNAL.priority_offset
             else:
                 ftype = items[1]
                 priority = items[2]
@@ -883,7 +887,7 @@ def parse_iplist_names(config):
     initial ruleset, not when adding elements to it.
     """
     ret = set()
-    CONFIG['_iplist_merge'] = set()
+    INTERNAL.iplist_merge = set()
     for section in ('iplist', 'resolve'):
         for fileline, line in config.get(section, []):
             if line[0].startswith(('dns_timeout=', 'dns_refresh=',
@@ -896,7 +900,7 @@ def parse_iplist_names(config):
                 fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
             ret.add(line[0])
             if '-merge' not in line[1:]:
-                CONFIG['_iplist_merge'].add(line[0])
+                INTERNAL.iplist_merge.add(line[0])
     return ret
 
 
@@ -908,7 +912,7 @@ def parse_config_hook(config):
                 'pre_stop', 'post_stop',
         ):
             fail(f'{fileline}Unknown hook: {" ".join(line)}')
-        CONFIG['_' + line[0]] = line[1:]
+        INTERNAL[line[0]] = line[1:]
 
 
 def minimal_config():
@@ -2332,7 +2336,7 @@ def output_special_chains(chain_rules):
             }.get(section, section)
             hook_nft = f'type {ftype} hook {hook_chain} priority {priority}'
             chain_name = f'{ftype}_{hook_chain}_{priority}'
-            chain_name = chain_name.replace(CONFIG['_priority_offset'], '')
+            chain_name = chain_name.replace(INTERNAL.priority_offset, '')
             chain_name = chain_name.replace('+', '')
             chain_name = chain_name.replace(' ', '_')
             chain_name = chain_name.replace('__', '_')
@@ -2402,14 +2406,14 @@ def output_header(chain_rules):
 
     # input/output/forward jump chains
     out('chain input {')
-    out(f'type filter hook input priority filter{CONFIG["_priority_offset"]}')
+    out(f'type filter hook input priority filter{INTERNAL.priority_offset}')
     out('iifname vmap @input_zones')
     output_static_chain_logging('input', 'drop')
     out('drop')
     out('}')
 
     out('chain output {')
-    out(f'type filter hook output priority filter{CONFIG["_priority_offset"]}')
+    out(f'type filter hook output priority filter{INTERNAL.priority_offset}')
     out('oifname vmap @output_zones')
     # IGMP membership report and IPv6 equivalent must be allowed here too as
     # D-Bus interface change event might not be processed yet.
@@ -2421,7 +2425,7 @@ def output_header(chain_rules):
 
     out('chain forward {')
     out(
-        f'type filter hook forward priority filter{CONFIG["_priority_offset"]}'
+        f'type filter hook forward priority filter{INTERNAL.priority_offset}'
     )
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
@@ -2560,7 +2564,7 @@ def output_iplist_sets(iplist):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
             out('flags interval,timeout')
-            if name in CONFIG['_iplist_merge']:
+            if name in INTERNAL.iplist_merge:
                 out('auto-merge')
             out('}')
 
@@ -2605,7 +2609,7 @@ def output_helpers():
     # Output prerouting
     out('chain helper {')
     out(f'type filter hook prerouting priority filter'
-        f'{CONFIG["_priority_offset"]}')
+        f'{INTERNAL.priority_offset}')
     for name, protos in helpers.items():
         for proto, ports in protos.items():
             out(f'{proto} dport {single_or_set(" ".join(ports))} '
@@ -2619,7 +2623,7 @@ def output_rpfilter():
         return
     out('chain rpfilter {')
     out(f'type filter hook prerouting priority filter'
-        f'{CONFIG["_priority_offset"]}')
+        f'{INTERNAL.priority_offset}')
     interfaces = ''
     if CONFIG.rpfilter != 'yes':  # Specific interfaces?
         interfaces = (f'iifname '
@@ -2708,8 +2712,8 @@ def apply_final():
     # Check config
     good_file = state_file('good_file')
     next_file = state_file('next_file')
-    if CONFIG['_command'] == 'check':
-        if CONFIG['_root_power']:  # "nft check" requires root
+    if INTERNAL.command == 'check':
+        if INTERNAL.root_power:  # "nft check" requires root
             ret = run_program_rc(CONFIG.nft_bin + ['--check', '--file',
                                                    next_file])
         else:
@@ -2722,7 +2726,7 @@ def apply_final():
         return ret
 
     # Run pre_start / pre_stop hook
-    run_program_rc(CONFIG.get(f'_pre_{CONFIG["_command"]}'))
+    run_program_rc(INTERNAL.get(f'pre_{INTERNAL.command}'))
 
     # Load "next"
     ret = run_program_rc(CONFIG.nft_bin + ['--file', next_file],
@@ -2734,12 +2738,12 @@ def apply_final():
         return 1
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
-    if CONFIG['_command'] == 'start':
+    if INTERNAL.command == 'start':
         good_file.unlink(missing_ok=True)
         next_file.rename(good_file)
     signal_childs()
-    run_program_rc(CONFIG.get(f'_post_{CONFIG["_command"]}'))
-    verbose(f'{CONFIG["_command"]} success', 0)
+    run_program_rc(INTERNAL.get(f'post_{INTERNAL.command}'))
+    verbose(f'{INTERNAL.command} success', 0)
     return 0
 
 
@@ -3178,8 +3182,8 @@ if HAVE_DBUS:
 
     def command_dbus():
         """Start D-Bus daemon."""
-        CONFIG['_keep_going'] = 1
-        while CONFIG['_keep_going']:
+        INTERNAL.keep_going = 1
+        while INTERNAL.keep_going:
             # Read minimal config
             config = minimal_config()
             zones = parse_config_zones(config)
@@ -3218,7 +3222,7 @@ if HAVE_DBUS:
 
             def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
-                    CONFIG['_keep_going'] = 0
+                    INTERNAL.keep_going = 0
                     if HAVE_NOTIFY:
                         notify('STOPPING=1')
                 elif HAVE_NOTIFY:
@@ -3317,7 +3321,7 @@ def resolve_all_hostnames(resolve, cache):
             if now >= cacherefresh + timeout:  # Expired entry
                 cache[hostname]['ip'] = {}
                 cache[hostname]['dirty'] = True
-            elif now < cacherefresh + refresh and CONFIG['_force'] < 0:
+            elif now < cacherefresh + refresh and INTERNAL.force < 0:
                 verbose(f'Using cached value for '
                         f'"{remove_filters(hostname)}"')
                 continue
@@ -3347,7 +3351,7 @@ def resolve_all_hostnames(resolve, cache):
                 verbose(f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}')
             elif '|missing-ok' in hostname:
-                CONFIG['_iplist_missing_ok'].add(hostname)
+                INTERNAL.iplist_missing_ok.add(hostname)
             else:
                 warning(f'No IP address found for hostname '
                         f'"{remove_filters(hostname)}" in iplist')
@@ -3374,14 +3378,14 @@ def get_url(url):
             try:
                 with requests.get(
                     remove_filters(url),
-                    timeout=CONFIG['_url_get_timeout'],
+                    timeout=INTERNAL.url_get_timeout,
                     stream=True
                 ) as response:
                     if response.status_code != 200:
                         raise requests.ConnectionError(
                             'status code: {response.status_code}'
                         )
-                    max_size = CONFIG['_url_max_size']
+                    max_size = INTERNAL.url_max_size
                     content_length = int(
                         response.headers.get('content-length', 0)
                     )
@@ -3392,7 +3396,7 @@ def get_url(url):
                         )
                     content = io.BytesIO()
                     for chunk in response.iter_content(
-                        chunk_size=CONFIG['_url_chunk_size'],
+                        chunk_size=INTERNAL.url_chunk_size,
                         decode_unicode=False
                     ):
                         content.write(chunk)
@@ -3409,7 +3413,7 @@ def get_url(url):
     else:
         err = 'No python-requests installed'
     if '|missing-ok' in url:
-        CONFIG['_iplist_missing_ok'].add(url)
+        INTERNAL.iplist_missing_ok.add(url)
     else:
         warning(f'Can\'t download iplist URL "{remove_filters(url)}": {err}')
     return None
@@ -3421,7 +3425,7 @@ def get_file(wildcard):
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
         if '|missing-ok' in wildcard:
-            CONFIG['_iplist_missing_ok'].add(wildcard)
+            INTERNAL.iplist_missing_ok.add(wildcard)
         else:
             warning(f'Can\'t read iplist file "{remove_filters(wildcard)}": '
                     f'No such file')
@@ -3488,7 +3492,7 @@ def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
     known = parse_iplist_names(config)
-    for setname in CONFIG['_parameters'][1:] or sorted(known):
+    for setname in INTERNAL.parameters[1:] or sorted(known):
         if setname.startswith('@'):
             setname = setname[1:]
         if setname.endswith(('_4', '_6')):
@@ -3513,7 +3517,7 @@ def command_iplist_add():
     config = minimal_config()
     iplist, timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
-    setname = CONFIG['_parameters'][1]
+    setname = INTERNAL.parameters[1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
     if setname not in iplist:
@@ -3525,7 +3529,7 @@ def command_iplist_add():
 
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
-    for address in CONFIG['_parameters'][2:]:
+    for address in INTERNAL.parameters[2:]:
         ipv = is_ip_address(address, allow_negative=False)
         if ipv:
             cache[f'manual.{setname}']['ip'][address] = expire
@@ -3546,7 +3550,7 @@ def command_iplist_del():
     config = minimal_config()
     iplist, _dummy_timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
-    setname = CONFIG['_parameters'][1]
+    setname = INTERNAL.parameters[1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
     if setname not in iplist:
@@ -3554,7 +3558,7 @@ def command_iplist_del():
 
     # Delete entries from cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
-    for address in CONFIG['_parameters'][2:]:
+    for address in INTERNAL.parameters[2:]:
         cache[f'manual.{setname}']['ip'].pop(address, None)
         cache[f'manual.{setname}']['dirty'] = True
 
@@ -3568,7 +3572,7 @@ def command_iplist_flush():
     cache = read_iplist_cache(iplist)
     update_only = set()
 
-    for setname in CONFIG['_parameters'][1:]:
+    for setname in INTERNAL.parameters[1:]:
         if not setname.startswith('@'):
             setname = f'@{setname}'
         if setname not in iplist:
@@ -3650,7 +3654,7 @@ def get_url_or_file(url, timeout, refresh, cache):
         if now >= cacherefresh + timeout:  # Expired entry
             cache[url]['ip'] = {}
             cache[url]['dirty'] = True
-        elif now < cacherefresh + refresh and CONFIG['_force'] < 0:
+        elif now < cacherefresh + refresh and INTERNAL.force < 0:
             verbose(f'Using cached value for "{url}"')
             return
 
@@ -3838,9 +3842,7 @@ def iplist_parse_config(config):
         ):
             key, value = name.split('=', 1)
             try:
-                CONFIG['_' + key] = int(value)
-                if CONFIG['_' + key] <= 0:
-                    raise ValueError
+                INTERNAL[key] = int(value)
             except ValueError:
                 fail(f'{fileline}Invalid iplist{{}} line: {name}')
             continue
@@ -3877,13 +3879,13 @@ def iplist_parse_config(config):
     if CONFIG.verbose >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
-    CONFIG['_iplist_missing_ok'] = set()
+    INTERNAL.iplist_missing_ok = set()
     return iplist, timeouts
 
 
 def iplist_collect_resolve_list(iplist, timeouts):
     """Collect URLs and hostnames to be resolved."""
-    if CONFIG['_command'] != 'iplist':
+    if INTERNAL.command != 'iplist':
         # Don't resolve anything if called as "foomuuri start".
         # Use cached entries only.
         return {}, {}
@@ -4005,7 +4007,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
             warning(f'Iplist "{setname}" does not exist in currently active '
                     f'firewall')
             continue
-        if not cache[setname].get('dirty') and CONFIG['_force'] < 0:
+        if not cache[setname].get('dirty') and INTERNAL.force < 0:
             verbose(f'Iplist "{setname}" is clean, skipping update')
             continue
 
@@ -4013,9 +4015,9 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
         if (
                 setvalues and
                 not cache[setname]['ip'] and
-                CONFIG['_command'] == 'iplist'
+                INTERNAL.command == 'iplist'
         ):
-            if all(name in CONFIG['_iplist_missing_ok'] for name in setvalues):
+            if all(name in INTERNAL.iplist_missing_ok for name in setvalues):
                 warning(f'Iplist "{setname}" is empty')
             else:
                 fail(f'Iplist "{setname}" is empty', False)
@@ -4032,7 +4034,7 @@ def iplist_output_values(iplist, cache, currently_active, update_only):
 
 def iplist_apply_values(cache):
     """Save iplist changes to disk and use nft to apply it."""
-    if CONFIG['_command'] != 'iplist' or not OUT:
+    if INTERNAL.command != 'iplist' or not OUT:
         return 0
 
     write_iplist_cache(cache)
@@ -4065,16 +4067,16 @@ def command_iplist_refresh(config=None, currently_active=None):
 
         # Special case for testing (non-root) or faked nft_bin
         if not currently_active and (
-                not CONFIG['_root_power'] or
+                not INTERNAL.root_power or
                 CONFIG.nft_bin == ['true']
         ):
             currently_active = set(iplist)
 
     # Default to update all sets, "foomuuri iplist refresh setname" can filter
     update_only = None
-    if CONFIG['_parameters'][1:]:
+    if INTERNAL.parameters[1:]:
         update_only = []
-        for name in CONFIG['_parameters'][1:]:
+        for name in INTERNAL.parameters[1:]:
             if name.startswith('@'):
                 update_only.append(name)
             else:
@@ -4086,15 +4088,15 @@ def command_iplist_refresh(config=None, currently_active=None):
 
 def command_iplist():
     """Parse "foomuuri iplist" subcommand."""
-    if CONFIG['_parameters']:
+    if INTERNAL.parameters:
         handler, min_args = {
             'list': (command_iplist_list, 1),
             'add': (command_iplist_add, 3),
             'del': (command_iplist_del, 3),
             'flush': (command_iplist_flush, 2),
             'refresh': (command_iplist_refresh, 1),
-        }.get(CONFIG['_parameters'][0], (None, 0))
-        if handler and len(CONFIG['_parameters']) >= min_args:
+        }.get(INTERNAL.parameters[0], (None, 0))
+        if handler and len(INTERNAL.parameters) >= min_args:
             return handler()
     return command_help()
 
@@ -4119,7 +4121,7 @@ def list_named_counter(command):
 def command_list():
     """List currently active ruleset or other things."""
     # List all
-    if not CONFIG['_parameters']:
+    if not INTERNAL.parameters:
         return nft_command('list ruleset')
 
     # Parse list of possible zone-zone pairs
@@ -4128,8 +4130,8 @@ def command_list():
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
     # Parse parameters
-    list_type = CONFIG['_parameters'][0]
-    list_params = CONFIG['_parameters'][1:]
+    list_type = INTERNAL.parameters[0]
+    list_params = INTERNAL.parameters[1:]
     ret = 0
 
     if list_type == 'macro':
@@ -4158,7 +4160,7 @@ def command_list():
         return ret
 
     # List zone-zone rules
-    for zone in CONFIG['_parameters']:
+    for zone in INTERNAL.parameters:
         if zone not in zonepairs:
             fail(f'Unknown zone-zone: {zone}')
         for ipv in (4, 6):
@@ -4713,8 +4715,8 @@ def monitor_write_statistics(targets, groups):
 
 def command_monitor():
     """Monitor targets and run command when their state changes up or down."""
-    CONFIG['_keep_going'] = 1
-    while CONFIG['_keep_going']:
+    INTERNAL.keep_going = 1
+    while INTERNAL.keep_going:
         # Read minimal config
         config = minimal_config()
         targets = parse_config_targets(config)
@@ -4731,15 +4733,15 @@ def command_monitor():
         # Define reload/stop signal handler
         def signal_handler(sig, _dummy_frame):
             if sig == signal.SIGINT:
-                CONFIG['_keep_going'] = 0
+                INTERNAL.keep_going = 0
                 if HAVE_NOTIFY:
                     notify('STOPPING=1')
             else:
-                CONFIG['_keep_going'] = 2
+                INTERNAL.keep_going = 2
                 if HAVE_NOTIFY:
                     notify('RELOADING=1')
 
-        CONFIG['_keep_going'] = 1
+        INTERNAL.keep_going = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
         save_file(CONFIG.run_dir / 'foomuuri-monitor.pid',
@@ -4752,7 +4754,7 @@ def command_monitor():
         stat_interval = min(cfg['statistics_interval']
                             for cfg in targets.values())
         next_stat = time.time() + stat_interval / 5
-        while CONFIG['_keep_going'] == 1:
+        while INTERNAL.keep_going == 1:
             monitor_read_targets(targets, groups)
 
             # Periodic statistics file update
@@ -4835,7 +4837,7 @@ def parse_command_line():
     # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
         if arg == '--help':
-            CONFIG['_command'] = 'help'
+            INTERNAL.command = 'help'
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
@@ -4851,35 +4853,35 @@ def parse_command_line():
             CONFIG[arg[2:]] = 1
             CONFIG_OVERRIDE[arg[2:]] = 1
         elif arg in ('--force'):
-            CONFIG['_' + arg[2:]] += 1
+            INTERNAL.force += 1
         elif arg == '--soft':
-            CONFIG['_force'] -= 1
+            INTERNAL.force -= 1
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
                 fail(f'Invalid syntax for --set=option=value: {arg}')
             _, option, value = arg.split('=', 2)
-            if option not in CONFIG or option.startswith('_'):
+            if option not in CONFIG:
                 fail(f'Unknown foomuuri{{}} option: {arg}')
             try:
                 CONFIG.set_from_str(option, value)
                 CONFIG_OVERRIDE[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
-        elif not CONFIG['_command']:
-            CONFIG['_command'] = arg
+        elif not INTERNAL.command:
+            INTERNAL.command = arg
         else:
-            CONFIG['_parameters'].append(arg)
+            INTERNAL.parameters.append(arg)
 
 
 def run_command():
     """Run CONFIG[_command]."""
     # Only some commands can take arguments
-    if CONFIG['_parameters'] and CONFIG['_command'] not in (
+    if INTERNAL.parameters and INTERNAL.command not in (
             'list', 'iplist', 'set', 'help'):
         return command_help()
 
     # Help doesn't need root
-    if not CONFIG['_command'] or CONFIG['_command'] == 'help':
+    if not INTERNAL.command or INTERNAL.command == 'help':
         return command_help(error=False)
 
     # Initialize syslogging
@@ -4887,8 +4889,8 @@ def run_command():
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
-    CONFIG['_root_power'] = not os.getuid()
-    if not CONFIG['_root_power']:
+    INTERNAL.root_power = not os.getuid()
+    if not INTERNAL.root_power:
         warning('Foomuuri should be run as "root"')
 
     # Run command
@@ -4905,9 +4907,9 @@ def run_command():
         'set': command_set,
         'dbus': command_dbus,
         'monitor': command_monitor,
-    }.get(CONFIG['_command'])
+    }.get(INTERNAL.command)
     if not handler:
-        fail(f'Unknown command: {CONFIG["_command"]}')
+        fail(f'Unknown command: {INTERNAL.command}')
     return handler()
 
 
