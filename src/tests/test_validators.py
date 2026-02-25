@@ -51,7 +51,6 @@ class TestValidators(unittest.TestCase):
 
         self.assertFalse(Validators.str_yes_no(''))
         self.assertFalse(Validators.str_yes_no('maybe'))
+        self.assertFalse(Validators.str_yes_no('YES'))
         self.assertTrue(Validators.str_yes_no('yes'))
-        self.assertTrue(Validators.str_yes_no('YES'))
         self.assertTrue(Validators.str_yes_no('no'))
-        self.assertTrue(Validators.str_yes_no('NO'))

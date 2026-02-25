@@ -115,7 +115,7 @@ class Validators:
     @staticmethod
     def str_yes_no(value: str):
         """Assert value is either 'yes' or 'no'."""
-        return value.lower() in ('yes', 'no')
+        return value in ('yes', 'no')
 
 
 @dataclasses.dataclass
@@ -2347,9 +2347,9 @@ def output_special_chains(chain_rules):
 def output_static_chain_logging(chain, statement):
     """Output logging rules for input/output/forward/invalid/smurfs chains."""
     lograte = CONFIG[f'log_{chain}']  # Enabled in foomuuri{}
-    if lograte.lower() == 'no':
+    if lograte == 'no':
         return
-    if lograte.lower() == 'yes':  # "yes" means use standard log rate
+    if lograte == 'yes':  # "yes" means use standard log rate
         lograte = CONFIG.log_rate
     flags = ''
     if chain == 'invalid' and 'group ' not in CONFIG.log_level:
