@@ -2,6 +2,8 @@
 
 ## 0.32 (20xx-xx-xx)
 
+* BREAKING CHANGE: Prometheus exporter `foomuuri_exporter` is renamed to
+  `prometheus-foomuuri-exporter`.
 * Add validators to `foomuuri { option value }` settings.
 * Add deprecation warning to `resolve` section, deprecated in 0.28.
 * Add `nftrace` statement to enable nftrace ruleset debugging for matching

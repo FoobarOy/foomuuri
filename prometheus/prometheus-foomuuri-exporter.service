@@ -5,10 +5,10 @@ After=network-online.target
 
 [Service]
 Environment=OPTIONS=
-EnvironmentFile=/etc/default/foomuuri_exporter
+EnvironmentFile=/etc/default/prometheus-foomuuri-exporter
 User=root
 Restart=on-failure
-ExecStart=foomuuri_exporter $OPTIONS
+ExecStart=prometheus-foomuuri-exporter $OPTIONS
 
 [Install]
 WantedBy=multi-user.target
