@@ -289,9 +289,9 @@ HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 def fail(error=None, fatal=True):
     """Exit with error message."""
-    if error and CONFIG['verbose'] >= -1:  # Double-quiet will supress output
+    if error and CONFIG.verbose >= -1:  # Double-quiet will supress output
         print(f'Error: {error}', flush=True)
-        if CONFIG['syslog']:
+        if CONFIG.syslog:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
@@ -299,17 +299,17 @@ def fail(error=None, fatal=True):
 
 def warning(text):
     """Print warning message."""
-    if CONFIG['verbose'] >= 0:
+    if CONFIG.verbose >= 0:
         print(f'Warning: {text}', flush=True)
-        if CONFIG['syslog']:
+        if CONFIG.syslog:
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
 def verbose(line, level=1):
     """Print line if --verbose was given in command line."""
-    if CONFIG['verbose'] >= level:
+    if CONFIG.verbose >= level:
         print(line, flush=True)
-        if CONFIG['syslog']:
+        if CONFIG.syslog:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
@@ -343,7 +343,7 @@ def run_program_rc(args, *, env=None, stdin=None, print_output=True,
     output = proc.stdout.rstrip()
     if (
             output and
-            (proc.returncode or print_output or CONFIG['verbose'] > 0) and
+            (proc.returncode or print_output or CONFIG.verbose > 0) and
             not quiet
     ):
         verbose(output, 0)
@@ -416,9 +416,9 @@ def nft_json(cmd):
 def daemonize():
     """Fork as a background daemon. Silently ignore errors."""
     # Enabled in config?
-    if not CONFIG['fork']:
+    if not CONFIG.fork:
         return
-    CONFIG['fork'] = 0  # Fork only once!
+    CONFIG.fork = 0  # Fork only once!
 
     # Fork #1
     try:
@@ -477,10 +477,10 @@ def read_config():
     # pylint: disable=too-many-statements
 
     # Find all config files
-    share_config = find_config_files(CONFIG['share_dir'], '*.conf')
-    etc_config = find_config_files(CONFIG['etc_dir'], '*.conf')
+    share_config = find_config_files(CONFIG.share_dir, '*.conf')
+    etc_config = find_config_files(CONFIG.etc_dir, '*.conf')
     if not etc_config:
-        fail(f'No configuration files "{CONFIG["etc_dir"]}/*.conf" found\n'
+        fail(f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
              '\n'
              'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
              'for example\n'
@@ -739,7 +739,7 @@ def expand_macros(config):
 
             # Check for expansion loop
             recursion_limit.update([fileline])
-            if recursion_limit[fileline] > CONFIG['recursion_limit']:
+            if recursion_limit[fileline] > CONFIG.recursion_limit:
                 fail(f'{fileline}Possible macro or template loop '
                      f'in "{section}": {" ".join(line[:10])} ...')
         config[section] = new_lines
@@ -792,12 +792,12 @@ def parse_config_foomuuri(config):
             CONFIG.set_from_str(name, value)  # replace
 
     # Convert chain priority offset to nft
-    if CONFIG['priority_offset'] == 0:
+    if CONFIG.priority_offset == 0:
         CONFIG['_priority_offset'] = ''
-    elif CONFIG['priority_offset'] > 0:
-        CONFIG['_priority_offset'] = f' + {CONFIG["priority_offset"]}'
+    elif CONFIG.priority_offset > 0:
+        CONFIG['_priority_offset'] = f' + {CONFIG.priority_offset}'
     else:
-        CONFIG['_priority_offset'] = f' - {-CONFIG["priority_offset"]}'
+        CONFIG['_priority_offset'] = f' - {-CONFIG.priority_offset}'
 
     # Add "packets" to log rates
     for key in list(CONFIG):
@@ -1346,7 +1346,7 @@ def filter_any_zonelist(rule, srcdst):
 
 def insert_single_any(any_rules, rules, szone, dzone):
     """Insert single any_rules to rules[(szone, dzone)]."""
-    if szone == dzone == CONFIG['localhost_zone']:
+    if szone == dzone == CONFIG.localhost_zone:
         return  # Don't insert to localhost-localhost
 
     # Filter out "szone -public" when adding to zone "public-xxx"
@@ -1390,7 +1390,7 @@ def verify_config(config, zones, rules):
     if not zones:
         fail('No zones defined in section zone{}')
 
-    localhost = CONFIG['localhost_zone']
+    localhost = CONFIG.localhost_zone
     if localhost not in zones:
         zones[localhost] = {'interface': []}
         warning(f'{config["_section_line"]["zone"]}Zone "{localhost}" '
@@ -1401,9 +1401,9 @@ def verify_config(config, zones, rules):
              f'interfaces "{" ".join(zones[localhost]["interface"])}", '
              f'it must be empty')
 
-    if CONFIG['dbus_zone'] not in zones:
+    if CONFIG.dbus_zone not in zones:
         warning(f'Config option dbus_zone value '
-                f'"{CONFIG["dbus_zone"]}" is missing from zone{{}}')
+                f'"{CONFIG.dbus_zone}" is missing from zone{{}}')
 
     # All zone-zone pairs must be known
     for szone, dzone in rules:
@@ -1456,7 +1456,7 @@ def output_rate_names(rules):
                         out(f'type ipv{ipv}_addr . ipv{ipv}_addr')
                     else:
                         out(f'type ipv{ipv}_addr')
-                    out(f'size {CONFIG["set_size"]}')
+                    out(f'size {CONFIG.set_size}')
                     if rule[rate].startswith('ct '):
                         out('flags dynamic')
                     else:
@@ -1723,7 +1723,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     #   zone-any   - add to all rules in all zone-*
     #   any-zone   - add to all rules in all *-zone
     # Multiple zone-pairs can be defined
-    counterlist = CONFIG['counter'].split()
+    counterlist = CONFIG.counter.split()
     if not rule['nft'] and (  # pylint: disable=too-many-boolean-expressions
             rule['counter'] is not None or  # "counter" in this rule
             'yes' in counterlist or  # global "yes"
@@ -1739,7 +1739,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # used in final "drop log" rule. Default log prefix is
     # "zone-zone STATEMENT".
     if rule['log'] is not None or rule['log_level'] is not None:
-        log_prefix = CONFIG['log_prefix']
+        log_prefix = CONFIG.log_prefix
         if rule['log']:
             if rule['log'].startswith('+ '):
                 log_prefix += rule['log'][2:]
@@ -1749,15 +1749,15 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
         log_prefix = log_prefix.replace('$(dzone)', dzone)
         log_prefix = log_prefix.replace('$(statement)',
                                         statement.split()[0].upper())
-        log_level = (CONFIG['log_level'] if rule['log_level'] is None else
+        log_level = (CONFIG.log_level if rule['log_level'] is None else
                      rule['log_level'])
         log_nft = f'log prefix "{log_prefix} " {log_level}'
-        if do_lograte and CONFIG['log_rate']:
+        if do_lograte and CONFIG.log_rate:
             # Limit maximum amount of logging to "foomuuri { log_rate }".
             # This is important to avoid overlogging (DoS or filesystem full).
             rate = (f'update @_lograte_set_{ipv} '
                     f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
-                    f'limit rate {CONFIG["log_rate"]} }} ')
+                    f'limit rate {CONFIG.log_rate} }} ')
             if statement == 'continue':
                 return f'{prefix}{rate}{log_nft}'
             logname = f'lograte_{len(LOGRATES) + 1}'
@@ -2159,8 +2159,8 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
 
     # Allow outgoing IGMP multicast membership reports and incoming IGMP
     # multicast query.
-    output_chain = szone == CONFIG['localhost_zone']
-    input_chain = dzone == CONFIG['localhost_zone']
+    output_chain = szone == CONFIG.localhost_zone
+    input_chain = dzone == CONFIG.localhost_zone
     if ipv == 4 and output_chain and not input_chain:
         out('ip protocol igmp ip daddr 224.0.0.22 accept')  # membership report
     if ipv == 4 and input_chain and not output_chain:
@@ -2201,7 +2201,7 @@ def output_zone_vmaps(zones, rules):
     # pylint: disable=too-many-branches
 
     # Vmap must have interval-flag if there is wildcard-interface.
-    localhost = CONFIG['localhost_zone']
+    localhost = CONFIG.localhost_zone
     has_wildcard = False
     for value in zones.values():
         for interface in value['interface']:
@@ -2350,11 +2350,11 @@ def output_static_chain_logging(chain, statement):
     if lograte.lower() == 'no':
         return
     if lograte.lower() == 'yes':  # "yes" means use standard log rate
-        lograte = CONFIG['log_rate']
+        lograte = CONFIG.log_rate
     flags = ''
-    if chain == 'invalid' and 'group ' not in CONFIG['log_level']:
+    if chain == 'invalid' and 'group ' not in CONFIG.log_level:
         flags = ' flags ip options'  # flags and group are mutually exclusive
-    flags += f' {CONFIG["log_level"]}'
+    flags += f' {CONFIG.log_level}'
     chain = chain.upper()
     statement = statement.upper()
 
@@ -2378,8 +2378,8 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    for filename in (find_config_files(CONFIG['share_dir'], '*.nft') +
-                     find_config_files(CONFIG['etc_dir'], '*.nft')):
+    for filename in (find_config_files(CONFIG.share_dir, '*.nft') +
+                     find_config_files(CONFIG.etc_dir, '*.nft')):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
@@ -2547,7 +2547,7 @@ def output_logrates():
     for ipv in (4, 6):
         out(f'set _lograte_set_{ipv} {{')
         out(f'type ipv{ipv}_addr')
-        out(f'size {CONFIG["set_size"]}')
+        out(f'size {CONFIG.set_size}')
         out('flags dynamic,timeout')
         out('timeout 1m')
         out('}')
@@ -2615,15 +2615,15 @@ def output_helpers():
 
 def output_rpfilter():
     """Prerouting chain to check rpfilter."""
-    if CONFIG['rpfilter'] == 'no':
+    if CONFIG.rpfilter == 'no':
         return
     out('chain rpfilter {')
     out(f'type filter hook prerouting priority filter'
         f'{CONFIG["_priority_offset"]}')
     interfaces = ''
-    if CONFIG['rpfilter'] != 'yes':  # Specific interfaces?
+    if CONFIG.rpfilter != 'yes':  # Specific interfaces?
         interfaces = (f'iifname '
-                      f'{single_or_set(CONFIG["rpfilter"], quote=True)} ')
+                      f'{single_or_set(CONFIG.rpfilter, quote=True)} ')
     out(f'{interfaces}fib saddr . mark . iif oif 0 meta ipsec missing '
         f'jump rpfilter_drop')
     out('}')
@@ -2690,7 +2690,7 @@ def signal_childs():
     """Signal foomuuri-dbus and foomuuri-monitor to reload."""
     for child in ('dbus', 'monitor'):
         # Read pid
-        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG.run_dir / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
         except PermissionError as error:
@@ -2796,7 +2796,7 @@ def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
     return run_program_rc(CONFIG.nft_bin + [
-        '--file', CONFIG['share_dir'] / 'block.fw'])
+        '--file', CONFIG.share_dir / 'block.fw'])
 
 
 def parse_active_interface_zone():
@@ -2828,7 +2828,7 @@ def command_status():
 
     # D-Bus, Monitor
     for child in ('dbus', 'monitor'):
-        filename = CONFIG['run_dir'] / f'foomuuri-{child}.pid'
+        filename = CONFIG.run_dir / f'foomuuri-{child}.pid'
         try:
             pid = int(filename.read_text(encoding='utf-8'))
             os.kill(pid, 0)
@@ -2931,10 +2931,10 @@ if HAVE_DBUS:
             # Remove from input and output
             out(f'delete element inet foomuuri input_zones '
                 f'{{ "{interface}" : jump '
-                f'{zone}-{CONFIG["localhost_zone"]} }}')
+                f'{zone}-{CONFIG.localhost_zone} }}')
             out(f'delete element inet foomuuri output_zones '
                 f'{{ "{interface}" : jump '
-                f'{CONFIG["localhost_zone"]}-{zone} }}')
+                f'{CONFIG.localhost_zone}-{zone} }}')
 
             # Remove from forward
             for other, otherzone in interface_zone.items():
@@ -2955,10 +2955,10 @@ if HAVE_DBUS:
             # Add to input and output
             out(f'add element inet foomuuri input_zones '
                 f'{{ "{interface}" : jump '
-                f'{zone}-{CONFIG["localhost_zone"]} }}')
+                f'{zone}-{CONFIG.localhost_zone} }}')
             out(f'add element inet foomuuri output_zones '
                 f'{{ "{interface}" : jump '
-                f'{CONFIG["localhost_zone"]}-{zone} }}')
+                f'{CONFIG.localhost_zone}-{zone} }}')
 
             # Add to forward
             for other, otherzone in interface_zone.items():
@@ -2982,7 +2982,7 @@ if HAVE_DBUS:
                 # Interface "lo" must stay in "localhost" zone.
                 # Other interfaces can be added to "localhost" only if
                 # "localhost-localhost" section is defined.
-                if new_zone != CONFIG['localhost_zone']:
+                if new_zone != CONFIG.localhost_zone:
                     warning(f'Can\'t change interface "lo" to zone '
                             f'"{new_zone}"')
                     raise FoomuuriDbusException(f'Can\'t change interface '
@@ -3008,7 +3008,7 @@ if HAVE_DBUS:
             for key, value in self.zones.items():
                 if interface in value['interface']:
                     return key
-            return CONFIG['dbus_zone']
+            return CONFIG.dbus_zone
 
         def method_get_zones(self):
             """Get list of available zones.
@@ -3016,7 +3016,7 @@ if HAVE_DBUS:
             "localhost" can't have any interfaces so don't include it.
             """
             return [name for name in self.zones
-                    if name != CONFIG['localhost_zone']]
+                    if name != CONFIG.localhost_zone]
 
         def method_remove_interface(self, zone, interface):
             """Remove interface from zone, or from all if zone is empty.
@@ -3201,7 +3201,7 @@ if HAVE_DBUS:
 
             # FirewallD emulation calls, if enabled in foomuuri{} config
             firewalld_object = None
-            if CONFIG['dbus_firewalld'] == 'yes':
+            if CONFIG.dbus_firewalld == 'yes':
                 try:
                     firewalld_name = dbus.service.BusName(
                         'org.fedoraproject.FirewallD1', bus)
@@ -3227,7 +3227,7 @@ if HAVE_DBUS:
 
             signal.signal(signal.SIGHUP, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
-            save_file(CONFIG['run_dir'] / 'foomuuri-dbus.pid',
+            save_file(CONFIG.run_dir / 'foomuuri-dbus.pid',
                       [str(os.getpid())])
 
             # Start processing messages
@@ -3874,7 +3874,7 @@ def iplist_parse_config(config):
         iplist[name] = this_value
         timeouts[name] = this_timeouts
         iplist_verify_filters(name, this_value, fileline)
-    if CONFIG['verbose'] >= 2:
+    if CONFIG.verbose >= 2:
         for name, values in iplist.items():
             verbose(f'{name:9s}  {" ".join(values)}')
     CONFIG['_iplist_missing_ok'] = set()
@@ -3909,7 +3909,7 @@ def iplist_collect_resolve_list(iplist, timeouts):
                 else:
                     hostnames[value] = (timeouts[name]['dns_timeout'],
                                         timeouts[name]['dns_refresh'])
-    if CONFIG['verbose'] >= 2:
+    if CONFIG.verbose >= 2:
         verbose(f'URLs:      {urls}')
         verbose(f'Hostnames: {hostnames}')
     return urls, hostnames
@@ -4232,7 +4232,7 @@ def command_try_reload():
         return error
 
     # Verify from user if ruleset is ok
-    timeout = CONFIG['try_reload_timeout']
+    timeout = CONFIG.try_reload_timeout
     print(f'You have {timeout} seconds to accept the changes.')
     answer = input_timeout('Can you establish NEW connections (yes/no)? ',
                            timeout)
@@ -4742,7 +4742,7 @@ def command_monitor():
         CONFIG['_keep_going'] = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG['run_dir'] / 'foomuuri-monitor.pid',
+        save_file(CONFIG.run_dir / 'foomuuri-monitor.pid',
                   [str(os.getpid())])
 
         # Start monitoring
@@ -4883,7 +4883,7 @@ def run_command():
         return command_help(error=False)
 
     # Initialize syslogging
-    if CONFIG['syslog']:
+    if CONFIG.syslog:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
 
     # Warning if not running as root
