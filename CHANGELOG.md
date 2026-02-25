@@ -2,6 +2,8 @@
 
 ## 0.32 (20xx-xx-xx)
 
+* Add validators to `foomuuri { option value }` settings.
+* Add deprecation warning to `resolve` section, deprecated in 0.28.
 * Add `nftrace` statement to enable nftrace ruleset debugging for matching
   packets. Tracing events can be viewed with `nft monitor trace` command.
 * Add `url_max_size=bytes` to `iplist {}` section. It defines maximum content
