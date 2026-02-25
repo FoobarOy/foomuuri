@@ -1,5 +1,5 @@
 [Unit]
-Description=Export Foomuuri statistics to Prometheus
+Description=Prometheus exporter for Foomuuri metrics
 After=foomuuri-monitor.service
 After=network-online.target
 

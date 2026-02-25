@@ -2,7 +2,7 @@
 # pylint: disable=invalid-name
 # pylint: enable=invalid-name
 
-"""Export Foomuuri statistics to Prometheus."""
+"""Prometheus exporter for Foomuuri metrics."""
 
 import argparse
 import json
