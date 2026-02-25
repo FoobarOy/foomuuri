@@ -203,7 +203,7 @@ class Config(TypedConfig):
         default='yes', metadata={'validate': Validators.str_words}
     )
     counter: str = dataclasses.field(
-        default='no', metadata={'validate': Validators.str_yes_no}
+        default='no', metadata={'validate': Validators.str_words}
     )
     set_size: int = dataclasses.field(
         default=65535, metadata={'validate': Validators.int_positive}
