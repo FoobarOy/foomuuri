@@ -2,6 +2,8 @@
 
 ## 0.32 (20xx-xx-xx)
 
+* Add `nftrace` statement to enable nftrace ruleset debugging for matching
+  packets. Tracing events can be viewed with `nft monitor trace` command.
 * Add `url_max_size=bytes` to `iplist {}` section. It defines maximum content
   size for downloaded IP address list. Default value is 33554432, 32 MiB.
 * Optimize duplicate accept rules to single rule.

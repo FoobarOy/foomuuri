@@ -1194,7 +1194,7 @@ def parse_rule_line(fileline_line):
 
         # Non-start keywords
         elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'notrack'):
+                      'masquerade', 'notrack', 'nftrace'):
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1705,6 +1705,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
         statement = force_statement or {
             'snat_prefix': 'snat',
             'dnat_prefix': 'dnat',
+            'nftrace': 'meta nftrace set 1',
         }.get(rule['statement'], rule['statement'])
 
     # queue can have optional flags
