@@ -161,11 +161,12 @@ class TypedConfig:
             raise TypeError(
                 f'{name}: expected value type {str}, got {type(value)}'
             )
-        target_type = self._get_field(name).type
+        field = self._get_field(name)
+        if converter := field.metadata.get('convert_str'):
+            value = converter(value)
+        target_type = field.type
         if target_type is int:
             value = int(value)
-        elif target_type is list and name.endswith('_bin'):
-            value = shlex.split(value)
         elif target_type is pathlib.PosixPath:
             value = pathlib.PosixPath(value)
         elif not isinstance(value, target_type):
@@ -216,7 +217,8 @@ class Config(TypedConfig):
         default='no', metadata={'validate': Validators.str_yes_no}
     )
     nft_bin: list = dataclasses.field(
-        default_factory=lambda: ['nft']
+            default_factory=lambda: ['nft'],
+            metadata={'convert_str': shlex.split}
     )
     try_reload_timeout: int = dataclasses.field(
         default=15,  metadata={'validate': Validators.int_positive}
