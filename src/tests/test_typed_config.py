@@ -33,6 +33,9 @@ class TestTypedConfig(unittest.TestCase):
             validation_str: str = field(
                 init=False, metadata={'validate': lambda v: v != ''}
             )
+            conversion: list = field(
+                init=False, metadata={'convert_str': lambda v: v.split()}
+            )
 
         self.config = TestConfig()
 
@@ -100,9 +103,14 @@ class TestTypedConfig(unittest.TestCase):
         self.assertRaises(ValueError, self.assign, 'validation_str', '')
         self.assertEqual(self.assign('validation_str', 'test'), 'test')
 
+    def test_convert_str(self):
+        """Test attribute convert_str hook call."""
+        self.assertEqual(self.assign_from_str('conversion', 'a b'), ['a', 'b'])
+
     def test_iter(self):
         """Test __iter__."""
         self.assertEqual(sorted(self.config), [
+            'conversion',
             'initialized_str',
             'type_conversion_int',
             'type_conversion_list',
