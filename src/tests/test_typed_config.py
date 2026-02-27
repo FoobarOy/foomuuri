@@ -20,6 +20,11 @@ class TestTypedConfig(unittest.TestCase):
         self.config.set_from_str(name, value)
         return self.config[name]
 
+    def append_from_str(self, name, value):
+        """Append attribute value from string and return value helper."""
+        self.config.append_from_str(name, value)
+        return self.config[name]
+
     def setUp(self):
         @dataclass
         class TestConfig(TypedConfig):
@@ -89,6 +94,8 @@ class TestTypedConfig(unittest.TestCase):
         )
         # Assignment, str to str
         self.assertEqual(self.assign_from_str('initialized_str', '123'), '123')
+        # Assignment, list converted from str
+        self.assertEqual(self.assign_from_str('conversion', '1'), ['1'])
         # Unsupported conversion, from str to list
         self.assertRaises(
             TypeError, self.config.set_from_str, 'type_conversion_list', '[]'
@@ -98,14 +105,23 @@ class TestTypedConfig(unittest.TestCase):
             AttributeError, self.config.set_from_str, 'unknownattribute', '123'
         )
 
+    def test_append_from_str(self):
+        """Test attribute value append from str (append_from_str)."""
+        # Appending, str to str
+        self.assertEqual(self.assign_from_str('initialized_str', '1'), '1')
+        self.assertEqual(self.append_from_str('initialized_str', '2'), '1 2')
+        # Appending, list converted from str to list
+        self.assertEqual(self.assign_from_str('conversion', '1'), ['1'])
+        self.assertEqual(self.append_from_str('conversion', '2'), ['1', '2'])
+        # Attempt to modify non-existing attribute
+        self.assertRaises(
+            AttributeError, self.append_from_str, 'unknownattribute', '123'
+        )
+
     def test_validation(self):
         """Test attribute validation method call."""
         self.assertRaises(ValueError, self.assign, 'validation_str', '')
         self.assertEqual(self.assign('validation_str', 'test'), 'test')
-
-    def test_convert_str(self):
-        """Test attribute convert_str hook call."""
-        self.assertEqual(self.assign_from_str('conversion', 'a b'), ['a', 'b'])
 
     def test_iter(self):
         """Test __iter__."""
