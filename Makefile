@@ -16,7 +16,7 @@ test:
 # Generate firewall ruleset to file, used in development
 
 devel:
-	src/foomuuri --set=etc_dir=../devel --set=share_dir=etc --set=state_dir=../devel --set=run_dir=../devel check
+	unshare --map-root-user --net src/foomuuri --set=etc_dir=../devel --set=share_dir=etc --set=state_dir=../devel --set=run_dir=../devel check
 
 # Delete created files
 
