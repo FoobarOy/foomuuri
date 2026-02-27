@@ -3466,32 +3466,29 @@ def get_file(wildcard):
     return text
 
 
-def parse_hour_min(timespec, fallback):
-    """Parse 4h3m to seconds.
-
-    This is dummy parser without any good error checking.
-    """
-    if not timespec:
-        return fallback
+def parse_duration(timespec, fallback):
+    """Parse timespec 1w2d3h4m5s to seconds."""
+    units = (
+        ('w', 'weeks'),
+        ('d', 'days'),
+        ('h', 'hours'),
+        ('m', 'minutes'),
+        ('s', 'seconds'),
+    )
+    delta = collections.defaultdict(int)
     timespec = timespec.replace(' ', '')
-    days = hours = minutes = seconds = 0
-    if 'd' in timespec:
-        days, timespec = timespec.split('d', 1)
-    if 'h' in timespec:
-        hours, timespec = timespec.split('h', 1)
-    if 'm' in timespec:
-        minutes, timespec = timespec.split('m', 1)
-    if 's' in timespec:
-        seconds, timespec = timespec.split('s', 1)
-    if timespec:
-        return fallback
-    try:
-        return (int(days) * 86400 +
-                int(hours) * 3600 +
-                int(minutes) * 60 +
-                int(seconds))
-    except ValueError:
-        return fallback
+
+    for unit in units:
+        pattern = rf'^(\d+){unit[0]}'
+        if match := re.match(pattern, timespec):
+            delta[unit[1]] = int(match[1])
+            timespec = re.sub(pattern, '', timespec, count=1)
+
+    if delta and not timespec:
+        with contextlib.suppress(OverflowError):
+            return int(datetime.timedelta(**delta).total_seconds())
+
+    return fallback
 
 
 def iterate_set_elements(data):
@@ -3560,7 +3557,7 @@ def command_iplist_add():
             cache[f'manual.{setname}']['ip'][address] = expire
             cache[f'manual.{setname}']['dirty'] = True
         else:
-            timeout = parse_hour_min(address, 0)
+            timeout = parse_duration(address, 0)
             if not timeout:
                 fail(f'Invalid IP address {address}')
             expire = now + timeout
@@ -3713,12 +3710,12 @@ def iplist_parse_timeout(fileline, timeouts, setting, extra):
     # Update timeout
     if key in ('dns_timeout', 'dns_refresh',
                'url_timeout', 'url_refresh'):
-        timeouts[key] = parse_hour_min(value, timeouts[key])
+        timeouts[key] = parse_duration(value, timeouts[key])
     elif key == 'timeout':
-        timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_hour_min(
+        timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_duration(
             value, timeouts['dns_timeout'])
     else:  # refresh
-        timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_hour_min(
+        timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_duration(
             value, timeouts['dns_refresh'])
 
 
@@ -3761,7 +3758,7 @@ def read_old_iplist_format(cache):
                 # iplist_manual_file has expire stamp.
                 timeout = str_to_time(items[11])
             else:
-                timeout = int(time.time()) + parse_hour_min(items[8], 0)
+                timeout = int(time.time()) + parse_duration(items[8], 0)
             iplist_cache_init(cache, setname)
             cache[setname]['ip'][items[6]] = timeout
 
