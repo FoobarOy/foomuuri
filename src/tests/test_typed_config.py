@@ -10,12 +10,12 @@ from foomuuri import TypedConfig
 
 class TestTypedConfig(unittest.TestCase):
     """Setters / getters / type conversion tests."""
-    def assign(self, name, value):
-        """Assign attribute and return value helper."""
+    def set(self, name, value):
+        """Set attribute and return value helper."""
         self.config[name] = value
         return self.config[name]
 
-    def assign_from_str(self, name, value):
+    def set_from_str(self, name, value):
         """Set attribute from string and return value helper."""
         self.config.set_from_str(name, value)
         return self.config[name]
@@ -35,7 +35,7 @@ class TestTypedConfig(unittest.TestCase):
             type_conversion_int: int = 0
             type_conversion_list: list = field(default_factory=list)
             type_conversion_posixpath: pathlib.PosixPath = field(init=False)
-            validation_str: str = field(
+            validation: str = field(
                 init=False, metadata={'validate': lambda v: v != ''}
             )
             conversion: list = field(
@@ -60,16 +60,16 @@ class TestTypedConfig(unittest.TestCase):
 
     def test_initialized_typed(self):
         """Test assigning values to initialized typed attributes."""
-        self.assertRaises(TypeError, self.assign, 'initialized_str', 123)
-        self.assertEqual(self.assign('initialized_str', 'value'), 'value')
+        self.assertRaises(TypeError, self.set, 'initialized_str', 123)
+        self.assertEqual(self.set('initialized_str', 'value'), 'value')
 
     def test_uninitialized_typed(self):
         """Test assigning values to uninialized typed attributes."""
         self.assertRaises(
             AttributeError, lambda: self.config.uninitialized_str
         )
-        self.assertRaises(TypeError, self.assign, 'uninitialized_str', 123)
-        self.assertEqual(self.assign('uninitialized_str', 'value'), 'value')
+        self.assertRaises(TypeError, self.set, 'uninitialized_str', 123)
+        self.assertEqual(self.set('uninitialized_str', 'value'), 'value')
 
     def test_initialized_untyped(self):
         """Test accessing listed untyped attributes."""
@@ -77,7 +77,7 @@ class TestTypedConfig(unittest.TestCase):
             AttributeError, lambda: self.config.uninitialized_untyped
         )
 
-    def test_type_conversion(self):
+    def test_set_from_str(self):
         """Test attribute type conversion from str (set_from_str)."""
         # Invalid value type: only str supported
         self.assertRaises(
@@ -85,22 +85,22 @@ class TestTypedConfig(unittest.TestCase):
         )
         # Supported conversion, from str to int
         self.assertEqual(
-            self.assign_from_str('type_conversion_int', '123'), 123
+            self.set_from_str('type_conversion_int', '123'), 123
         )
         # Supported conversion, from str to pathlib.PosixPath
         self.assertEqual(
-            self.assign_from_str('type_conversion_posixpath', '/tmp/'),
+            self.set_from_str('type_conversion_posixpath', '/tmp/'),
             pathlib.PosixPath('/tmp/')
         )
         # Assignment, str to str
-        self.assertEqual(self.assign_from_str('initialized_str', '123'), '123')
+        self.assertEqual(self.set_from_str('initialized_str', '123'), '123')
         # Assignment, list converted from str
-        self.assertEqual(self.assign_from_str('conversion', '1'), ['1'])
+        self.assertEqual(self.set_from_str('conversion', '1'), ['1'])
         # Unsupported conversion, from str to list
         self.assertRaises(
             TypeError, self.config.set_from_str, 'type_conversion_list', '[]'
         )
-        # Attempt to modify non-existing attribute
+        # Assign non-existing attribute
         self.assertRaises(
             AttributeError, self.config.set_from_str, 'unknownattribute', '123'
         )
@@ -108,20 +108,20 @@ class TestTypedConfig(unittest.TestCase):
     def test_append_from_str(self):
         """Test attribute value append from str (append_from_str)."""
         # Appending, str to str
-        self.assertEqual(self.assign_from_str('initialized_str', '1'), '1')
+        self.assertEqual(self.set_from_str('initialized_str', '1'), '1')
         self.assertEqual(self.append_from_str('initialized_str', '2'), '1 2')
         # Appending, list converted from str to list
-        self.assertEqual(self.assign_from_str('conversion', '1'), ['1'])
+        self.assertEqual(self.set_from_str('conversion', '1'), ['1'])
         self.assertEqual(self.append_from_str('conversion', '2'), ['1', '2'])
-        # Attempt to modify non-existing attribute
+        # Append non-existing attribute
         self.assertRaises(
             AttributeError, self.append_from_str, 'unknownattribute', '123'
         )
 
     def test_validation(self):
-        """Test attribute validation method call."""
-        self.assertRaises(ValueError, self.assign, 'validation_str', '')
-        self.assertEqual(self.assign('validation_str', 'test'), 'test')
+        """Test attribute validation helper call."""
+        self.assertRaises(ValueError, self.set, 'validation', '')
+        self.assertEqual(self.set('validation', 'test'), 'test')
 
     def test_iter(self):
         """Test __iter__."""
@@ -132,7 +132,7 @@ class TestTypedConfig(unittest.TestCase):
             'type_conversion_list',
             'type_conversion_posixpath',
             'uninitialized_str',
-            'validation_str',
+            'validation',
         ])
 
     def test_get(self):
