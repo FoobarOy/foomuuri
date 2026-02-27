@@ -1500,7 +1500,7 @@ def suffix_mask(value, compare):
     if not compare:
         compare = '== '
     addr, mask = value.split('/-')
-    mask = hex(pow(2, int(mask)) - 1)[2:]  # As long hex
+    mask = f"{pow(2, int(mask)) - 1:x}"  # As long hex
     splitted = ''  # Convert to ":1234" parts
     while mask:
         splitted = f':{mask[-4:]}{splitted}'
