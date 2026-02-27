@@ -84,7 +84,7 @@ class Validators:
 
     @staticmethod
     def str_interface_name(value: str):
-        """Assert value is a valid network interface name.
+        r"""Assert value is a valid network interface name.
 
         Linux accepts also \\ and " characters. Reject them here as they
         would break JSONs without quoting.
