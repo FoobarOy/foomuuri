@@ -134,7 +134,6 @@ table inet foomuuri {
 		tcp dport 3002 hour "16:00:02" accept
 		tcp dport 3003 hour > "17:00:23" accept
 		tcp dport 3004 hour 18:00-19:00 accept
-		tcp dport 3005 hour 22:00-03:00 accept
 		tcp dport 4000 time "2024-05-03" accept
 		tcp dport 4001 time >= "2024-05-04 19:00" accept
 		tcp dport 4002 time < "2024-05-04 19:00:01" accept
@@ -163,7 +162,6 @@ table inet foomuuri {
 		tcp dport 3002 hour "16:00:02" accept
 		tcp dport 3003 hour > "17:00:23" accept
 		tcp dport 3004 hour 18:00-19:00 accept
-		tcp dport 3005 hour 22:00-03:00 accept
 		tcp dport 4000 time "2024-05-03" accept
 		tcp dport 4001 time >= "2024-05-04 19:00" accept
 		tcp dport 4002 time < "2024-05-04 19:00:01" accept
