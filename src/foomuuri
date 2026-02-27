@@ -175,6 +175,29 @@ class TypedConfig:
             )
         setattr(self, name, value)
 
+    def append_from_str(self, name, value: str):
+        """Appends attribute value from str with type conversion."""
+        if name not in self:
+            raise AttributeError(f'{name}: unknown attribute')
+        if not isinstance(value, str):
+            raise TypeError(
+                f'{name}: expected value type {str}, got {type(value)}'
+            )
+        field = self._get_field(name)
+        if converter := field.metadata.get('convert_str'):
+            value = converter(value)
+        target_type = field.type
+        value_type = type(value)
+        if value_type is str and target_type is str:
+            value = f'{self[name]} {value}'
+        elif value_type is list and target_type is list:
+            value = self[name] + value
+        else:
+            raise TypeError(
+                f"{name}: appending of {target_type} not implemented"
+            )
+        setattr(self, name, value)
+
     def _get_field(self, name, default=None):
         """Get dataclass field by attribute name."""
         # pylint: disable=no-member
@@ -781,10 +804,10 @@ def parse_config_foomuuri(config):
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
         try:
             if value.startswith('+ '):  # append
-                CONFIG.set_from_str(name, f'{CONFIG[name]} {value[2:]}')
+                CONFIG.append_from_str(name, value[2:])
             else:
                 CONFIG.set_from_str(name, value)  # overwrite
-        except ValueError:
+        except (ValueError, TypeError):
             fail(
                 f'{fileline}Invalid foomuuri{{}} option value:'
                 f' {" ".join(line)}'
