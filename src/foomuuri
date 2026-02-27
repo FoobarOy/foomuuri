@@ -84,7 +84,7 @@ class Validators:
 
     @staticmethod
     def str_interface_name(value: str):
-        """Assert value is a valid network interface name.
+        r"""Assert value is a valid network interface name.
 
         Linux accepts also \\ and " characters. Reject them here as they
         would break JSONs without quoting.
@@ -1500,7 +1500,7 @@ def suffix_mask(value, compare):
     if not compare:
         compare = '== '
     addr, mask = value.split('/-')
-    mask = hex(pow(2, int(mask)) - 1)[2:]  # As long hex
+    mask = f"{pow(2, int(mask)) - 1:x}"  # As long hex
     splitted = ''  # Convert to ":1234" parts
     while mask:
         splitted = f':{mask[-4:]}{splitted}'
@@ -2111,7 +2111,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             continue  # Don't convert "multicast accept" to nft "accept"
         if rule['statement'] in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
             fail(f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
-                 f'be used in \"{szone}-{dzone}\" section')
+                 f'be used in "{szone}-{dzone}" section')
         statement = rule_statement(szone, dzone, rule, ipv,
                                    force_statement=rule['nft'])
 
