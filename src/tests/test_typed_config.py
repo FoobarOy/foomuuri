@@ -58,6 +58,10 @@ class TestTypedConfig(unittest.TestCase):
             AttributeError, lambda: self.config['unknown_attribute']
         )
 
+        self.assertRaises(
+            AttributeError, self.set, 'unknown_attribute', '123'
+        )
+
     def test_initialized_typed(self):
         """Test assigning values to initialized typed attributes."""
         self.assertRaises(TypeError, self.set, 'initialized_str', 123)
@@ -107,12 +111,20 @@ class TestTypedConfig(unittest.TestCase):
 
     def test_append_from_str(self):
         """Test attribute value append from str (append_from_str)."""
+        # Invalid value type: only str supported
+        self.assertRaises(
+            TypeError, self.config.append_from_str, 'initialized_str', 123
+        )
         # Appending, str to str
         self.assertEqual(self.set_from_str('initialized_str', '1'), '1')
         self.assertEqual(self.append_from_str('initialized_str', '2'), '1 2')
         # Appending, list converted from str to list
         self.assertEqual(self.set_from_str('conversion', '1'), ['1'])
         self.assertEqual(self.append_from_str('conversion', '2'), ['1', '2'])
+        # Unsupported append, from str to int
+        self.assertRaises(
+            TypeError, self.append_from_str, 'type_conversion_int', '1'
+        )
         # Append non-existing attribute
         self.assertRaises(
             AttributeError, self.append_from_str, 'unknownattribute', '123'
