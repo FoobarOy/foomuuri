@@ -952,9 +952,13 @@ def minimal_config():
 def is_ipv4_address(value, allow_network=True):
     """Is value IPv4 address, network or interval."""
     if value.count('-') == 1:  # Interval "IP-IP"
-        addr_from, addr_to = value.split('-')
-        return (is_ipv4_address(addr_from, False) and
-                is_ipv4_address(addr_to, False))
+        try:
+            addr_from, addr_to = value.split('-')
+            return (ipaddress.IPv4Address(addr_from)
+                    <= ipaddress.IPv4Address(addr_to))
+        except ValueError:
+            return False
+
     try:  # Address "IP"
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv4Address)
     except ValueError:
@@ -967,18 +971,22 @@ def is_ipv4_address(value, allow_network=True):
 
 def is_ipv6_address(value, allow_network=True):
     """Is value IPv6 address, network or interval."""
+    # pylint: disable=too-many-return-statements
     if value.count('/-') == 1:  # Suffix mask "IP/-mask"
         addr, maskstr = value.split('/-')
         try:
             mask = int(maskstr)
-            return 0 <= mask <= 128 and is_ipv6_address(addr, False)
+            return 0 <= mask <= 128 and ipaddress.IPv6Address(addr)
         except ValueError:
             return False
 
     if value.count('-') == 1:  # Interval "IP-IP"
-        addr_from, addr_to = value.split('-')
-        return (is_ipv6_address(addr_from, False) and
-                is_ipv6_address(addr_to, False))
+        try:
+            addr_from, addr_to = value.split('-')
+            return (ipaddress.IPv6Address(addr_from)
+                    <= ipaddress.IPv6Address(addr_to))
+        except ValueError:
+            return False
 
     # Python's ipaddress library doesn't handle "[ipv6]" notation.
     # Strip [] before validating the address. nft handles [] fine, it will
