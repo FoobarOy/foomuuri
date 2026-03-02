@@ -10,6 +10,9 @@ all: test
 
 # Run testsuite and check source
 
+# To get test coverage report uncomment next line and run:  make clean test && coverage html
+# export COVERAGE	= unshare --map-root-user --net coverage run --append --data-file=$(CURDIR)/.coverage
+
 test:
 	$(MAKE) -C test
 
@@ -21,8 +24,8 @@ devel:
 # Delete created files
 
 clean distclean:
-	rm -rf src/__pycache__ src/tests/__pycache__
-	rm -f foomuuri-*.tar.gz
+	rm -rf src/__pycache__ src/tests/__pycache__ htmlcov
+	rm -f .coverage foomuuri-*.tar.gz
 	$(MAKE) -C test $@
 
 # Install current source to DESTDIR

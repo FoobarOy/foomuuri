@@ -3,5 +3,7 @@ foomuuri-*.tar.gz
 test/*/*.fw
 test/*/iplist-cache.json
 test/*/zone
+.coverage
+htmlcov
 
 __pycache__
