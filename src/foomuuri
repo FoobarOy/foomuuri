@@ -40,12 +40,12 @@ try:
 except ImportError:
     HAVE_DBUS = False
 
-# requests is optional, used by iplist http download
+# urllib3 is optional, used by iplist http download
 try:
-    import requests
-    HAVE_REQUESTS = True
+    import urllib3
+    HAVE_URLLIB3 = True
 except ImportError:
-    HAVE_REQUESTS = False
+    HAVE_URLLIB3 = False
 
 # lxml is optional, used by iplist xml and html filters
 try:
@@ -301,10 +301,17 @@ class Internal(TypedConfig):
     url_max_size: int = dataclasses.field(
         default=33_554_432, metadata={'validate': Validators.int_positive}
     )  # Parsed in iplist{} from config files
-    url_chunk_size: int = dataclasses.field(
-        default=1_048_576, metadata={'validate': Validators.int_positive}
-    )  # Constant
-    url_get_timeout: tuple = (6.1, 30)   # Constant, connect and read timeout
+    # Constants
+    url_chunk_size: int = 1_048_576
+    url_get_timeout: dict = dataclasses.field(
+        default_factory=lambda: {'connect': 3.05, 'read': 3.05}
+    )  # Timeouts (seconds)
+    url_get_retries: dict = dataclasses.field(
+        default_factory=lambda: {'connect': 3,
+                                 'redirect': 3,
+                                 'read': 3,
+                                 'raise_on_redirect': False}
+    )  # Retries count and redirect behaviour
 
 
 CONFIG = Config()
@@ -3404,47 +3411,45 @@ def active_sets():
 
 def get_url(url):
     """Download URL and return it as text, or None if failure."""
-    if HAVE_REQUESTS:
-        for retry in range(3):
-            if retry:
-                time.sleep(10)
-            try:
-                with requests.get(
-                    remove_filters(url),
-                    timeout=INTERNAL.url_get_timeout,
-                    stream=True
-                ) as response:
-                    if response.status_code != 200:
-                        raise requests.ConnectionError(
-                            'status code: {response.status_code}'
-                        )
-                    max_size = INTERNAL.url_max_size
-                    content_length = int(
-                        response.headers.get('content-length', 0)
+    if HAVE_URLLIB3:
+        try:
+            with urllib3.request(
+                method='GET',
+                url=remove_filters(url),
+                decode_content=False,
+                preload_content=False,
+                retries=urllib3.Retry(**INTERNAL.url_get_retries),
+                timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
+            ) as response:
+                if response.status != 200:
+                    raise urllib3.exceptions.ProtocolError(
+                        f'status code: {response.status}'
                     )
-                    if content_length > max_size:
+                max_size = INTERNAL.url_max_size
+                content_length = int(
+                    response.headers.get('content-length', 0)
+                )
+                if content_length > max_size:
+                    raise ValueError(
+                        f'content length {content_length} '
+                        f'exceeds {max_size}'
+                    )
+                content = io.BytesIO()
+                for chunk in response.stream(INTERNAL.url_chunk_size):
+                    content.write(chunk)
+                    if content.tell() > max_size:
                         raise ValueError(
-                            f'content length {content_length} '
-                            f'exceeds {max_size}'
+                            f'content length exceeds {max_size}'
                         )
-                    content = io.BytesIO()
-                    for chunk in response.iter_content(
-                        chunk_size=INTERNAL.url_chunk_size,
-                        decode_unicode=False
-                    ):
-                        content.write(chunk)
-                        if content.tell() > max_size:
-                            raise ValueError(
-                                f'content length exceeds {max_size}'
-                            )
-                    return content.getvalue().decode('utf-8', errors='ignore')
-            except OSError as error:
-                err = f'error: {error}'
-            except ValueError as error:
-                err = f'error: {error}'
-                break
+                return content.getvalue().decode('utf-8', errors='ignore')
+        except (ValueError, urllib3.exceptions.HTTPError) as error:
+            err = f'error: {error}'
+        finally:
+            with contextlib.suppress(NameError):
+                response.drain_conn()
+                response.release_conn()
     else:
-        err = 'No python-requests installed'
+        err = 'No python-urllib3 installed'
     if '|missing-ok' in url:
         INTERNAL.iplist_missing_ok.add(url)
     else:
