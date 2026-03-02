@@ -3716,14 +3716,15 @@ def get_url_or_file(url, timeout, refresh, cache):
                 f'{len(cache[url]["ip"])} entries')
 
 
-def iplist_parse_timeout(fileline, timeouts, setting, extra):
-    """Parse key=value from setting and set timeouts[key] = value."""
-    # Parse setting to key=value
+def iplist_parse_timeout(fileline: str, timeouts: dict[str, int],
+                         key_value: str, extra: str) -> None:
+    """Parse key=value from key_value and set timeouts[key] = value."""
+    # Parse key_value to key=value
     if extra:  # Backward compabililty  (v0.27)
-        key = setting
+        key = key_value
         value = ''.join(extra)
     else:
-        key, value = setting.split('=', 1)
+        key, value = key_value.split('=', 1)
     if not value:
         fail(f'{fileline}No value for "{key}"')
 
@@ -3732,9 +3733,13 @@ def iplist_parse_timeout(fileline, timeouts, setting, extra):
                'url_timeout', 'url_refresh'):
         timeouts[key] = parse_duration(value, timeouts[key])
     elif key == 'timeout':
+        warning(f'{fileline}Iplist "timeout" is obsoleted, use "dns_timeout" '
+                f'or "url_timeout" instead')
         timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_duration(
             value, timeouts['dns_timeout'])
     else:  # refresh
+        warning(f'{fileline}Iplist "refresh" is obsoleted, use "dns_refresh" '
+                f'or "url_refresh" instead')
         timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_duration(
             value, timeouts['dns_refresh'])
 
