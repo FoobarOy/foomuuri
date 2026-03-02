@@ -363,18 +363,25 @@ def state_file(key):
     return CONFIG.state_dir / CONFIG[key]
 
 
-def run_program_rc(args, *, env=None, stdin=None, print_output=True,
-                   quiet=False):
+def join_args(args: list) -> str:
+    """Helper function to return joined string of stringified args."""
+    if isinstance(args, list):
+        return shlex.join(map(str, args))
+    raise TypeError(f'args type must be a {list}, not a {type(args)}')
+
+
+def run_program_rc(args: list, *, env=None, stdin=None, print_output=True,
+                   quiet=False) -> int:
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
-    verbose(' '.join(map(str, args)))
+    verbose(join_args(args))
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
                               env=env, input=stdin, timeout=60)
     except (OSError, subprocess.TimeoutExpired) as error:
-        fail(f'Failed to run command "{shlex.join(args)}": {error}', False)
+        fail(f'Failed to run command "{join_args(args)}": {error}', False)
         return 1
     output = proc.stdout.rstrip()
     if (
@@ -386,7 +393,7 @@ def run_program_rc(args, *, env=None, stdin=None, print_output=True,
     return proc.returncode
 
 
-def run_program_pipe(args, text_input):
+def run_program_pipe(args: list, text_input: str) -> str:
     """Run external program with stdin, return its output."""
     if not args:
         return ''
@@ -396,15 +403,15 @@ def run_program_pipe(args, text_input):
                               stderr=subprocess.STDOUT,
                               encoding='utf-8', timeout=60)
     except (OSError, subprocess.TimeoutExpired) as error:
-        fail(f'Failed to run command "{" ".join(args)}": {error}')
+        fail(f'Failed to run command "{join_args(args)}": {error}')
     if proc.returncode:
-        warning(f'Failed to run command "{" ".join(args)}": '
+        warning(f'Failed to run command "{join_args(args)}": '
                 f'return code {proc.returncode}')
         return None
     return proc.stdout
 
 
-def run_program_shell(args, fileline):
+def run_program_shell(args: str, fileline: str) -> str:
     """Run external program as shell command and return its output.
 
     Command failure is fatal. Parameter args must be a string, not list.
@@ -433,7 +440,7 @@ def nft_json(cmd):
     if not cmd:
         return {}
     args = CONFIG.nft_bin + ['--json', cmd]
-    verbose(' '.join(map(str, args)), 2)
+    verbose(join_args(args), 2)
     try:
         proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, encoding='utf-8',
