@@ -8,10 +8,10 @@ CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }
 
 all: test
 
-# Run testsuite and check source
-
 # To get test coverage report uncomment next line and run:  make clean test && coverage html
 # export COVERAGE	= unshare --map-root-user --net coverage run --append --data-file=$(CURDIR)/.coverage
+
+# Run testsuite and check source
 
 test:
 	$(MAKE) -C test
