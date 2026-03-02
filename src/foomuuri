@@ -4117,8 +4117,17 @@ def command_iplist_refresh(config=None, currently_active=None):
             else:
                 update_only.append(f'@{name}')
 
+    # Make sure systemd's TimeoutStartSec doesn't trigger while updating
+    # ruleset or writing cache file.
+    if HAVE_NOTIFY:
+        notify('EXTEND_TIMEOUT_USEC=120000000')  # 2 minutes
+
     # Apply updates to ruleset
-    return iplist_output_values(iplist, cache, currently_active, update_only)
+    ret = iplist_output_values(iplist, cache, currently_active, update_only)
+    if HAVE_NOTIFY:
+        notify('READY=1')
+        notify('STOPPING=1')
+    return ret
 
 
 def command_iplist():

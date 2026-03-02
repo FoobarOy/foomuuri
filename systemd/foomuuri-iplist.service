@@ -3,6 +3,7 @@ Description=Multizone bidirectional nftables firewall - Refresh iplist entries
 Documentation=https://github.com/FoobarOy/foomuuri/wiki
 
 [Service]
-Type=oneshot
+Type=notify
 ExecStart=foomuuri --soft iplist refresh
+TimeoutStartSec=2m
 ProtectSystem=full
