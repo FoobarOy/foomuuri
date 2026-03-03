@@ -3424,7 +3424,8 @@ def get_url(url):
     """Download URL and return it as text, or None if failure."""
     if HAVE_URLLIB3:
         try:
-            with urllib3.request(
+            http = urllib3.PoolManager()
+            with http.request(
                 method='GET',
                 url=remove_filters(url),
                 decode_content=False,
