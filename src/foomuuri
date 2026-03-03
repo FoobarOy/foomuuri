@@ -56,10 +56,10 @@ except ImportError:
 
 # SystemD notify support is optional
 try:
-    from systemd.daemon import notify
-    HAVE_NOTIFY = True
+    import systemd.daemon
+    HAVE_SYSTEMD = True
 except ImportError:
-    HAVE_NOTIFY = False
+    HAVE_SYSTEMD = False
 
 VERSION = '0.31'
 
@@ -352,6 +352,12 @@ def verbose(line, level=1):
 def out(line):
     """Add single line to ruleset."""
     OUT.append(line)
+
+
+def notify(message: str) -> None:
+    """Send SystemD notify message."""
+    if HAVE_SYSTEMD:
+        systemd.daemon.notify(message)
 
 
 def state_file(key):
@@ -3270,9 +3276,8 @@ if HAVE_DBUS:
             def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
                     INTERNAL.keep_going = 0
-                    if HAVE_NOTIFY:
-                        notify('STOPPING=1')
-                elif HAVE_NOTIFY:
+                    notify('STOPPING=1')
+                else:
                     notify('RELOADING=1')
                 mainloop.quit()
 
@@ -3283,8 +3288,7 @@ if HAVE_DBUS:
 
             # Start processing messages
             verbose('D-Bus handler ready', 0)
-            if HAVE_NOTIFY:
-                notify('READY=1')
+            notify('READY=1')
             mainloop.run()
 
             # Reload signal received. Disconnect from D-Bus.
@@ -4131,14 +4135,12 @@ def command_iplist_refresh(config=None, currently_active=None):
 
     # Make sure systemd's TimeoutStartSec doesn't trigger while updating
     # ruleset or writing cache file.
-    if HAVE_NOTIFY:
-        notify('EXTEND_TIMEOUT_USEC=120000000')  # 2 minutes
+    notify('EXTEND_TIMEOUT_USEC=120000000')  # 2 minutes
 
     # Apply updates to ruleset
     ret = iplist_output_values(iplist, cache, currently_active, update_only)
-    if HAVE_NOTIFY:
-        notify('READY=1')
-        notify('STOPPING=1')
+    notify('READY=1')
+    notify('STOPPING=1')
     return ret
 
 
@@ -4780,9 +4782,8 @@ def command_monitor():
 
         # Exit silently with OK if no targets defined in configuration
         if not targets:
-            if HAVE_NOTIFY:
-                notify('READY=1')
-                notify('STOPPING=1')
+            notify('READY=1')
+            notify('STOPPING=1')
             return 0
         daemonize()
 
@@ -4790,12 +4791,10 @@ def command_monitor():
         def signal_handler(sig, _dummy_frame):
             if sig == signal.SIGINT:
                 INTERNAL.keep_going = 0
-                if HAVE_NOTIFY:
-                    notify('STOPPING=1')
+                notify('STOPPING=1')
             else:
                 INTERNAL.keep_going = 2
-                if HAVE_NOTIFY:
-                    notify('RELOADING=1')
+                notify('RELOADING=1')
 
         INTERNAL.keep_going = 1
         signal.signal(signal.SIGHUP, signal_handler)
@@ -4805,8 +4804,7 @@ def command_monitor():
 
         # Start monitoring
         verbose('Target monitor ready', 0)
-        if HAVE_NOTIFY:
-            notify('READY=1')
+        notify('READY=1')
         stat_interval = min(cfg['statistics_interval']
                             for cfg in targets.values())
         next_stat = time.time() + stat_interval / 5
