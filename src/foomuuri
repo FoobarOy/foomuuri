@@ -4841,9 +4841,9 @@ def command_help(error=True):
     """Print command line help."""
     print(f'''Foomuuri {VERSION}
 
-Usage: {sys.argv[0]} [OPTION]... COMMAND
+Usage: {sys.argv[0]} [OPTIONS] COMMAND
 
-Available commands:
+Available COMMANDs:
 
   start        Load configuration files and generate ruleset
   stop         Remove ruleset
@@ -4871,7 +4871,7 @@ Available commands:
   set interface INTERFACE zone {{ZONE | -}}
                Change INTERFACE to ZONE, or remove from all zones
 
-Available options:
+Available OPTIONS:
 
   --version    Print version
   --verbose    Verbose output
@@ -4881,7 +4881,7 @@ Available options:
   --fork       Fork as a background daemon process
   --syslog     Enable syslog logging
   --set=OPTION=VALUE
-               Set config OPTION to VALUE
+               Set foomuuri{{}} config OPTION to VALUE
 
 Internally used commands:
 

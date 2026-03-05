@@ -4,7 +4,7 @@
 .SH NAME
 foomuuri \- multizone bidirectional nftables firewall
 .SH SYNOPSIS
-\f[B]foomuuri\f[R] [\f[I]OPTION\f[R]]\&...\ \f[I]COMMAND\f[R]
+\f[B]foomuuri\f[R] [\f[I]OPTIONS\f[R]] \f[I]COMMAND\f[R]
 .SH DESCRIPTION
 \f[B]Foomuuri\f[R] is a firewall generator for nftables based on the
 concept of zones.
@@ -39,7 +39,7 @@ Fork as a background daemon process.
 Enable syslog logging.
 .TP
 \f[B]\-\-set=OPTION=VALUE\f[R]
-Set config OPTION to VALUE.
+Set foomuuri{} config OPTION to VALUE.
 .SH COMMANDS
 .TP
 \f[B]start\f[R]
@@ -84,7 +84,7 @@ Add or refresh IPADDRESS(es) to IPLIST.
 Delete IPADDRESS(es) from IPLIST.
 .TP
 \f[B]iplist flush [IPLIST]\&...\f[R]
-Delete all IP addresses from all or specified IPLIST(s).
+Delete all added IP addresses from all or specified IPLIST(s).
 .TP
 \f[B]iplist refresh [IPLIST]\&...\f[R]
 Refresh all or specified IPLIST(s) now.

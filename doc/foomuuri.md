@@ -13,7 +13,7 @@ foomuuri - multizone bidirectional nftables firewall
 
 # SYNOPSIS
 
-**foomuuri** [*OPTION*]...\ *COMMAND*
+**foomuuri** [*OPTIONS*] *COMMAND*
 
 
 # DESCRIPTION
@@ -52,7 +52,7 @@ emulation for NetworkManager's zone support.
 : Enable syslog logging.
 
 **\--set=OPTION=VALUE**
-: Set config OPTION to VALUE.
+: Set foomuuri{} config OPTION to VALUE.
 
 
 # COMMANDS
