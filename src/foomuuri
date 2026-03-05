@@ -4839,60 +4839,54 @@ def command_monitor():
 
 def command_help(error=True):
     """Print command line help."""
-    # pylint: disable=too-many-statements
-    print(f'Foomuuri {VERSION}')
-    print()
-    print(f'Usage: {sys.argv[0]} [OPTION]... COMMAND')
-    print()
-    print('Available commands:')
-    print()
-    print('  start          Load configuration files and generate ruleset')
-    print('  stop           Remove ruleset')
-    print('  reload         Same as start, followed by iplist refresh')
-    print('  try-reload     Same as reload, ask confirmation to keep new '
-          'config')
-    print('  status         Show current status: running, zone-interface '
-          'mapping')
-    print('  check          Verify configuration files')
-    print('  block          Load "block all traffic" ruleset')
-    print('  list [ZONE-ZONE]...')
-    print('                 List whole active ruleset or for ZONE-ZONE only')
-    print('  list macro [NAME | VALUE]...')
-    print('                 List all macros or macros with specified '
-          'NAME(s) or VALUE(s)')
-    print('  list counter [COUNTER]...')
-    print('                 List all or specified named COUNTER(s)')
-    print('  iplist list [IPLIST]...')
-    print('                 List entries of all or specified IPLIST(s)')
-    print('  iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...')
-    print('                 Add or refresh IPADDRESS(es) to IPLIST')
-    print('  iplist del IPLIST IPADDRESS [IPADDRESS]...')
-    print('                 Delete IPADDRESS(es) from IPLIST')
-    print('  iplist flush [IPLIST]...')
-    print('                 Delete all added IP addresses from all or '
-          'specified IPLIST(s)')
-    print('  iplist refresh [IPLIST]...')
-    print('                 Refresh all or specified IPLIST(s) now')
-    print('  set interface INTERFACE zone {ZONE | -}')
-    print('                 Change INTERFACE to ZONE, or remove from all '
-          'zones')
-    print()
-    print('Available options:')
-    print()
-    print('  --version      Print version')
-    print('  --verbose      Verbose output')
-    print('  --quiet        Be quiet')
-    print('  --force        Force some operations, don\'t check anything')
-    print('  --soft         Don\'t force operations, check more')
-    print('  --fork         Fork as a background daemon process')
-    print('  --syslog       Enable syslog logging')
-    print('  --set=OPTION=VALUE')
-    print('                 Set config OPTION to VALUE')
-    print()
-    print('Internally used commands:')
-    print()
-    print('  dbus           Start D-Bus daemon')
-    print('  monitor        Start target monitor daemon')
+    print(f'''Foomuuri {VERSION}
+
+Usage: {sys.argv[0]} [OPTION]... COMMAND
+
+Available commands:
+
+  start        Load configuration files and generate ruleset
+  stop         Remove ruleset
+  reload       Same as start, followed by iplist refresh
+  try-reload   Same as reload, ask confirmation to keep new config
+  status       Show current status: running, zone-interface mapping
+  check        Verify configuration files
+  block        Load "block all traffic" ruleset
+  list [ZONE-ZONE]...
+               List whole active ruleset or for ZONE-ZONE only
+  list macro [NAME | VALUE]...
+               List all macros or macros with specified NAME(s) or VALUE(s)
+  list counter [COUNTER]...
+               List all or specified named COUNTER(s)
+  iplist list [IPLIST]...
+               List entries of all or specified IPLIST(s)
+  iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...
+               Add or refresh IPADDRESS(es) to IPLIST
+  iplist del IPLIST IPADDRESS [IPADDRESS]...
+               Delete IPADDRESS(es) from IPLIST
+  iplist flush [IPLIST]...
+               Delete all added IP addresses from all or specified IPLIST(s)
+  iplist refresh [IPLIST]...
+               Refresh all or specified IPLIST(s) now
+  set interface INTERFACE zone {{ZONE | -}}
+               Change INTERFACE to ZONE, or remove from all zones
+
+Available options:
+
+  --version    Print version
+  --verbose    Verbose output
+  --quiet      Be quiet
+  --force      Force some operations, don\'t check anything
+  --soft       Don\'t force operations, check more
+  --fork       Fork as a background daemon process
+  --syslog     Enable syslog logging
+  --set=OPTION=VALUE
+               Set config OPTION to VALUE
+
+Internally used commands:
+
+  dbus         Start D-Bus daemon
+  monitor      Start target monitor daemon''')
     if error:
         fail()
     return 0
