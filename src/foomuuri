@@ -770,8 +770,20 @@ def expand_macros(config):
     """Expand all macros in all config sections."""
     macros = parse_config_macros(config)
     for section, orig_lines in config.items():
-        if section in ('foomuuri', 'zone') or section.startswith('_'):
-            continue  # Don't expand in these sections
+        if section.startswith('_'):
+            continue  # Internally used section, skip
+
+        if section in ('foomuuri', 'zone'):
+            # Don't expand macros in these sections, print warning instead.
+            # This is for security reasons. Bad things will happen if
+            # there is "xyz" in these sections and macro "xyz" is added
+            # to default macros config.
+            for line in orig_lines:
+                for item in line[1]:
+                    if item in macros:
+                        warning(f'{line[0]}Macro "{item}" is not expanded in '
+                                f'"{section}" section: {" ".join(line[1])}')
+            continue
 
         new_lines = []
         recursion_limit = collections.Counter()
