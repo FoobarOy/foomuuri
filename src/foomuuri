@@ -4886,8 +4886,8 @@ def command_help(error=True):
     print('  --soft         Don\'t force operations, check more')
     print('  --fork         Fork as a background daemon process')
     print('  --syslog       Enable syslog logging')
-    print('  --set=option=value')
-    print('                 Set config option to value')
+    print('  --set=OPTION=VALUE')
+    print('                 Set config OPTION to VALUE')
     print()
     print('Internally used commands:')
     print()
@@ -4924,7 +4924,7 @@ def parse_command_line():
             INTERNAL.force -= 1
         elif arg.startswith('--set='):
             if arg.count('=') == 1:
-                fail(f'Invalid syntax for --set=option=value: {arg}')
+                fail(f'Invalid syntax for --set=OPTION=VALUE: {arg}')
             _, option, value = arg.split('=', 2)
             if option not in CONFIG:
                 fail(f'Unknown foomuuri{{}} option: {arg}')
