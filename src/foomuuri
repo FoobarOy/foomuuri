@@ -4892,7 +4892,7 @@ def command_help(error=True):
 
 
 def parse_command_line():
-    """Parse command line to CONFIG[_command] and CONFIG[_parameters]."""
+    """Parse command line to INTERNAL.command and INTERNAL.parameters."""
     # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
         if arg == '--help':
@@ -4926,6 +4926,8 @@ def parse_command_line():
                 CONFIG_OVERRIDE[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
+        elif arg.startswith('--'):
+            fail(f'Unknown option: {arg}')
         elif not INTERNAL.command:
             INTERNAL.command = arg
         else:
@@ -4936,7 +4938,7 @@ def run_command():
     """Run CONFIG[_command]."""
     # Only some commands can take arguments
     if INTERNAL.parameters and INTERNAL.command not in (
-            'list', 'iplist', 'set', 'help'):
+            'list', 'iplist', 'set'):
         return command_help()
 
     # Help doesn't need root
