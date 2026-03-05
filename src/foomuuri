@@ -3613,13 +3613,18 @@ def command_iplist_del():
 
 
 def command_iplist_flush():
-    """Delete all entries from iplist."""
+    """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
     iplist, _dummy_timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
     update_only = set()
 
-    for setname in INTERNAL.parameters[1:]:
+    if INTERNAL.parameters[1:]:
+        target = set(INTERNAL.parameters[1:])
+    else:
+        target = list(iplist)
+
+    for setname in target:
         if not setname.startswith('@'):
             setname = f'@{setname}'
         if setname not in iplist:
@@ -4152,7 +4157,7 @@ def command_iplist():
             'list': (command_iplist_list, 1),
             'add': (command_iplist_add, 3),
             'del': (command_iplist_del, 3),
-            'flush': (command_iplist_flush, 2),
+            'flush': (command_iplist_flush, 1),
             'refresh': (command_iplist_refresh, 1),
         }.get(INTERNAL.parameters[0], (None, 0))
         if handler and len(INTERNAL.parameters) >= min_args:
@@ -4856,8 +4861,9 @@ def command_help(error=True):
     print('                   Add or refresh IP address to iplist')
     print('  iplist del name ipaddress {ipaddress...}')
     print('                   Delete IP address from iplist')
+    print('  iplist flush     Delete all added IP addresses from all iplists')
     print('  iplist flush name {name...}')
-    print('                   Delete all IP addresses from iplist')
+    print('                   Delete all added IP addresses from iplist(s)')
     print('  iplist refresh   Refresh all iplists now')
     print('  iplist refresh name {name...}')
     print('                   Refresh named iplists now')
