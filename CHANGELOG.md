@@ -11,6 +11,8 @@
 * Add `url_max_size=bytes` to `iplist {}` section. It defines maximum content
   size for downloaded IP address list. Default value is 33554432, 32 MiB.
 * Optimize duplicate accept rules to single rule.
+* Add `foomuuri iplist flush` command to delete all added IP addresses from
+  all iplists.
 * Add `prometheus-keepalived` macro to default services.
 * Rename macro `gluster-client` to `gluster`. Old macro name is kept as an
   alias.

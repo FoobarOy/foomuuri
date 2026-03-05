@@ -3618,11 +3618,7 @@ def command_iplist_flush():
     iplist, _dummy_timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
     update_only = set()
-
-    if INTERNAL.parameters[1:]:
-        target = set(INTERNAL.parameters[1:])
-    else:
-        target = list(iplist)
+    target = set(INTERNAL.parameters[1:] or iplist)
 
     for setname in target:
         if not setname.startswith('@'):
