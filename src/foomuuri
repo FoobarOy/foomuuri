@@ -4909,7 +4909,7 @@ def parse_command_line():
         elif arg in ('--fork', '--syslog'):
             CONFIG[arg[2:]] = 1
             CONFIG_OVERRIDE[arg[2:]] = 1
-        elif arg in ('--force'):
+        elif arg == '--force':
             INTERNAL.force += 1
         elif arg == '--soft':
             INTERNAL.force -= 1
