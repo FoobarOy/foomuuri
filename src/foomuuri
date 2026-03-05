@@ -4898,7 +4898,7 @@ def parse_command_line():
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--verbose'):
+        elif arg == '--verbose':
             option = arg[2:]
             CONFIG[option] += 1
             CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
