@@ -770,8 +770,20 @@ def expand_macros(config):
     """Expand all macros in all config sections."""
     macros = parse_config_macros(config)
     for section, orig_lines in config.items():
-        if section in ('foomuuri', 'zone') or section.startswith('_'):
-            continue  # Don't expand in these sections
+        if section.startswith('_'):
+            continue  # Internally used section, skip
+
+        if section in ('foomuuri', 'zone'):
+            # Don't expand macros in these sections, print warning instead.
+            # This is for security reasons. Bad things will happen if
+            # there is "xyz" in these sections and macro "xyz" is added
+            # to default macros config.
+            for line in orig_lines:
+                for item in line[1]:
+                    if item in macros:
+                        warning(f'{line[0]}Macro "{item}" is not expanded in '
+                                f'"{section}" section: {" ".join(line[1])}')
+            continue
 
         new_lines = []
         recursion_limit = collections.Counter()
@@ -3304,18 +3316,20 @@ if HAVE_DBUS:
     def command_set():
         """Modify runtime config by calling D-Bus methods."""
         if (
-                len(sys.argv) != 6 or
-                sys.argv[2] != 'interface' or
-                sys.argv[4] != 'zone'
+                len(INTERNAL.parameters) != 4 or
+                INTERNAL.parameters[0] != 'interface' or
+                INTERNAL.parameters[2] != 'zone'
         ):
             command_help()
+        interface = INTERNAL.parameters[1]
+        zone = INTERNAL.parameters[3]
         try:
             bus = dbus.SystemBus()
             obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
-            if sys.argv[5] in ('', '-'):
-                obj.removeInterface('', sys.argv[3])
+            if zone in ('', '-'):
+                obj.removeInterface('', interface)
             else:
-                obj.changeZoneOfInterface(sys.argv[5], sys.argv[3])
+                obj.changeZoneOfInterface(zone, interface)
         except dbus.exceptions.DBusException as error:
             fail(error)
 
@@ -3613,13 +3627,14 @@ def command_iplist_del():
 
 
 def command_iplist_flush():
-    """Delete all entries from iplist."""
+    """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
     iplist, _dummy_timeouts = iplist_parse_config(config)
     cache = read_iplist_cache(iplist)
     update_only = set()
+    target = set(INTERNAL.parameters[1:] or iplist)
 
-    for setname in INTERNAL.parameters[1:]:
+    for setname in target:
         if not setname.startswith('@'):
             setname = f'@{setname}'
         if setname not in iplist:
@@ -4152,7 +4167,7 @@ def command_iplist():
             'list': (command_iplist_list, 1),
             'add': (command_iplist_add, 3),
             'del': (command_iplist_del, 3),
-            'flush': (command_iplist_flush, 2),
+            'flush': (command_iplist_flush, 1),
             'refresh': (command_iplist_refresh, 1),
         }.get(INTERNAL.parameters[0], (None, 0))
         if handler and len(INTERNAL.parameters) >= min_args:
@@ -4885,7 +4900,7 @@ def command_help(error=True):
 
 
 def parse_command_line():
-    """Parse command line to CONFIG[_command] and CONFIG[_parameters]."""
+    """Parse command line to INTERNAL.command and INTERNAL.parameters."""
     # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
         if arg == '--help':
@@ -4893,7 +4908,7 @@ def parse_command_line():
         elif arg == '--version':
             print(VERSION)
             sys.exit(0)
-        elif arg in ('--verbose'):
+        elif arg == '--verbose':
             option = arg[2:]
             CONFIG[option] += 1
             CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
@@ -4904,7 +4919,7 @@ def parse_command_line():
         elif arg in ('--fork', '--syslog'):
             CONFIG[arg[2:]] = 1
             CONFIG_OVERRIDE[arg[2:]] = 1
-        elif arg in ('--force'):
+        elif arg == '--force':
             INTERNAL.force += 1
         elif arg == '--soft':
             INTERNAL.force -= 1
@@ -4919,6 +4934,8 @@ def parse_command_line():
                 CONFIG_OVERRIDE[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
+        elif arg.startswith('--'):
+            fail(f'Unknown option: {arg}')
         elif not INTERNAL.command:
             INTERNAL.command = arg
         else:
@@ -4929,7 +4946,7 @@ def run_command():
     """Run CONFIG[_command]."""
     # Only some commands can take arguments
     if INTERNAL.parameters and INTERNAL.command not in (
-            'list', 'iplist', 'set', 'help'):
+            'list', 'iplist', 'set'):
         return command_help()
 
     # Help doesn't need root
