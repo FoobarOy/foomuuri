@@ -4869,8 +4869,8 @@ def command_help(error=True):
     print('  iplist del IPLIST IPADDRESS [IPADDRESS]...')
     print('                 Delete IPADDRESS(es) from IPLIST')
     print('  iplist flush [IPLIST]...')
-    print('                 Delete all IP addresses from all or specified '
-          'IPLIST(s)')
+    print('                 Delete all added IP addresses from all or '
+          'specified IPLIST(s)')
     print('  iplist refresh [IPLIST]...')
     print('                 Refresh all or specified IPLIST(s) now')
     print('  set interface INTERFACE zone {ZONE | -}')

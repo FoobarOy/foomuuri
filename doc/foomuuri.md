@@ -99,7 +99,7 @@ ruleset or only specified **ZONE-ZONE**.
 : Delete IPADDRESS(es) from IPLIST.
 
 **iplist flush [IPLIST]...**
-: Delete all IP addresses from all or specified IPLIST(s).
+: Delete all added IP addresses from all or specified IPLIST(s).
 
 **iplist refresh [IPLIST]...**
 : Refresh all or specified IPLIST(s) now.
