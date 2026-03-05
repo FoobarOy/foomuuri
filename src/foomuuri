@@ -3304,18 +3304,20 @@ if HAVE_DBUS:
     def command_set():
         """Modify runtime config by calling D-Bus methods."""
         if (
-                len(sys.argv) != 6 or
-                sys.argv[2] != 'interface' or
-                sys.argv[4] != 'zone'
+                len(INTERNAL.parameters) != 4 or
+                INTERNAL.parameters[0] != 'interface' or
+                INTERNAL.parameters[2] != 'zone'
         ):
             command_help()
+        interface = INTERNAL.parameters[1]
+        zone = INTERNAL.parameters[3]
         try:
             bus = dbus.SystemBus()
             obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
-            if sys.argv[5] in ('', '-'):
-                obj.removeInterface('', sys.argv[3])
+            if zone in ('', '-'):
+                obj.removeInterface('', interface)
             else:
-                obj.changeZoneOfInterface(sys.argv[5], sys.argv[3])
+                obj.changeZoneOfInterface(zone, interface)
         except dbus.exceptions.DBusException as error:
             fail(error)
 
