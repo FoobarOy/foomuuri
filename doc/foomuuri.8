@@ -4,7 +4,7 @@
 .SH NAME
 foomuuri \- multizone bidirectional nftables firewall
 .SH SYNOPSIS
-\f[B]foomuuri\f[R] [\f[I]OPTION\f[R]] [\f[I]COMMAND\f[R]]
+\f[B]foomuuri\f[R] [\f[I]OPTION\f[R]]\&...\ \f[I]COMMAND\f[R]
 .SH DESCRIPTION
 \f[B]Foomuuri\f[R] is a firewall generator for nftables based on the
 concept of zones.
@@ -14,97 +14,83 @@ IPv4/IPv6 rule splitting, dynamic DNS lookups, a D\-Bus API and
 FirewallD emulation for NetworkManager\[cq]s zone support.
 .SH OPTIONS
 .TP
-\f[CR]\-\-help\f[R]
-display this help and exit
+\f[B]\-\-help\f[R]
+Print help and exit.
 .TP
-\f[CR]\-\-version\f[R]
-output version information and exit
+\f[B]\-\-version\f[R]
+Print version information and exit.
 .TP
-\f[CR]\-\-verbose\f[R]
-verbose output
+\f[B]\-\-verbose\f[R]
+Verbose output.
 .TP
-\f[CR]\-\-quiet\f[R]
-be quiet
+\f[B]\-\-quiet\f[R]
+Be quiet.
 .TP
-\f[CR]\-\-force\f[R]
-force some operations, don\[cq]t check anything
+\f[B]\-\-force\f[R]
+Force some operations, don\[cq]t check anything.
 .TP
-\f[CR]\-\-soft\f[R]
-don\[cq]t force operations, check more
+\f[B]\-\-soft\f[R]
+Don\[cq]t force operations, check more.
 .TP
-\f[CR]\-\-fork\f[R]
-fork as a background daemon process
+\f[B]\-\-fork\f[R]
+Fork as a background daemon process.
 .TP
-\f[CR]\-\-syslog\f[R]
-enable syslog logging
+\f[B]\-\-syslog\f[R]
+Enable syslog logging.
 .TP
-\f[CR]\-\-set=option=value\f[R]
-set config option to value
+\f[B]\-\-set=OPTION=VALUE\f[R]
+Set config OPTION to VALUE.
 .SH COMMANDS
 .TP
 \f[B]start\f[R]
-load configuration files, generate new ruleset and load it to kernel
+Load configuration files, generate new ruleset and load it to kernel.
 .TP
 \f[B]stop\f[R]
-remove ruleset from kernel
+Remove ruleset from kernel.
 .TP
 \f[B]reload\f[R]
-same as \f[B]start\f[R], followed by iplist refresh
+Same as \f[B]start\f[R], followed by \f[B]iplist refresh\f[R].
 .TP
 \f[B]try\-reload\f[R]
-same as \f[B]reload\f[R], ask confirmation to keep new config, revert
-back to old config if no reply
+Same as \f[B]reload\f[R], ask confirmation to keep new config.
+Revert back to old config if no reply.
 .TP
 \f[B]status\f[R]
-show current status: running, zone\-interface mapping
+Show current status: running, zone\-interface mapping.
 .TP
 \f[B]check\f[R]
-load configuration files and verify syntax
+Load configuration files and verify syntax.
 .TP
 \f[B]block\f[R]
-load \[lq]block all traffic\[rq] ruleset
+Load \[lq]block all traffic\[rq] ruleset to kernel.
 .TP
-\f[B]list\f[R]
-list active ruleset currently loaded to kernel
+\f[B]list [ZONE\-ZONE]\&...\f[R]
+List active ruleset currently loaded to kernel.
+Include whole ruleset or only specified \f[B]ZONE\-ZONE\f[R].
 .TP
-\f[B]list zone\-zone {zone\-zone\&...}\f[R]
-list active ruleset for \f[B]zone\-zone\f[R] currently loaded to kernel
+\f[B]list macro [NAME | VALUE]\&...\f[R]
+List all macros or macros with specified NAME(s) or VALUE(s).
 .TP
-\f[B]list macro\f[R]
-list all known macros
+\f[B]list counter [COUNTER]\&...\f[R]
+List all or specified named COUNTER(s).
 .TP
-\f[B]list macro name {name\&...}\f[R]
-list all macros with specified name or value
+\f[B]iplist list [IPLIST]\&...\f[R]
+List entries of all or specified IPLIST(s).
 .TP
-\f[B]list counter\f[R]
-list all named counters
+\f[B]iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]\&...\f[R]
+Add or refresh IPADDRESS(es) to IPLIST.
 .TP
-\f[B]list counter name {name\&...}\f[R]
-list named counter with specified name
+\f[B]iplist del IPLIST IPADDRESS [IPADDRESS]\&...\f[R]
+Delete IPADDRESS(es) from IPLIST.
 .TP
-\f[B]iplist list\f[R]
-list entries in all configured iplists
+\f[B]iplist flush [IPLIST]\&...\f[R]
+Delete all IP addresses from all or specified IPLIST(s).
 .TP
-\f[B]iplist list name {name\&...}\f[R]
-list entries in named iplist
+\f[B]iplist refresh [IPLIST]\&...\f[R]
+Refresh all or specified IPLIST(s) now.
 .TP
-\f[B]iplist add name {timeout} ipaddress {ipaddress\&...}\f[R]
-add or refresh IP address to iplist
-.TP
-\f[B]iplist del name ipaddress {ipaddress\&...}\f[R]
-delete IP address from iplist
-.TP
-\f[B]iplist flush name {name\&...}\f[R]
-delete all IP addresses from iplist
-.TP
-\f[B]iplist refresh name {name\&...}\f[R]
-refresh iplist \[at]name entries now
-.TP
-\f[B]set interface {interface} zone {zone}\f[R]
-change interface to zone
-.TP
-\f[B]set interface {interface} zone \-\f[R]
-remove interface from all zones
+\f[B]set interface INTERFACE zone {ZONE | \-}\f[R]
+Change INTERFACE to ZONE, or remove from all zones.
 .SH FILES
 \f[B]Foomuuri\f[R] reads configuration files from
 \f[I]/etc/foomuuri/*.conf\f[R].

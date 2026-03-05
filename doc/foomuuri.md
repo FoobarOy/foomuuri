@@ -13,7 +13,7 @@ foomuuri - multizone bidirectional nftables firewall
 
 # SYNOPSIS
 
-**foomuuri** [*OPTION*] [*COMMAND*]
+**foomuuri** [*OPTION*]...\ *COMMAND*
 
 
 # DESCRIPTION
@@ -27,99 +27,85 @@ emulation for NetworkManager's zone support.
 
 # OPTIONS
 
-`--help`
-: display this help and exit
+**\--help**
+: Print help and exit.
 
-`--version`
-: output version information and exit
+**\--version**
+: Print version information and exit.
 
-`--verbose`
-: verbose output
+**\--verbose**
+: Verbose output.
 
-`--quiet`
-: be quiet
+**\--quiet**
+: Be quiet.
 
-`--force`
-: force some operations, don't check anything
+**\--force**
+: Force some operations, don't check anything.
 
-`--soft`
-: don't force operations, check more
+**\--soft**
+: Don't force operations, check more.
 
-`--fork`
-: fork as a background daemon process
+**\--fork**
+: Fork as a background daemon process.
 
-`--syslog`
-: enable syslog logging
+**\--syslog**
+: Enable syslog logging.
 
-`--set=option=value`
-: set config option to value
+**\--set=OPTION=VALUE**
+: Set config OPTION to VALUE.
 
 
 # COMMANDS
 
 **start**
-: load configuration files, generate new ruleset and load it to kernel
+: Load configuration files, generate new ruleset and load it to kernel.
 
 **stop**
-: remove ruleset from kernel
+: Remove ruleset from kernel.
 
 **reload**
-: same as **start**, followed by iplist refresh
+: Same as **start**, followed by **iplist refresh**.
 
 **try-reload**
-: same as **reload**, ask confirmation to keep new config, revert back to
-old config if no reply
+: Same as **reload**, ask confirmation to keep new config. Revert back to
+old config if no reply.
 
 **status**
-: show current status: running, zone-interface mapping
+: Show current status: running, zone-interface mapping.
 
 **check**
-: load configuration files and verify syntax
+: Load configuration files and verify syntax.
 
 **block**
-: load "block all traffic" ruleset
+: Load "block all traffic" ruleset to kernel.
 
-**list**
-: list active ruleset currently loaded to kernel
+**list [ZONE-ZONE]...**
+: List active ruleset currently loaded to kernel. Include whole
+ruleset or only specified **ZONE-ZONE**.
 
-**list zone-zone {zone-zone...}**
-: list active ruleset for **zone-zone** currently loaded to kernel
+**list macro [NAME | VALUE]...**
+: List all macros or macros with specified NAME(s) or VALUE(s).
 
-**list macro**
-: list all known macros
+**list counter [COUNTER]...**
+: List all or specified named COUNTER(s).
 
-**list macro name {name...}**
-: list all macros with specified name or value
+**iplist list [IPLIST]...**
+: List entries of all or specified IPLIST(s).
 
-**list counter**
-: list all named counters
+**iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...**
+: Add or refresh IPADDRESS(es) to IPLIST.
 
-**list counter name {name...}**
-: list named counter with specified name
+**iplist del IPLIST IPADDRESS [IPADDRESS]...**
+: Delete IPADDRESS(es) from IPLIST.
 
-**iplist list**
-: list entries in all configured iplists
+**iplist flush [IPLIST]...**
+: Delete all IP addresses from all or specified IPLIST(s).
 
-**iplist list name {name...}**
-: list entries in named iplist
+**iplist refresh [IPLIST]...**
+: Refresh all or specified IPLIST(s) now.
 
-**iplist add name {timeout} ipaddress {ipaddress...}**
-: add or refresh IP address to iplist
-
-**iplist del name ipaddress {ipaddress...}**
-: delete IP address from iplist
-
-**iplist flush name {name...}**
-: delete all IP addresses from iplist
-
-**iplist refresh name {name...}**
-: refresh iplist @name entries now
-
-**set interface {interface} zone {zone}**
-: change interface to zone
-
-**set interface {interface} zone -**
-: remove interface from all zones
+**set interface INTERFACE zone {ZONE | -}**
+: Change INTERFACE to ZONE, or remove from all zones.
 
 
 # FILES
