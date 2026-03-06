@@ -2966,11 +2966,9 @@ if HAVE_DBUS:
                         dbus.SystemBus().get_object('org.freedesktop.DBus',
                                                     '/org/freedesktop/DBus'),
                         'org.freedesktop.DBus')
-                    try:
+                    with contextlib.suppress(ValueError):
                         if int(iface.GetConnectionUnixUser(sender)) == 0:
                             return
-                    except ValueError:
-                        pass
                     raise FoomuuriDbusException('Authorization failed') \
                         from None
 
@@ -3363,12 +3361,10 @@ def iplist_verify_filters(name, values, fileline):
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
     ret = set()
-    try:
+    with contextlib.suppress(socket.gaierror):
         for item in socket.getaddrinfo(remove_filters(hostname), None):
             if item[4] and item[4][0]:
                 ret.add(item[4][0])
-    except socket.gaierror:
-        pass
     return ret
 
 
@@ -4557,12 +4553,10 @@ def mangle_fping_command(target, cfg):
     elif not squiet and interval.endswith('000'):  # Use interval as squiet
         cmd = cmd[:1] + [f'--squiet={interval[:-3]}'] + cmd[1:]
     elif squiet and interval:
-        try:
+        with contextlib.suppress(ValueError):
             if int(squiet) * 1000 != int(interval):
                 warning(f'Mismatching "--squiet" and "--interval" values in '
                         f'target "{target}": {" ".join(cmd)}')
-        except ValueError:
-            pass
 
     # Add --loop if missing to get continous reports
     if '--loop' not in options:
