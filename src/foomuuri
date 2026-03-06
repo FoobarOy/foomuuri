@@ -129,11 +129,9 @@ class TypedConfig:
             raise TypeError(
                 f'{name}: expected value type {field.type}, got {type(value)}'
             )
-        if validator := field.metadata.get('validate'):
-            if not validator(value):  # pylint: disable=not-callable
-                raise ValueError(
-                    f"{name}: value failed validation"
-                )
+        validator = field.metadata.get('validate')
+        if validator and not validator(value):
+            raise ValueError(f'{name}: value failed validation')
         super().__setattr__(name, value)
 
     def get(self, name, default=None):
