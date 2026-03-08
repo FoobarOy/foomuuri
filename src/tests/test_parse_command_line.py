@@ -8,7 +8,7 @@ import unittest.mock
 
 from foomuuri import CONFIG as BASE_CONFIG
 from foomuuri import INTERNAL as BASE_INTERNAL
-from foomuuri import VERSION, parse_command_line
+from foomuuri import parse_command_line
 
 
 @unittest.mock.patch('foomuuri.CONFIG_OVERRIDE', new_callable=dict)
@@ -35,11 +35,11 @@ class TestParseCommandLine(unittest.TestCase):
         self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--version'])
-    @unittest.mock.patch('builtins.print')
-    def test_option_version(self, print_mock, *_):
-        """Test --version option (prints VERSION and exits)."""
-        self.assertRaises(SystemExit, parse_command_line)
-        print_mock.assert_called_with(VERSION)
+    def test_option_version(self, INTERNAL, *_):
+        """Test --version option (sets 'version' command)."""
+        parse_command_line()
+        self.assertEqual(INTERNAL.command, 'version')
+        self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch(
         'sys.argv',
