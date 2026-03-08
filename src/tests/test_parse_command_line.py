@@ -170,9 +170,16 @@ class TestParseCommandLine(unittest.TestCase):
         self.assertRaises(SystemExit, parse_command_line)
         fail.assert_called_with('Unknown option: --unknown')
 
-    @unittest.mock.patch('sys.argv', ['foomuuri', 'command', '-h', '-v', '-'])
-    def test_short_option(self, INTERNAL, *_):
-        """Test short option. They are unsupported, so parsed as arguments."""
+    @unittest.mock.patch('sys.argv', ['foomuuri', 'command', '-h', '-v'])
+    def test_option_short(self, INTERNAL, *_):
+        """Test short options. They are parsed as parameters."""
         parse_command_line()
         self.assertEqual(INTERNAL.command, 'command')
-        self.assertEqual(INTERNAL.parameters, ['-h', '-v', '-'])
+        self.assertEqual(INTERNAL.parameters, ['-h', '-v'])
+
+    @unittest.mock.patch('sys.argv', ['foomuuri', 'command', 'a', '-', 'b'])
+    def test_option_hyphen(self, INTERNAL, *_):
+        """Test hyphen. It is parsed as parameter."""
+        parse_command_line()
+        self.assertEqual(INTERNAL.command, 'command')
+        self.assertEqual(INTERNAL.parameters, ['a', '-', 'b'])
