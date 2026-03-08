@@ -139,7 +139,7 @@ class TestParseCommandLine(unittest.TestCase):
         """Test --set option with unknown foomuuri{} CONFIG option."""
         self.assertRaises(SystemExit, parse_command_line)
         fail.assert_called_with(
-            'Unknown foomuuri{} option: --set=unknown=value'
+            'Unknown foomuuri{} option: unknown'
         )
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--set=priority_offset=yes'])

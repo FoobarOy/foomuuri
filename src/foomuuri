@@ -4912,7 +4912,7 @@ def parse_command_line():
                 fail(f'Invalid syntax for --set=OPTION=VALUE: {arg}')
             _, option, value = arg.split('=', 2)
             if option not in CONFIG:
-                fail(f'Unknown foomuuri{{}} option: {arg}')
+                fail(f'Unknown foomuuri{{}} option: {option}')
             try:
                 CONFIG.set_from_str(option, value)
                 CONFIG_OVERRIDE[option] = value
