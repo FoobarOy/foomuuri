@@ -13,7 +13,8 @@
 * Optimize duplicate accept rules to single rule.
 * Add `foomuuri iplist flush` command to delete all added IP addresses from
   all iplists.
-* Add `prometheus-keepalived` and `prometheus-ipmi` macros to default services.
+* Add `ntske`, `prometheus-keepalived` and `prometheus-ipmi` macros to default
+  services.
 * Rename macro `gluster-client` to `gluster`. Old macro name is kept as an
   alias.
 * Fix: Use `fib daddr type` to match multicast/broadcast packets. It works
