@@ -518,18 +518,19 @@ def find_config_files(basedir, mask):
     return [item for item in files if not item.name.startswith(('.', '#'))]
 
 
-def read_config():
+def read_config(require_etc_config: bool):
     """Read all config files to config dict: section -> lines[].
 
     Files are read in alphabetical order, ignoring backup and hidden files.
     """
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
 
     # Find all config files
     share_config = find_config_files(CONFIG.share_dir, '*.conf')
     etc_config = find_config_files(CONFIG.etc_dir, '*.conf')
-    if not etc_config:
+    if not etc_config and require_etc_config:
         fail(f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
              '\n'
              'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
@@ -973,9 +974,9 @@ def parse_config_hook(config):
         INTERNAL[line[0]] = line[1:]
 
 
-def minimal_config():
+def minimal_config(require_etc_config=True):
     """Read and parse minimal config."""
-    config = read_config()
+    config = read_config(require_etc_config)
     expand_macros(config)
     remove_quotes(config)
     parse_config_foomuuri(config)
@@ -4189,26 +4190,22 @@ def list_named_counter(command):
     return 0
 
 
-def command_list():
+def command_list() -> int:
     """List currently active ruleset or other things."""
-    # List all
+    # List ruleset if no parameters. Read config if available for nft
+    # binary path.
     if not INTERNAL.parameters:
+        minimal_config(require_etc_config=False)
         return nft_command('list ruleset')
-
-    # Parse list of possible zone-zone pairs
-    config = minimal_config()
-    zones = parse_config_zones(config)
-    zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
 
     # Parse parameters
     list_type = INTERNAL.parameters[0]
     list_params = INTERNAL.parameters[1:]
-    ret = 0
 
+    # List default system macros and user defined macros. Don't require
+    # config files so that this can be run before initial configuration.
     if list_type == 'macro':
-        # List macros. config{} doesn't have macro{} anymore so config
-        # must be re-read.
-        macros = parse_config_macros(read_config())
+        macros = parse_config_macros(read_config(require_etc_config=False))
         print('macro {')
         for macro in sorted(macros):
             if not macro.startswith('_template_') and (
@@ -4220,8 +4217,12 @@ def command_list():
         print('}')
         return 0
 
+    # Counter/zone-zone list requires config
+    config = minimal_config()
+    ret = 0
+
+    # List named counters
     if list_type == 'counter':
-        # List named counters
         if not list_params:
             ret |= list_named_counter('list counters table inet foomuuri')
         else:
@@ -4231,6 +4232,8 @@ def command_list():
         return ret
 
     # List zone-zone rules
+    zones = parse_config_zones(config)
+    zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
     for zone in INTERNAL.parameters:
         if zone not in zonepairs:
             fail(f'Unknown zone-zone: {zone}')
