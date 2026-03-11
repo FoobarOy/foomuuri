@@ -355,7 +355,10 @@ def out(line):
 def notify(message: str) -> None:
     """Send SystemD notify message."""
     if HAVE_SYSTEMD:
-        systemd.daemon.notify(message)
+        try:
+            systemd.daemon.notify(message)
+        except OSError as error:
+            warning(f'Failed to send SystemD notify "{message}": {error}')
 
 
 def state_file(key):
