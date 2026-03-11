@@ -1,6 +1,6 @@
 # ChangeLog
 
-## 0.32 (20xx-xx-xx)
+## 0.32 (2026-03-11)
 
 * BREAKING CHANGE: Prometheus exporter `foomuuri_exporter` is renamed to
   `prometheus-foomuuri-exporter`.
