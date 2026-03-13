@@ -852,7 +852,7 @@ def parse_config_foomuuri(config):
         if name == 'verbose':
             CONFIG[name] += value             # add
         else:
-            CONFIG.set_from_str(name, value)  # replace
+            CONFIG.set_from_str(name, str(value))  # replace
 
     # Convert chain priority offset to nft
     if CONFIG.priority_offset == 0:
