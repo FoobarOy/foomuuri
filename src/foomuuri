@@ -2814,6 +2814,52 @@ def apply_final():
     return 0
 
 
+def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
+    """Print assembled configuration in foomuuri.conf format."""
+    def print_section(name: str, lines: list, indent: int = 4) -> None:
+        """Section print helper."""
+        if lines:
+            print(f'{name} {{')
+            print(*[f'{" " * indent}{line}' for line in lines], sep='\n')
+            print('}')
+
+    print('Assembled configuration << EOF')
+
+    print_section('foomuuri', [
+        f'{option} {value}'
+        for option, value in dataclasses.asdict(CONFIG).items()
+    ])
+
+    print_section('zone', [
+        f'{zone} {" ".join(statement["interface"])}'
+        for zone, statement in zones.items()
+    ])
+
+    print_section('zonemap', [
+        f'{" ".join(statement["line"])}'
+        for statement in zonemap
+    ])
+
+    for chains, statements in chain_rules.items():
+        print_section(' '.join(chains), [
+            f'{" ".join(statement["line"])}'
+            for statement in statements
+        ])
+
+    print_section('iplist', [
+        f'{" ".join(line[1])}'
+        for line in config.get('iplist', {})
+    ])
+
+    for zone2zone, statements in rules.items():
+        print_section('-'.join(zone2zone), [
+            f'{" ".join(statement["line"])}'
+            for statement in statements
+        ])
+
+    print('EOF')
+
+
 def command_start():
     """Process "start" or "check" command."""
     # Read full config
@@ -2843,6 +2889,11 @@ def command_start():
     output_helpers()
     output_rpfilter()
     output_footer()
+
+    # Print assembled configuration
+    if CONFIG.verbose >= 2:
+        print_assembled_config(config, zones, zonemap, rules, chain_rules)
+
     command_iplist_refresh(config, iplist)
 
     # Save known zones to file
