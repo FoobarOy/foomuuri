@@ -849,10 +849,7 @@ def parse_config_foomuuri(config):
 
     # Overrides from CLI arguments
     for name, value in CONFIG_OVERRIDE.items():
-        if name == 'verbose':
-            CONFIG[name] += value             # add
-        else:
-            CONFIG.set_from_str(name, value)  # replace
+        CONFIG.set_from_str(name, value)
 
     # Convert chain priority offset to nft
     if CONFIG.priority_offset == 0:
