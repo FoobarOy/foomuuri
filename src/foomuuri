@@ -2813,7 +2813,7 @@ def apply_final():
 
 def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
     """Print assembled configuration in foomuuri.conf format."""
-    def print_section(name: str, lines: list, indent: int = 4) -> None:
+    def print_section(name: str, lines: list, indent: int = 2) -> None:
         """Section print helper."""
         if lines:
             print(f'{name} {{')
@@ -2845,7 +2845,7 @@ def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
 
     print_section('iplist', [
         f'{" ".join(line[1])}'
-        for line in config.get('iplist', {})
+        for line in config.get('iplist', [])
     ])
 
     for zone2zone, statements in rules.items():
