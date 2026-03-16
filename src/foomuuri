@@ -891,14 +891,19 @@ def parse_config_zones(config):
     return zones
 
 
-def parse_config_zonemap(config):
+def parse_config_zonemap(config, zones):
     """Parse zonemap{} rules from config."""
     zonemap = []
     for fileline, line in config.pop('zonemap', []):
         rule = parse_rule_line((fileline, line))
         if not rule['new_dzone'] and not rule['new_szone']:
             fail(f'{fileline}Zonemap without "new_dzone" or "new_szone" '
-                 f'is a no-op: {" ".join(line)}')
+                 f'has no effect: {" ".join(line)}')
+        for key in ('szone', 'dzone', 'new_szone', 'new_dzone'):
+            value = rule[key]
+            if value and value not in zones:
+                fail(f'{fileline}Zonemap "{key}" has unknown zone "{value}": '
+                     f'{" ".join(line)}')
         zonemap.append(rule)
     return zonemap
 
@@ -2873,7 +2878,7 @@ def command_start():
     # Read full config
     config = minimal_config()
     zones = parse_config_zones(config)
-    zonemap = parse_config_zonemap(config)
+    zonemap = parse_config_zonemap(config, zones)
     iplist = parse_iplist_names(config)
     chain_rules = parse_config_special_chains(config)
     parse_config_groups(config, parse_config_targets(config))
