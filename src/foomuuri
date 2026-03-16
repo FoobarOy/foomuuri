@@ -377,6 +377,14 @@ def join_args(args: list) -> str:
     raise TypeError(f'args type must be a {list}, not a {type(args)}')
 
 
+def syslog_open_or_close() -> None:
+    """ Initialize or stop syslogging"""
+    if CONFIG.syslog:
+        syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
+    else:
+        syslog.closelog()
+
+
 def run_program_rc(args: list, *, env=None, stdin=None, print_output=True,
                    quiet=False) -> int:
     """Run external program and return its errorcode. Print its output."""
@@ -850,6 +858,9 @@ def parse_config_foomuuri(config):
     # Overrides from CLI arguments
     for name, value in CONFIG_OVERRIDE.items():
         CONFIG.set_from_str(name, str(value))
+
+    # Reinitialize syslogging, foomuuri{} may have a different syslog setting
+    syslog_open_or_close()
 
     # Convert chain priority offset to nft
     if CONFIG.priority_offset == 0:
@@ -4996,8 +5007,7 @@ def run_command():
         return 0
 
     # Initialize syslogging
-    if CONFIG.syslog:
-        syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
+    syslog_open_or_close()
 
     # Warning if not running as root
     INTERNAL.root_power = not os.getuid()
