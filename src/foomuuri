@@ -242,7 +242,7 @@ class Config(TypedConfig):
             metadata={'convert_str': shlex.split}
     )
     try_reload_timeout: int = dataclasses.field(
-        default=15,  metadata={'validate': Validators.int_positive}
+        default=15, metadata={'validate': Validators.int_positive}
     )
 
     # Directories and files. Files are relative to state_dir.
@@ -378,7 +378,7 @@ def join_args(args: list) -> str:
 
 
 def syslog_open_or_close() -> None:
-    """ Initialize or stop syslogging"""
+    """Initialize or stop syslogging."""
     if CONFIG.syslog:
         syslog.openlog('foomuuri', syslog.LOG_PID, syslog.LOG_DAEMON)
     else:
