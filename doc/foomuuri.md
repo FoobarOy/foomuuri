@@ -21,7 +21,7 @@ foomuuri - multizone bidirectional nftables firewall
 **Foomuuri** is a firewall generator for nftables based on the concept of
 zones. It is suitable for all systems from personal machines to corporate
 firewalls, and supports advanced features such as a rich rule language,
-IPv4/IPv6 rule splitting, dynamic DNS lookups, a D-Bus API and FirewallD
+IPv4/IPv6 rule splitting, dynamic DNS lookups, a D-Bus API and firewalld
 emulation for NetworkManager's zone support.
 
 

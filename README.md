@@ -31,7 +31,7 @@ IRC channel `#foomuuri` on Libera.Chat.
 * IPsec matching support
 * Ability to map certain traffic to separate zones
 * D-Bus API
-* FirewallD emulation for NetworkManager's zone support
+* Firewalld emulation for NetworkManager's zone support
 * Raw nftables rules can be used
 * Fresh design, written to use modern nftables's features
 

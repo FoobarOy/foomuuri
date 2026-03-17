@@ -54,7 +54,7 @@ try:
 except ImportError:
     HAVE_LXML = False
 
-# SystemD notify support is optional
+# systemd notify support is optional
 try:
     import systemd.daemon
     HAVE_SYSTEMD = True
@@ -353,12 +353,12 @@ def out(line):
 
 
 def notify(message: str) -> None:
-    """Send SystemD notify message."""
+    """Send systemd notify message."""
     if HAVE_SYSTEMD:
         try:
             systemd.daemon.notify(message)
         except OSError as error:
-            warning(f'Failed to send SystemD notify "{message}": {error}')
+            warning(f'Failed to send systemd notify "{message}": {error}')
 
 
 def state_file(key):
@@ -3237,8 +3237,8 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
-    class DbusFirewallD(dbus.service.Object, DbusCommon):
-        """D-Bus server for FirewallD emulation."""
+    class DbusFirewalld(dbus.service.Object, DbusCommon):
+        """D-Bus server for firewalld emulation."""
 
         # pylint: disable=invalid-name  # dbus method names
 
@@ -3339,7 +3339,7 @@ if HAVE_DBUS:
             foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1')
             foomuuri_object.set_data(zones)
 
-            # FirewallD emulation calls, if enabled in foomuuri{} config
+            # Firewalld emulation calls, if enabled in foomuuri{} config
             firewalld_object = None
             if CONFIG.dbus_firewalld == 'yes':
                 try:
@@ -3349,7 +3349,7 @@ if HAVE_DBUS:
                 except dbus.exceptions.DBusException:
                     fail('Can\'t bind to system D-Bus: '
                          'org.federaproject.FirewallD1')
-                firewalld_object = DbusFirewallD(
+                firewalld_object = DbusFirewalld(
                     bus, '/org/fedoraproject/FirewallD1')
                 firewalld_object.set_data(zones)
 
