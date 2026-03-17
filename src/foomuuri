@@ -286,6 +286,7 @@ class Internal(TypedConfig):
     # Other internally used variables
     # Added without default value to prevent uninitialized use
     iplist_merge: set = dataclasses.field(init=False)
+    iplist_add_on_start: set = dataclasses.field(init=False)
     iplist_missing_ok: set = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
     post_start: list = dataclasses.field(init=False)
@@ -952,14 +953,17 @@ def parse_config_special_chains(config):
     return chain_rules
 
 
-def parse_iplist_names(config):
+def parse_iplist_names(config) -> set[str]:
     """Return list of resolve{} or iplist{} set names from config.
 
     Parse "-merge" flag here as it's needed when creating sets in
     initial ruleset, not when adding elements to it.
+
+    Same for "-start".
     """
     ret = set()
     INTERNAL.iplist_merge = set()
+    INTERNAL.iplist_add_on_start = set()
     for section in ('iplist', 'resolve'):
         for fileline, line in config.get(section, []):
             if line[0].startswith(('dns_timeout=', 'dns_refresh=',
@@ -973,6 +977,8 @@ def parse_iplist_names(config):
             ret.add(line[0])
             if '-merge' not in line[1:]:
                 INTERNAL.iplist_merge.add(line[0])
+            if '-start' not in line[1:]:
+                INTERNAL.iplist_add_on_start.add(line[0])
     return ret
 
 
@@ -2886,7 +2892,7 @@ def command_start():
     config = minimal_config()
     zones = parse_config_zones(config)
     zonemap = parse_config_zonemap(config, zones)
-    iplist = parse_iplist_names(config)
+    iplist_names = parse_iplist_names(config)
     chain_rules = parse_config_special_chains(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -2904,17 +2910,21 @@ def command_start():
     optimize_final_rules()
     optimize_accepts()
     output_logrates()
-    output_iplist_sets(iplist)
+    output_iplist_sets(iplist_names)
     output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
     output_footer()
 
+    # Add iplist elements from cache to output. Include only iplists
+    # that are not marked with "-start".
+    if INTERNAL.iplist_add_on_start:
+        command_iplist_refresh(config, iplist_names,
+                               INTERNAL.iplist_add_on_start)
+
     # Print assembled configuration
     if CONFIG.verbose >= 2:
         print_assembled_config(config, zones, zonemap, rules, chain_rules)
-
-    command_iplist_refresh(config, iplist)
 
     # Save known zones to file
     save_file(state_file('zone_file'), zones.keys())
@@ -3951,7 +3961,7 @@ def iplist_parse_config(config):
     timeouts = {}
     if config.get('resolve'):
         warning('Section "resolve" is obsoleted, use "iplist" instead')
-    for fileline, line in config.pop('resolve', []) + config.pop('iplist', []):
+    for fileline, line in config.get('resolve', []) + config.get('iplist', []):
         name = line[0]
 
         # Parse global timeout/refresh value
@@ -4000,7 +4010,7 @@ def iplist_parse_config(config):
         this_value = []
         this_timeouts = timeouts.get(name, def_times).copy()
         for item in value:
-            if item == '-merge':
+            if item in ('-merge', '-start'):
                 continue
             if '=' in item and item.split('=')[0] in def_times:
                 iplist_parse_timeout(fileline, this_timeouts, item, None)
@@ -4179,7 +4189,8 @@ def iplist_apply_values(cache):
     return ret
 
 
-def command_iplist_refresh(config=None, currently_active=None):
+def command_iplist_refresh(config=None, currently_active=None,
+                           override_update_only=None) -> int:
     """Refresh iplist{} entries."""
     # Read minimal config and parse it
     if not config:
@@ -4206,15 +4217,14 @@ def command_iplist_refresh(config=None, currently_active=None):
         ):
             currently_active = set(iplist)
 
-    # Default to update all sets, "foomuuri iplist refresh setname" can filter
-    update_only = None
-    if INTERNAL.parameters[1:]:
-        update_only = []
-        for name in INTERNAL.parameters[1:]:
-            if name.startswith('@'):
-                update_only.append(name)
-            else:
-                update_only.append(f'@{name}')
+    # Parse which iplists should be updated.
+    if override_update_only:
+        update_only = override_update_only
+    else:
+        # Default is to update all iplists (empty set).
+        # This can be filtered with "foomuuri iplist refresh setname...".
+        update_only = {name if name.startswith('@') else f'@{name}'
+                       for name in INTERNAL.parameters[1:]}
 
     # Make sure systemd's TimeoutStartSec doesn't trigger while updating
     # ruleset or writing cache file.
