@@ -3754,26 +3754,24 @@ def iplist_url_filters(url, text):
     return text
 
 
-def iplist_cleanup_file(url, text):
-    """Remove comments and empty lines from downloaded iplist file."""
+def iplist_cleanup_file(url: str, text: str) -> list[str]:
+    """Parse downloaded iplist file to list of IP addresses."""
     # Apply filters
     text = iplist_url_filters(url, text)
     if not text:
         return []
 
     # Collect IP addresses
-    values = []
+    addresses = []
     for line in text.splitlines():
-        if '#' in line:
-            line = line.split('#', 1)[0]
-        if ';' in line:
-            line = line.split(';', 1)[0]
         for value in line.split():
+            if value.startswith(('#', ';')):  # Remove comments
+                break
             if is_ip_address(value, allow_negative=False):
-                values.append(value)
+                addresses.append(value)
             else:
                 warning(f'Unknown entry in iplist "{url}": {value}')
-    return values
+    return addresses
 
 
 def get_url_or_file(url, timeout, refresh, cache):
