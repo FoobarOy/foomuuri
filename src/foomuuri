@@ -28,6 +28,7 @@ import subprocess
 import sys
 import syslog
 import time
+import typing
 import unicodedata
 
 # dbus is optional but highly recommended for dynamic zone/interface changes
@@ -116,6 +117,11 @@ class Validators:
     def str_yes_no(value: str):
         """Assert value is either 'yes' or 'no'."""
         return value in ('yes', 'no')
+
+    @staticmethod
+    def str_bool_true(value: str):
+        """Assert value is boolean true: 'yes', 'no' or '1'."""
+        return value.lower() in ('true', 'yes', '1')
 
 
 @dataclasses.dataclass
@@ -274,6 +280,119 @@ class Config(TypedConfig):
 
 
 @dataclasses.dataclass
+class IPListOptions(TypedConfig):
+    """iplist{} options container."""
+    dns_timeout: int = dataclasses.field(
+        default=86400, metadata={
+            'convert_str': lambda d: parse_duration(d, 0),
+            'validate': Validators.int_positive,
+        }
+    )  # 24h
+    dns_refresh: int = dataclasses.field(
+        default=900, metadata={
+            'convert_str': lambda d: parse_duration(d, 0),
+            'validate': Validators.int_positive,
+        }
+    )  # 15m
+    url_timeout: int = dataclasses.field(
+        default=864000, metadata={
+            'convert_str': lambda d: parse_duration(d, 0),
+            'validate': Validators.int_positive,
+        }
+    )  # 10d
+    url_refresh: int = dataclasses.field(
+        default=86400, metadata={
+            'convert_str': lambda d: parse_duration(d, 0),
+            'validate': Validators.int_positive,
+        }
+    )  # 1d
+    url_max_size: int = dataclasses.field(
+        default=33_554_432, metadata={'validate': Validators.int_positive}
+    )  # 32MiB
+    start: bool = dataclasses.field(
+        default=True, metadata={'convert_str': Validators.str_bool_true}
+    )  # load on start
+    merge: bool = dataclasses.field(
+        default=True, metadata={'convert_str': Validators.str_bool_true}
+    )  # merge
+
+    def parse_option(self, option: str):
+        """Parse and set iplist option value from option.
+
+        Option is either a a string in option=value format,
+        or specific word.
+        """
+        shortcuts = {
+            '-start': ('start', False),
+            '-merge': ('merge', False),
+        }
+
+        if shortcut := shortcuts.get(option):
+            name, value = shortcut
+            self[name] = value
+            return True
+
+        if len(assignment := option.split('=', maxsplit=1)) == 2:
+            name, value = assignment
+            # Only try setting if name is a valid identifier
+            if name.isidentifier():
+                self.set_from_str(name, value)
+                return True
+
+        return False
+
+
+@dataclasses.dataclass
+class IPList(TypedConfig):
+    """Container of iplist options and sources."""
+    options: IPListOptions = dataclasses.field(default_factory=IPListOptions)
+    sources: list = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class IPLists:
+    """Mapping of iplist name to IPList."""
+    _entries: dict[str, IPList] = dataclasses.field(
+        default_factory=dict
+    )
+
+    def __getitem__(self, name):
+        """Get iplist value via index operator."""
+        return self._entries[name]
+
+    def __setitem__(self, name, value):
+        """Set iplist value via index operator."""
+        self._entries[name] = value
+
+    def __iter__(self):
+        """Iterate over iplist names."""
+        return iter(self._entries.keys())
+
+    def items(self):
+        """Return iterable of iplist mapping."""
+        return self._entries.items()
+
+    def values(self):
+        """Return iterable of iplist mapping values."""
+        return self._entries.values()
+
+    def add_on_start(self) -> set[str]:
+        """Return set of iplist names with options.start == True."""
+        return {
+            name
+            for name, value in self._entries.items()
+            if value.options.start
+        }
+
+
+class IPListSourceOptions(typing.NamedTuple):
+    """Container of runtime iplist source options."""
+    timeout: int = sys.maxsize
+    refresh: int = sys.maxsize
+    max_size: int = sys.maxsize
+
+
+@dataclasses.dataclass
 class Internal(TypedConfig):
     """Internal variables and command line options."""
     # Command line
@@ -285,8 +404,6 @@ class Internal(TypedConfig):
 
     # Other internally used variables
     # Added without default value to prevent uninitialized use
-    iplist_merge: set = dataclasses.field(init=False)
-    iplist_add_on_start: set = dataclasses.field(init=False)
     iplist_missing_ok: set = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
     post_start: list = dataclasses.field(init=False)
@@ -297,9 +414,6 @@ class Internal(TypedConfig):
     root_power: bool = dataclasses.field(init=False)  # Running as "root"?
 
     # Url loader
-    url_max_size: int = dataclasses.field(
-        default=33_554_432, metadata={'validate': Validators.int_positive}
-    )  # Parsed in iplist{} from config files
     # Constants
     url_chunk_size: int = 1_048_576
     url_get_timeout: dict = dataclasses.field(
@@ -951,35 +1065,6 @@ def parse_config_special_chains(config):
             chain_rules[(prefix, ftype, priority)] = [parse_rule_line(line)
                                                       for line in lines]
     return chain_rules
-
-
-def parse_iplist_names(config) -> set[str]:
-    """Return list of resolve{} or iplist{} set names from config.
-
-    Parse "-merge" flag here as it's needed when creating sets in
-    initial ruleset, not when adding elements to it.
-
-    Same for "-start".
-    """
-    ret = set()
-    INTERNAL.iplist_merge = set()
-    INTERNAL.iplist_add_on_start = set()
-    for section in ('iplist', 'resolve'):
-        for fileline, line in config.get(section, []):
-            if line[0].startswith(('dns_timeout=', 'dns_refresh=',
-                                   'url_timeout=', 'url_refresh=',
-                                   'url_max_size=')):
-                continue
-            if line[0] in ('timeout', 'refresh'):
-                continue
-            if not Validators.str_iplist_name(line[0]):
-                fail(f'{fileline}Invalid {section} name: {" ".join(line)}')
-            ret.add(line[0])
-            if '-merge' not in line[1:]:
-                INTERNAL.iplist_merge.add(line[0])
-            if '-start' not in line[1:]:
-                INTERNAL.iplist_add_on_start.add(line[0])
-    return ret
 
 
 def parse_config_hook(config):
@@ -2643,14 +2728,14 @@ def output_logrates():
         out('}')
 
 
-def output_iplist_sets(iplist):
+def output_iplist_sets(iplists: IPLists) -> None:
     """Output empty iplist{} sets."""
-    for name in sorted(iplist):
+    for name in sorted(iplists):
         for ipv in (4, 6):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
             out('flags interval,timeout')
-            if name in INTERNAL.iplist_merge:
+            if iplists[name].options.merge:
                 out('auto-merge')
             out('}')
 
@@ -2892,7 +2977,7 @@ def command_start():
     config = minimal_config()
     zones = parse_config_zones(config)
     zonemap = parse_config_zonemap(config, zones)
-    iplist_names = parse_iplist_names(config)
+    iplists = parse_config_iplist(config)
     chain_rules = parse_config_special_chains(config)
     parse_config_groups(config, parse_config_targets(config))
     parse_config_hook(config)
@@ -2910,7 +2995,7 @@ def command_start():
     optimize_final_rules()
     optimize_accepts()
     output_logrates()
-    output_iplist_sets(iplist_names)
+    output_iplist_sets(iplists)
     output_named_counters(rules, chain_rules)
     output_helpers()
     output_rpfilter()
@@ -2918,9 +3003,12 @@ def command_start():
 
     # Add iplist elements from cache to output. Include only iplists
     # that are not marked with "-start".
-    if INTERNAL.iplist_add_on_start:
-        command_iplist_refresh(config, iplist_names,
-                               INTERNAL.iplist_add_on_start)
+    if iplists_add_on_start := iplists.add_on_start():
+        command_iplist_refresh(
+            iplists=iplists,
+            currently_active=set(iplists),
+            override_update_only=iplists_add_on_start
+        )
 
     # Print assembled configuration
     if CONFIG.verbose >= 2:
@@ -3513,7 +3601,7 @@ def active_sets():
     return ret
 
 
-def get_url(url):
+def get_url(url, max_size):
     """Download URL and return it as text, or None if failure."""
     if HAVE_URLLIB3:
         try:
@@ -3530,7 +3618,6 @@ def get_url(url):
                     raise urllib3.exceptions.ProtocolError(
                         f'status code: {response.status}'
                     )
-                max_size = INTERNAL.url_max_size
                 content_length = int(
                     response.headers.get('content-length', 0)
                 )
@@ -3631,7 +3718,7 @@ def iterate_set_elements(data):
 def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
-    known = parse_iplist_names(config)
+    known = parse_config_iplist(config)
     for setname in INTERNAL.parameters[1:] or sorted(known):
         if setname.startswith('@'):
             setname = setname[1:]
@@ -3655,15 +3742,15 @@ def command_iplist_list():
 def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
-    iplist, timeouts = iplist_parse_config(config)
-    cache = read_iplist_cache(iplist)
+    iplists = parse_config_iplist(config)
+    cache = read_iplist_cache(iplists)
     setname = INTERNAL.parameters[1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
-    if setname not in iplist:
+    if setname not in iplists:
         fail(f'Unknown iplist name: {setname}')
-    timeout = max(timeouts[setname]['url_timeout'],
-                  timeouts[setname]['dns_timeout'])
+    timeout = max(iplists[setname].options.url_timeout,
+                  iplists[setname].options.dns_timeout)
     now = int(time.time())
     expire = now + timeout
 
@@ -3682,18 +3769,18 @@ def command_iplist_add():
             if timeout > 630720000:  # More than 20 years is "forever"
                 expire = 4000000000  # year 2096
 
-    return iplist_output_values(iplist, cache, {setname}, {setname})
+    return iplist_output_values(iplists, cache, {setname}, {setname})
 
 
 def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
-    iplist, _dummy_timeouts = iplist_parse_config(config)
-    cache = read_iplist_cache(iplist)
+    iplists = parse_config_iplist(config)
+    cache = read_iplist_cache(iplists)
     setname = INTERNAL.parameters[1]
     if not setname.startswith('@'):
         setname = f'@{setname}'
-    if setname not in iplist:
+    if setname not in iplists:
         fail(f'Unknown iplist name: {setname}')
 
     # Delete entries from cache and apply it
@@ -3702,21 +3789,21 @@ def command_iplist_del():
         cache[f'manual.{setname}']['ip'].pop(address, None)
         cache[f'manual.{setname}']['dirty'] = True
 
-    return iplist_output_values(iplist, cache, {setname}, {setname})
+    return iplist_output_values(iplists, cache, {setname}, {setname})
 
 
 def command_iplist_flush():
     """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
-    iplist, _dummy_timeouts = iplist_parse_config(config)
-    cache = read_iplist_cache(iplist)
+    iplists = parse_config_iplist(config)
+    cache = read_iplist_cache(iplists)
     update_only = set()
-    target = set(INTERNAL.parameters[1:] or iplist)
+    target = set(INTERNAL.parameters[1:] or iplists)
 
     for setname in target:
         if not setname.startswith('@'):
             setname = f'@{setname}'
-        if setname not in iplist:
+        if setname not in iplists:
             fail(f'Unknown iplist name: {setname}')
 
         update_only.add(setname)
@@ -3724,7 +3811,7 @@ def command_iplist_flush():
         cache[f'manual.{setname}']['ip'] = {}
         cache[f'manual.{setname}']['dirty'] = True
 
-    return iplist_output_values(iplist, cache, update_only, update_only)
+    return iplist_output_values(iplists, cache, update_only, update_only)
 
 
 def lxml_parser(url, parser, path, text):
@@ -3784,26 +3871,29 @@ def iplist_cleanup_file(url: str, text: str) -> list[str]:
     return addresses
 
 
-def get_url_or_file(url, timeout, refresh, cache):
+def get_url_or_file(url: str, options: IPListSourceOptions, cache) -> None:
     """Get URL or file content with cache check."""
     now = int(time.time())
     cachevalue = cache.get(url, {}).get('ip', {})
     cacherefresh = cache.get(url, {}).get('refresh')
     if cachevalue and cacherefresh:
-        if now >= cacherefresh + timeout:  # Expired entry
+        if now >= cacherefresh + options.timeout:  # Expired entry
             cache[url]['ip'] = {}
             cache[url]['dirty'] = True
-        elif now < cacherefresh + refresh and INTERNAL.force < 0:
+        elif now < cacherefresh + options.refresh and INTERNAL.force < 0:
             verbose(f'Using cached value for "{url}"')
             return
 
-    value = (get_url(url) if url.startswith(('https:', 'http:')) else
-             get_file(url))
+    value = (
+        get_url(url, options.max_size)
+        if url.startswith(('https:', 'http:'))
+        else get_file(url)
+    )
 
     if value is not None:
         # Replace list, don't append. These lists are always complete
         # address lists.
-        expire = now + timeout
+        expire = now + options.timeout
         cache[url] = {
             'ip': dict.fromkeys(iplist_cleanup_file(url, value), expire),
             'dirty': True,
@@ -3811,34 +3901,6 @@ def get_url_or_file(url, timeout, refresh, cache):
         }
         verbose(f'Iplist content for "{url}" refreshed, '
                 f'{len(cache[url]["ip"])} entries')
-
-
-def iplist_parse_timeout(fileline: str, timeouts: dict[str, int],
-                         key_value: str, extra: str) -> None:
-    """Parse key=value from key_value and set timeouts[key] = value."""
-    # Parse key_value to key=value
-    if extra:  # Backward compabililty  (v0.27)
-        key = key_value
-        value = ''.join(extra)
-    else:
-        key, value = key_value.split('=', 1)
-    if not value:
-        fail(f'{fileline}No value for "{key}"')
-
-    # Update timeout
-    if key in ('dns_timeout', 'dns_refresh',
-               'url_timeout', 'url_refresh'):
-        timeouts[key] = parse_duration(value, timeouts[key])
-    elif key == 'timeout':
-        warning(f'{fileline}Iplist "timeout" is obsoleted, use "dns_timeout" '
-                f'or "url_timeout" instead')
-        timeouts['dns_timeout'] = timeouts['url_timeout'] = parse_duration(
-            value, timeouts['dns_timeout'])
-    else:  # refresh
-        warning(f'{fileline}Iplist "refresh" is obsoleted, use "dns_refresh" '
-                f'or "url_refresh" instead')
-        timeouts['dns_refresh'] = timeouts['url_refresh'] = parse_duration(
-            value, timeouts['dns_refresh'])
 
 
 def str_to_time(timestamp):
@@ -3945,116 +4007,120 @@ def write_iplist_cache(cache):
     save_file(state_file('iplist_cache_file'), cache)
 
 
-def iplist_parse_config(config):
-    """Parse resolve{} and iplist{} sections from config."""
+def parse_config_iplist(config) -> IPLists:
+    """Parse iplist{} sections from config."""
     # pylint: disable=too-many-branches
+    def parse_option(
+        options: IPListOptions, option: str, fileline: str
+    ) -> bool:
+        """Option parser helper."""
+        try:
+            return options.parse_option(option)
+        except AttributeError:
+            fail(f'{fileline}Invalid iplist{{}} option name: {option}')
+        except ValueError:
+            fail(f'{fileline}Invalid iplist{{}} option value: {option}')
+        return False
 
-    def_times = {
-        'dns_timeout': 86400,   # 24h
-        'dns_refresh': 900,     # 15m
-        'url_timeout': 864000,  # 10d
-        'url_refresh': 86400,   # 24h
-        'timeout': 0,           # Backward compability keyword (v0.27)
-        'refresh': 0,           # Backward compability keyword
-    }
-    iplist = {}
-    timeouts = {}
+    default_options = IPListOptions()
+    iplists = IPLists()
+
     if config.get('resolve'):
-        warning('Section "resolve" is obsoleted, use "iplist" instead')
+        warning('Section "resolve" is obsolete, use "iplist" instead')
+
     for fileline, line in config.get('resolve', []) + config.get('iplist', []):
-        name = line[0]
-
-        # Parse global timeout/refresh value
-        if (
-                (
-                    '=' in name and
-                    name.split('=')[0] in def_times and
-                    len(line) == 1
-                ) or (  # Backward compabililty  (v0.27)
-                    name in ('timeout', 'refresh') and
-                    len(line) > 1
-                )
-        ):
-            iplist_parse_timeout(fileline, def_times, name, line[1:])
+        option = line[0]
+        value = " ".join(line[1:])
+        if option in ('timeout', 'refresh') and value:
+            warning(f'{fileline}Iplist "{option}" is obsolete, use '
+                    f'"dns_{option}" or "url_{option}" instead')
+            parse_option(default_options, f'dns_{option}={value}', fileline)
+            parse_option(default_options, f'url_{option}={value}', fileline)
             continue
 
-        # Parse url size limit
-        if (
-                '=' in name and
-                name.split('=')[0] == 'url_max_size' and
-                len(line) == 1
-        ):
-            key, value = name.split('=', 1)
-            try:
-                INTERNAL[key] = int(value)
-            except ValueError:
-                fail(f'{fileline}Invalid iplist{{}} line: {name}')
+        # Parse one or more default options in single line
+        for index, default_option in enumerate(line):
+            if not parse_option(default_options, default_option, fileline):
+                if index == 0:
+                    break
+                fail(f'{fileline}Unsupported syntax: {" ".join(line)}')
+        else:
             continue
 
-        # Name must be set name, check it
-        if not Validators.str_iplist_name(name):
+        # Is it an iplist?
+        if not Validators.str_iplist_name(name := option):
             fail(f'{fileline}Invalid iplist name: {" ".join(line)}')
 
-        # Parse line items to value[]
-        if len(line) == 1 or line[1:] == ['-']:  # Empty set
-            value = []
-        elif line[1] == '+':  # Append to previous value
-            value = iplist.get(name, []) + line[2:]
-        else:  # Overwrite previous value
-            if name in iplist:
-                verbose(f'{fileline}Overwriting iplist "{name}" with value '
+        if name not in iplists:
+            # Create new iplist with default_options collected so far
+            iplists[name] = IPList(
+                options=IPListOptions(*dataclasses.astuple(default_options))
+            )
+
+        if len(line) >= 3 and line[1] == '+':
+            # Append iplist sources
+            options = line[2:]
+        else:
+            if iplists[name].sources:
+                # Overwrite iplist sources
+                iplists[name].sources.clear()
+                warning(f'{fileline}Overwriting iplist "{name}" with value '
                         f'"{" ".join(line[1:])}"')
-            value = line[1:]
+            options = line[1:]
 
-        # Parse pre-entry timeouts
-        this_value = []
-        this_timeouts = timeouts.get(name, def_times).copy()
-        for item in value:
-            if item in ('-merge', '-start'):
+        # Parse the rest of iplist definition
+        for option in options:
+            # Ignore insignificant tokens
+            if option in ('-', '+'):
                 continue
-            if '=' in item and item.split('=')[0] in def_times:
-                iplist_parse_timeout(fileline, this_timeouts, item, None)
-            else:
-                this_value.append(item)
 
-        iplist[name] = this_value
-        timeouts[name] = this_timeouts
-        iplist_verify_filters(name, this_value, fileline)
+            # Inline option?
+            if parse_option(iplists[name].options, option, fileline):
+                continue
+
+            # Add as a source
+            iplists[name].sources.append(option)
+
+        iplist_verify_filters(name, iplists[name].sources, fileline)
     if CONFIG.verbose >= 2:
-        for name, values in iplist.items():
-            verbose(f'{name:9s}  {" ".join(values)}')
+        for name, iplist in iplists.items():
+            verbose(f'{name:9s}  {" ".join(iplist.sources)}')
     INTERNAL.iplist_missing_ok = set()
-    return iplist, timeouts
+    return iplists
 
 
-def iplist_collect_resolve_list(iplist, timeouts):
+def iplist_collect_resolve_list(iplists: IPLists) -> set[dict]:
     """Collect URLs and hostnames to be resolved."""
     if INTERNAL.command != 'iplist':
         # Don't resolve anything if called as "foomuuri start".
         # Use cached entries only.
         return {}, {}
 
-    urls = {}
-    hostnames = {}
-    for name, values in iplist.items():
-        for value in values:
-            if value.startswith(('https://', 'http://', '.', '/')):
-                if value in urls:
-                    urls[value] = (
-                        min(urls[value][0], timeouts[name]['url_timeout']),
-                        min(urls[value][1], timeouts[name]['url_refresh']))
-                else:
-                    urls[value] = (timeouts[name]['url_timeout'],
-                                   timeouts[name]['url_refresh'])
-            elif not is_ip_address(value, allow_negative=False):
-                if value in hostnames:
-                    hostnames[value] = (min(hostnames[value][0],
-                                            timeouts[name]['dns_timeout']),
-                                        min(hostnames[value][1],
-                                            timeouts[name]['dns_refresh']))
-                else:
-                    hostnames[value] = (timeouts[name]['dns_timeout'],
-                                        timeouts[name]['dns_refresh'])
+    urls = collections.defaultdict(IPListSourceOptions)
+    hostnames = collections.defaultdict(IPListSourceOptions)
+    for iplist in iplists.values():
+        for source in iplist.sources:
+            if source.startswith(('https://', 'http://', '.', '/')):
+                urls[source] = IPListSourceOptions(
+                    timeout=min(
+                        urls[source].timeout, iplist.options.url_timeout
+                    ),
+                    refresh=min(
+                        urls[source].refresh, iplist.options.url_refresh
+                    ),
+                    max_size=min(
+                        urls[source].max_size, iplist.options.url_max_size
+                    ),
+                )
+            elif not is_ip_address(source, allow_negative=False):
+                hostnames[source] = IPListSourceOptions(
+                    timeout=min(
+                        hostnames[source].timeout, iplist.options.dns_timeout
+                    ),
+                    refresh=min(
+                        hostnames[source].refresh, iplist.options.dns_refresh
+                    ),
+                )
     if CONFIG.verbose >= 2:
         verbose(f'URLs:      {urls}')
         verbose(f'Hostnames: {hostnames}')
@@ -4119,12 +4185,15 @@ def iplist_output_add_element(cache, setname, now):
         out('}')
 
 
-def iplist_output_values(iplist, cache, currently_active, update_only):
+def iplist_output_values(
+    iplists: IPLists, cache: dict, currently_active: set[str],
+    update_only: set[str]
+) -> int:
     """Output and apply nft commands to add iplist entries."""
     now = int(time.time())
     error = 0
-    for setname in sorted(iplist):
-        setvalues = iplist[setname]
+    for setname in sorted(iplists):
+        setvalues = iplists[setname].sources
 
         # Collect new values to cache[@setname]
         cache[setname] = {
@@ -4189,19 +4258,22 @@ def iplist_apply_values(cache):
     return ret
 
 
-def command_iplist_refresh(config=None, currently_active=None,
-                           override_update_only=None) -> int:
+def command_iplist_refresh(
+    iplists: typing.Optional[IPLists] = None,
+    currently_active: typing.Optional[set[str]] = None,
+    override_update_only: typing.Optional[set[str]] = None
+) -> int:
     """Refresh iplist{} entries."""
     # Read minimal config and parse it
-    if not config:
+    if not iplists:
         config = minimal_config()
-    iplist, timeouts = iplist_parse_config(config)
-    urls, hostnames = iplist_collect_resolve_list(iplist, timeouts)
+        iplists = parse_config_iplist(config)
+    urls, hostnames = iplist_collect_resolve_list(iplists)
 
     # Read URLs and files to cache
-    cache = read_iplist_cache(iplist)
-    for url, (timeout, refresh) in urls.items():
-        get_url_or_file(url, timeout, refresh, cache)
+    cache = read_iplist_cache(iplists)
+    for url, options in urls.items():
+        get_url_or_file(url, options, cache)
 
     # Resolve hostnames to cache
     resolve_all_hostnames(hostnames, cache)
@@ -4215,7 +4287,7 @@ def command_iplist_refresh(config=None, currently_active=None,
                 not INTERNAL.root_power or
                 CONFIG.nft_bin == ['true']
         ):
-            currently_active = set(iplist)
+            currently_active = set(iplists)
 
     # Parse which iplists should be updated.
     if override_update_only:
@@ -4231,7 +4303,7 @@ def command_iplist_refresh(config=None, currently_active=None,
     notify('EXTEND_TIMEOUT_USEC=120000000')  # 2 minutes
 
     # Apply updates to ruleset
-    ret = iplist_output_values(iplist, cache, currently_active, update_only)
+    ret = iplist_output_values(iplists, cache, currently_active, update_only)
     notify('READY=1')
     notify('STOPPING=1')
     return ret
