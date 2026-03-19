@@ -1,0 +1,4 @@
+tcp 2001
+tcp 2002 reject
+ssh
+drop log
