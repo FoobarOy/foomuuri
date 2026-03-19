@@ -133,6 +133,8 @@ table inet foomuuri {
 		ip saddr != { 10.1.2.2, 10.1.3.3, 10.1.4.4 } tcp dport 1003 accept
 		ip saddr { 10.1.2.0/24, 10.1.3.0/24, 10.1.4.0/24 } tcp dport 1004 accept
 		ip saddr != { 10.1.2.0/24, 10.1.3.0/24, 10.1.4.0/24 } tcp dport 1005 accept
+		ip saddr 10.3.3.1 tcp dport 1009 accept
+		ip saddr { 10.2.2.1, 10.2.2.2, 10.2.2.3 } tcp dport 1010 accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
