@@ -183,6 +183,7 @@ table inet foomuuri {
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
 		fib daddr type { broadcast, multicast } drop
+		ct status dnat accept
 		tcp dport 22 accept
 		drop
 	}
@@ -202,6 +203,7 @@ table inet foomuuri {
 			untracked : jump smurfs_6
 		}
 		fib daddr type multicast drop
+		ct status dnat accept
 		tcp dport 22 accept
 		drop
 	}
