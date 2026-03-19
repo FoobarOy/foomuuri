@@ -737,7 +737,7 @@ def expand_single_line(fileline, line, macros):
         # Cleanup "-macro", "macro/24", "[macro]:123" and "macro:123"
         # to prefix/macro/suffix parts
         word_prefix = word_suffix = ''
-        if word[0] == '-':  # Negative IP address
+        if word[0] == '-' and len(word) > 1:  # Negative IP address
             word = word[1:]
             word_prefix = '-'
         if macro_isdigit(word, '/'):  # Netmask
