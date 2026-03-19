@@ -1,5 +1,13 @@
 # ChangeLog
 
+## 0.33 (20xx-xx-xx)
+
+* Add `-start` option to `iplist` section line. Foomuuri will not add IP
+  addresses to such lists at startup. Entries will be added later by
+  `foomuuri-iplist.timer` service. This can be used with "unsafe" external
+  iplists to make sure Foomuuri start will not fail or block your access
+  for first minutes after reboot.
+
 ## 0.32 (2026-03-11)
 
 * BREAKING CHANGE: Prometheus exporter `foomuuri_exporter` is renamed to
@@ -8,7 +16,7 @@
 * Add deprecation warning to `resolve` section, deprecated in 0.28.
 * Add `nftrace` statement to enable nftrace ruleset debugging for matching
   packets. Tracing events can be viewed with `nft monitor trace` command.
-* Add `url_max_size=bytes` to `iplist {}` section. It defines maximum content
+* Add `url_max_size=bytes` to `iplist` section. It defines maximum content
   size for downloaded IP address list. Default value is 33554432, 32 MiB.
 * Optimize duplicate accept rules to single rule.
 * Add `foomuuri iplist flush` command to delete all added IP addresses from
