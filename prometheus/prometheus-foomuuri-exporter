@@ -147,9 +147,9 @@ def main():
     parser.add_argument('--tls-key', metavar='FILENAME',
                         help='TLS key file name')
     parser.add_argument('--no-monitor-statistics', action='store_true',
-                        help='disable Foomuuri Monitor statistics')
+                        help='do not export Foomuuri Monitor statistics')
     parser.add_argument('--no-ruleset-statistics', action='store_true',
-                        help='disable ruleset statistics')
+                        help='do not export ruleset statistics')
     parser.add_argument('--statistics-file', metavar='FILENAME',
                         default='/var/lib/foomuuri/monitor.statistics',
                         help='Foomuuri Monitor statistics file name')

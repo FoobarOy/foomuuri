@@ -64,6 +64,8 @@ install:
 	cp firewalld/dbus-firewalld.conf $(DESTDIR)/usr/share/foomuuri/
 	mkdir -p $(DESTDIR)/usr/share/man/man8
 	cp doc/foomuuri.8 $(DESTDIR)/usr/share/man/man8/
+	mkdir -p $(DESTDIR)/usr/share/man/man1
+	cp doc/prometheus-foomuuri-exporter.1 $(DESTDIR)/usr/share/man/man1/
 
 # Install current source to local system's root
 
@@ -84,11 +86,11 @@ release: test clean
 	git diff --cached --exit-code
 	sed -i -e "s@^\(## ${VERSION} .\)20..-xx-xx.@\1$(shell date +'%Y-%m-%d')\)@" CHANGELOG.md
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
-	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md
-	sed -i -e "s@^\(date: \).*@\1$(shell date +'%b %d, %Y')@" doc/foomuuri.md
+	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" doc/foomuuri.md doc/prometheus-foomuuri-exporter.md
+	sed -i -e "s@^\(date: \).*@\1$(shell date +'%b %d, %Y')@" doc/foomuuri.md doc/prometheus-foomuuri-exporter.md
 	make --directory=doc
 	git diff
-	git add CHANGELOG.md src/foomuuri doc/foomuuri.md doc/foomuuri.8
+	git add CHANGELOG.md src/foomuuri doc/foomuuri.md doc/foomuuri.8 doc/prometheus-foomuuri-exporter.md doc/prometheus-foomuuri-exporter.1
 	git commit --message="v$(VERSION)"
 	git tag "v$(VERSION)"
 	@echo
