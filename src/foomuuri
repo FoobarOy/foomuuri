@@ -160,10 +160,8 @@ class TypedConfig:
                 f'{name}: expected value type {str}, got {type(value)}'
             )
 
-    def set_from_str(self, name, value: str) -> None:
-        """Set attribute value from str with type conversion."""
-        self._check_set_append_args(name, value)
-
+    def _convert_set_append_value(self, name: str, value: str):
+        """Convert value to attribute's type."""
         field = self._get_field(name)
 
         # "Built-in" value converters. Executed when
@@ -177,28 +175,25 @@ class TypedConfig:
             field.metadata.get('convert_str')
             or implicit_converters.get(field.type)
         ):
-            new_value = converter(value)
-        elif not isinstance(value, field.type):
-            raise TypeError(
-                f"{name}: value conversion to {field.type} not implemented"
-            )
-        else:
-            new_value = value
+            return converter(value)
+        if isinstance(value, field.type):
+            return value
+        raise TypeError(
+            f"{name}: value conversion to {field.type} not implemented"
+        )
 
+    def set_from_str(self, name, value: str) -> None:
+        """Set attribute value from str with type conversion."""
+        self._check_set_append_args(name, value)
+        new_value = self._convert_set_append_value(name, value)
         setattr(self, name, new_value)
 
     def append_from_str(self, name, value: str) -> None:
         """Appends attribute value from str with type conversion."""
         self._check_set_append_args(name, value)
+        new_value = self._convert_set_append_value(name, value)
 
         field = self._get_field(name)
-
-        if converter := field.metadata.get('convert_str'):
-            new_value = converter(value)
-        else:
-            new_value = value
-
-        value_type = type(new_value)
 
         # "Built-in" implicit appenders.
         implicit_appenders = {
@@ -208,7 +203,7 @@ class TypedConfig:
 
         if (
             appender := implicit_appenders.get(field.type)
-        ) and value_type == field.type:
+        ) and isinstance(new_value, field.type):
             new_value = appender(self[name], new_value)
         else:
             raise TypeError(
