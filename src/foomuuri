@@ -3029,7 +3029,7 @@ def command_start():
     output_footer()
 
     # Add iplist elements from cache to output. Include only iplists
-    # that are not marked with "-start".
+    # that are not marked with "start=no".
     if iplists_add_on_start := iplists.filter_names_by('start', True):
         command_iplist_refresh(
             iplists=iplists,
