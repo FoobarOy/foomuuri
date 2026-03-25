@@ -74,6 +74,24 @@ class TestIplistParseConfig(unittest.TestCase):
                 ),
             ])
 
+    @unittest.mock.patch('foomuuri.warning')
+    @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
+    def test_obsolete_syntax_fail(self, fail, warning, *_):
+        """Test iplist{} section with invalid obsolete timeout option."""
+        with self.mock_config_foomuuri(section='iplist', content="""
+            timeout  # value is missing
+        """) as config_file:
+            with self.assertRaises(SystemExit):
+                _ = parse_config_iplist(minimal_config())
+            warning.assert_called_once_with(
+                f'File {config_file} line 4: Iplist "timeout" is obsolete, '
+                'use "dns_timeout" or "url_timeout" instead',
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 4: Invalid iplist{{}} option '
+                'value: dns_timeout='
+            )
+
     def test_empty_iplist_definition(self, *_):
         """Test empty iplist definition."""
         with self.mock_config_foomuuri(section='iplist', content="""

@@ -4057,9 +4057,10 @@ def parse_config_iplist(config) -> IPLists:
         warning('Section "resolve" is obsolete, use "iplist" instead')
 
     for fileline, line in config.get('resolve', []) + config.get('iplist', []):
-        option = line[0]
-        value = " ".join(line[1:])
-        if option in ('timeout', 'refresh') and value:
+        # Parse old default option syntax
+        if line[0] in ('timeout', 'refresh'):
+            option = line[0]
+            value = ' '.join(line[1:])
             warning(f'{fileline}Iplist "{option}" is obsolete, use '
                     f'"dns_{option}" or "url_{option}" instead')
             parse_option(default_options, f'dns_{option}={value}', fileline)
@@ -4076,7 +4077,7 @@ def parse_config_iplist(config) -> IPLists:
             continue
 
         # Is it an iplist?
-        if not Validators.str_iplist_name(name := option):
+        if not Validators.str_iplist_name(name := line[0]):
             fail(f'{fileline}Invalid iplist name: {" ".join(line)}')
 
         if name not in iplists:
