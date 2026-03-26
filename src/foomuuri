@@ -1225,7 +1225,7 @@ def verify_rule_sanity(rule, fileline):
     # pylint: disable=too-many-branches
     for key, value in rule.items():
         if (
-                value == '' and  # noqa: PLC1901 -- it can be None too
+                value == '' and  # noqa: RUF100,PLC1901 -- it can be None too
                 key not in ('nat_to', 'queue', 'counter', 'log',
                             'fileline', 'line')
         ):
