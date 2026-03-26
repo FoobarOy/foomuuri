@@ -550,7 +550,9 @@ def run_program_rc(args: list, *, env=None, stdin=None, print_output=True,
     return proc.returncode
 
 
-def run_program_pipe(args: list, text_input: str) -> str:
+def run_program_pipe(
+    args: list, text_input: typing.Optional[str]
+) -> typing.Optional[str]:
     """Run external program with stdin, return its output."""
     if not args:
         return ''
@@ -1089,8 +1091,9 @@ def parse_config_special_chains(config):
                     fail(f'{fileline}Invalid section type: {section}')
 
             lines = config.pop(section)
-            chain_rules[(prefix, ftype, priority)] = [parse_rule_line(line)
-                                                      for line in lines]
+            chain_rules[(prefix, ftype, priority)] = [
+                parse_rule_line(line) for line in lines
+            ]  # ty: ignore[invalid-assignment]
     return chain_rules
 
 
@@ -1485,7 +1488,7 @@ def parse_rule_line(fileline_line):
         # More parameters for keyword
         elif keyword:
             if ret[keyword]:
-                ret[keyword] += ' '
+                ret[keyword] += ' '  # ty: ignore[unsupported-operator]
             ret[keyword] += item
 
         # Unknown word after non-start keyword
@@ -3127,14 +3130,17 @@ if HAVE_DBUS:
 
         _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
 
-    class DbusCommon:
-        """D-Bus server - Common Functions."""
+    class DbusCommon(dbus.service.Object):
+        """D-Bus server and common functions."""
 
-        zones = None
         polkit = None
 
-        def set_data(self, zones):
-            """Save config data: zone list is static."""
+        def __init__(self, conn, object_path, zones):
+            """Initialize dbus.service.Object."""
+            dbus.service.Object.__init__(
+                self, conn=conn, object_path=object_path
+            )
+            # Save config data: zone list is static.
             self.zones = zones
 
         @staticmethod
@@ -3316,9 +3322,8 @@ if HAVE_DBUS:
             verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
             return self.change_interface_zone(interface, zone)[0]
 
-    class DbusFoomuuri(dbus.service.Object, DbusCommon):
+    class DbusFoomuuri(DbusCommon):
         """D-Bus server for Foomuuri."""
-
         # pylint: disable=invalid-name  # dbus method names
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',
@@ -3362,7 +3367,7 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
-    class DbusFirewalld(dbus.service.Object, DbusCommon):
+    class DbusFirewalld(DbusCommon):
         """D-Bus server for firewalld emulation."""
 
         # pylint: disable=invalid-name  # dbus method names
@@ -3461,8 +3466,7 @@ if HAVE_DBUS:
                 foomuuri_name.get_name()  # Dummy call to get rid of pylint
             except dbus.exceptions.DBusException:
                 fail('Can\'t bind to system D-Bus: fi.foobar.Foomuuri1')
-            foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1')
-            foomuuri_object.set_data(zones)
+            foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1', zones)
 
             # Firewalld emulation calls, if enabled in foomuuri{} config
             firewalld_object = None
@@ -3475,8 +3479,7 @@ if HAVE_DBUS:
                     fail('Can\'t bind to system D-Bus: '
                          'org.federaproject.FirewallD1')
                 firewalld_object = DbusFirewalld(
-                    bus, '/org/fedoraproject/FirewallD1')
-                firewalld_object.set_data(zones)
+                    bus, '/org/fedoraproject/FirewallD1', zones)
 
             # Define reload/stop signal handler
             mainloop = GLib.MainLoop()
@@ -4877,10 +4880,16 @@ def parse_config_targets(config):
             fail(f'{fileline}Missing "command" keyword in "target {name}"')
         for key in ('consecutive_up', 'consecutive_down',
                     'history_up', 'history_down'):
-            if cfg[key] > cfg['history_size']:
+            if (
+                cfg[key] >  # ty: ignore[unsupported-operator]
+                cfg['history_size']
+            ):
                 fail(f'{fileline}{key} is larger than history_size in '
                      f'"target {name}": {cfg[key]} > {cfg["history_size"]}')
-        if cfg['history_size'] - cfg['history_up'] >= cfg['history_down']:
+        if (
+            cfg['history_size'] -  # ty: ignore[unsupported-operator]
+            cfg['history_up'] >= cfg['history_down']
+        ):
             warning(f'{fileline}Possible up-down loop in '
                     f'"target {name}": history_size {cfg["history_size"]} - '
                     f'history_up {cfg["history_up"]} >= '
@@ -4918,7 +4927,7 @@ def parse_config_groups(config, targets):
         target = cfg.get('target')
         if not target:
             fail(f'{fileline}Missing "target" keyword in "group {name}"')
-        for item in target:
+        for item in target:  # ty: ignore[not-iterable]
             if item not in targets:
                 fail(f'{fileline}Undefined target "{item}" in "group {name}"')
 
@@ -5141,7 +5150,7 @@ def run_command():
     }.get(INTERNAL.command)
     if not handler:
         fail(f'Unknown command: {INTERNAL.command}')
-    return handler()
+    return handler()  # ty: ignore[call-non-callable]
 
 
 def main():

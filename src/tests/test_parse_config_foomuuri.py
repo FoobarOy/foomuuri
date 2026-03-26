@@ -29,14 +29,12 @@ class TestParseConfigFoomuuri(unittest.TestCase):
         foomuuri configuration file, containing foomuuri{} section
         with single option/value."""
         # MagicMock of pathlib.PosixPAth returning desired foomuuri config
-        config_file = unittest.mock.MagicMock(
-          **{
-             'read_text.return_value': f"""
-              foomuuri {{
-                  {option} {value}
-              }}
-          """
-          })
+        config_file = unittest.mock.MagicMock()
+        config_file.read_text.return_value = f"""
+            foomuuri {{
+                {option} {value}
+            }}
+        """
         # foomuuri.find_config_files() is called by foomuuri.read_config()
         # to load configuration files.
         # read_config() tries loading share_config first, and etc_config then.
