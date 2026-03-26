@@ -1,16 +1,28 @@
-SUBDIRS ?= $(sort $(wildcard ??-*))
+# Foomuuri - Multizone bidirectional nftables firewall.
+
+SUBDIRS	?= $(sort $(wildcard ??-*))
+SOURCE	?= ../src/foomuuri ../src/tests/
 
 .PHONY: all clean distclean $(SUBDIRS)
 
-all: $(SUBDIRS)
 ifdef COVERAGE
-	cd ../ ; $(COVERAGE) -m unittest
+export RUN	= unshare --map-root-user --net coverage run --append --data-file=$(CURDIR)/../.coverage
 else
-	cd ../ ; python3 -m unittest
+export RUN	= python3
 endif
-	flake8 ../src/foomuuri ../src/tests/
-	pycodestyle ../src/foomuuri ../src/tests/
-	pylint ../src/foomuuri ../src/tests/
+
+all:
+ifdef RUFF
+	ruff check $(SOURCE)
+endif
+ifdef TY
+	ty check $(SOURCE)
+endif
+	cd ../ ; $(RUN) -m unittest
+	flake8 $(SOURCE)
+	pycodestyle $(SOURCE)
+	pylint $(SOURCE)
+	$(MAKE) $(SUBDIRS)
 
 clean distclean:
 	rm -f */*.fw
@@ -18,6 +30,6 @@ clean distclean:
 	rm -f */zone
 
 $(SUBDIRS):
-	$(COVERAGE) ../src/foomuuri --set=etc_dir=$@ --set=share_dir=../etc --set=state_dir=$@ --set=run_dir=$@ check
+	$(RUN) ../src/foomuuri --set=etc_dir=$@ --set=share_dir=../etc --set=state_dir=$@ --set=run_dir=$@ check
 	diff -u $@/golden.txt $@/next.fw
 	[ ! -f $@/Makefile ] || $(MAKE) -C $@

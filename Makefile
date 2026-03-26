@@ -9,11 +9,10 @@ CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }
 all: test
 
 # Run testsuite and check source
-# To get test coverage report run: make clean test WITH_COVERAGE=yes && coverage html
-
-ifdef WITH_COVERAGE
-export COVERAGE	= unshare --map-root-user --net coverage run --append --data-file=$(CURDIR)/.coverage
-endif
+#
+# Enable test coverage report:  make clean test COVERAGE=y && coverage html
+# Enable ruff check:            make test RUFF=y
+# Enable ty check:              make test TY=y
 
 test:
 	$(MAKE) -C test
