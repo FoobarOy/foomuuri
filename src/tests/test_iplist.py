@@ -1,7 +1,7 @@
 """Basic unit tests of IPList classes."""
 # pylint: disable=invalid-name,import-error
 
-import collections
+import collections.abc
 import unittest
 
 from foomuuri import IPList, IPLists
