@@ -37,4 +37,15 @@ lint.ignore = [
     "TRY003", # Avoid specifying long messages outside the exception class
     "TRY301", # Abstract `raise` to an inner function"
     "UP045", # [*] Use `X | None` for type annotations
+
+    # --preview
+    "DOC201", # `return` is not documented in docstring
+    "DOC402", # `yield` is not documented in docstring
+    "DOC501", # Raised exception `KeyboardInterrupt` missing from docstring
+    "FURB118", # Use `operator.add` instead of defining a lambda
+    "PLR0916", # Too many Boolean expressions (6 > 5)
+    "PLR0917", # Too many positional arguments (8/5)
+    "PLR6201", # Use a set literal when testing for membership
+    "RUF031", # [*] Avoid parentheses for tuples in subscripts
+    "S404", # `subprocess` module is possibly insecure
 ]

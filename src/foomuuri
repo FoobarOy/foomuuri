@@ -1224,8 +1224,11 @@ def verify_rule_sanity(rule, fileline):
     """Do some basic verify that single rule is valid."""
     # pylint: disable=too-many-branches
     for key, value in rule.items():
-        if value == '' and key not in ('nat_to', 'queue', 'counter', 'log',
-                                       'fileline', 'line'):
+        if (
+                value == '' and  # noqa: PLC1901 -- it can be None too
+                key not in ('nat_to', 'queue', 'counter', 'log',
+                            'fileline', 'line')
+        ):
             fail(f'{fileline}"{key}" without value is not valid')
 
     for key in ('saddr_rate_name', 'daddr_rate_name', 'saddr_daddr_rate_name',
@@ -2284,7 +2287,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
         match = rule_matchers(rule, ipv, cast=cast)
         if match is None:
             continue
-        if match == '' and cast is None and rule['cast'] != 'unicast':
+        if not match and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
         if rule['statement'] in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
             fail(f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
@@ -3744,7 +3747,7 @@ def iterate_set_elements(data):
                 yield f'{ipaddr["range"][0]}-{ipaddr["range"][1]}', expire
             else:
                 yield (f'{ipaddr["prefix"]["addr"]}/'
-                       f'{ipaddr["prefix"]["len"]}', expire)
+                       f'{ipaddr["prefix"]["len"]}'), expire
 
 
 def command_iplist_list():
