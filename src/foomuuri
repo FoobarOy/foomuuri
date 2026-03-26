@@ -3222,7 +3222,8 @@ if HAVE_DBUS:
         def add_interface(interface_zone, interface, zone):
             """Add interface to zone.
 
-            It must be already removed from other zones."""
+            It must be already removed from other zones.
+            """
             # Add to input and output
             out(f'add element inet foomuuri input_zones '
                 f'{{ "{interface}" : jump '
@@ -3750,8 +3751,7 @@ def command_iplist_list():
     config = minimal_config()
     known = parse_config_iplist(config)
     for setname in INTERNAL.parameters[1:] or sorted(known):
-        if setname.startswith('@'):
-            setname = setname[1:]
+        setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
             data4 = nft_json(f'list set inet foomuuri {setname}')
             data6 = {}
@@ -3958,8 +3958,7 @@ def read_old_iplist_format(cache):
             continue  # Silently ignore all errors
 
         for line in manual.splitlines():
-            if line.startswith('# '):
-                line = line[2:]
+            line = line.removeprefix('# ')
             items = line.split()
             if (
                     not line.startswith('add element inet') or
@@ -4523,7 +4522,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
         seconds = int(now - prev + 0.5)
         extra = f'previous change was {seconds_to_human(seconds)} ago'
         if grouptarget == 'target':
-            for cons in range(0, cfg['history_size']):
+            for cons in range(cfg['history_size']):
                 if cfg['history'][-1 - cons] != cfg['state']:
                     break
             historycount = cfg['history'].count(cfg['state'])
@@ -4639,17 +4638,16 @@ def monitor_update_target(targets, groups, target, state):
         elif startup_change:  # Always send an event on startup
             monitor_state_command(targets, groups, cfg, 'target', target)
 
-    else:
+    elif (
+            count_up >= cfg['history_up'] and
+            all(cfg['history'][-cfg['consecutive_up']:])
+    ):
         # Currently down. Target goes up if:
         # - history has enough ups
         # AND
         # - last n items were up
-        if (
-                count_up >= cfg['history_up'] and
-                all(cfg['history'][-cfg['consecutive_up']:])
-        ):
-            cfg['state'] = True
-            monitor_state_command(targets, groups, cfg, 'target', target)
+        cfg['state'] = True
+        monitor_state_command(targets, groups, cfg, 'target', target)
 
 
 def monitor_parse_line(targets, groups, target, line):
@@ -5015,7 +5013,7 @@ def command_monitor():
 
 def command_help(error=True):
     """Print command line help."""
-    print(f'''Foomuuri {VERSION}
+    print(f"""Foomuuri {VERSION}
 
 Usage: {sys.argv[0]} [OPTIONS] COMMAND
 
@@ -5062,7 +5060,7 @@ Available OPTIONS:
 Internally used commands:
 
   dbus         Start D-Bus daemon
-  monitor      Start target monitor daemon''')
+  monitor      Start target monitor daemon""")
     if error:
         fail()
     return 0

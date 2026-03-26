@@ -27,7 +27,8 @@ class TestParseConfigFoomuuri(unittest.TestCase):
 
         foomuuri.find_config_files() is patched to return generated
         foomuuri configuration file, containing foomuuri{} section
-        with single option/value."""
+        with single option/value.
+        """
         # MagicMock of pathlib.PosixPAth returning desired foomuuri config
         config_file = unittest.mock.MagicMock()
         config_file.read_text.return_value = f"""

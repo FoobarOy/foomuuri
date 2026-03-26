@@ -32,7 +32,8 @@ class TestIplistParseConfig(unittest.TestCase):
 
         foomuuri.find_config_files() is patched to return generated
         foomuuri configuration file, containing arbitrary section {}
-        with specified content."""
+        with specified content.
+        """
         # consult tests/test_parse_config_foomuuri.py for mock explanation
         config_file = unittest.mock.MagicMock()
         config_file.read_text.return_value = f"""
