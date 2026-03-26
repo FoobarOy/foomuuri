@@ -45,6 +45,5 @@ lint.ignore = [
     "FURB118", # Use `operator.add` instead of defining a lambda
     "PLR0916", # Too many Boolean expressions (6 > 5)
     "PLR0917", # Too many positional arguments (8/5)
-    "RUF031", # [*] Avoid parentheses for tuples in subscripts
     "S404", # `subprocess` module is possibly insecure
 ]
