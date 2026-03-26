@@ -1,0 +1,40 @@
+lint.select = [
+    "ALL",
+]
+
+lint.ignore = [
+    "S108", # Probable insecure usage of temporary file or directory: "/tmp/"
+    "ANN",
+    "C901", # function is too complex
+    "COM812", # [*] Trailing comma missing
+    "D203",
+    "D204", # 1 blank line required after class docstring
+    "D213",
+    "D401", # First line of docstring should be in imperative mood:
+    "DTZ007", #  Naive datetime constructed
+    "EM101", # Exception must not use a string literal, assign to variable first
+    "EM102", # Exception must not use an f-string literal, assign to variable first
+    "ERA001", # Found commented-out code
+    "FBT001", # Boolean-typed positional argument in function definition
+    "FBT002", # Boolean default positional argument in function definition
+    "FBT003", # Boolean positional value in function call
+    "N802", # Function name `changeZoneOfSource` should be lowercase
+    "PERF401", # Use `list.extend` to create a transformed list
+    "PLR0911", # Too many return statements
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments in function definition
+    "PLR0915", # Too many statements
+    "PLR2004", # Magic value used in comparison
+    "PLW2901", # redefined-loop-name ()
+    "PT009",
+    "PT019", # Fixture `_` without value is injected as parameter, use `@pytest.mark.usefixtures` instead
+    "PT027", # Use `pytest.raises` instead of unittest-style `assertRaises`
+    "Q000",
+    "RUF005", # Consider `[*cmd[:1], '--loop', *cmd[1:]]` instead of concatenation
+    "S602",
+    "S603",
+    "T201",
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "TRY301", # Abstract `raise` to an inner function"
+    "UP045", # [*] Use `X | None` for type annotations
+]
