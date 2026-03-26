@@ -25,7 +25,7 @@ devel:
 # Delete created files
 
 clean distclean:
-	rm -rf src/__pycache__ src/tests/__pycache__ htmlcov
+	rm -rf src/__pycache__ src/tests/__pycache__ htmlcov .ruff_cache
 	rm -f .coverage foomuuri-*.tar.gz
 	$(MAKE) -C test $@
 

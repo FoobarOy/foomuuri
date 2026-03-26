@@ -4,6 +4,7 @@ test/*/*.fw
 test/*/iplist-cache.json
 test/*/zone
 .coverage
+.ruff_cache
 htmlcov
 
 __pycache__
