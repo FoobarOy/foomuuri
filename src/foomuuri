@@ -116,7 +116,7 @@ class Validators:
     @staticmethod
     def str_yes_no(value: str):
         """Assert value is either 'yes' or 'no'."""
-        return value in ('yes', 'no')
+        return value in {'yes', 'no'}
 
 
 class Converters:  # pylint: disable=too-few-public-methods
@@ -693,7 +693,7 @@ def read_config(require_etc_config: bool):
     # There characters will combine to single word in shlex
     wordchars = ''.join(chr(letter) for letter in range(33, 256)
                         # excludes: " # ' ; { }
-                        if letter not in (34, 35, 39, 59, 123, 125))
+                        if letter not in {34, 35, 39, 59, 123, 125})
 
     # Read all config files
     config = {}        # Final config dict
@@ -750,16 +750,16 @@ def read_config(require_etc_config: bool):
                     fail(f'{fileline}New "{" ".join(tokens)}" while section '
                          f'"{section}" is still open')
                 if (
-                        tokens[0] in ('template', 'target', 'group') and
+                        tokens[0] in {'template', 'target', 'group'} and
                         len(tokens) != 3
                 ):
                     fail(f'{fileline}Section "{tokens[0]}" must have single '
                          f' word name: {" ".join(tokens)}')
-                if len(tokens) > 2 and tokens[0] not in (
+                if len(tokens) > 2 and tokens[0] not in {
                         'template', 'target', 'group',
                         'snat', 'dnat',
                         'prerouting', 'postrouting',
-                        'forward', 'input', 'output'):
+                        'forward', 'input', 'output'}:
                     fail(f'{fileline}Section "{tokens[0]}" does not take '
                          f'parameters: {" ".join(tokens)}')
 
@@ -928,7 +928,7 @@ def expand_macros(config):
         if section.startswith('_'):
             continue  # Internally used section, skip
 
-        if section in ('foomuuri', 'zone'):
+        if section in {'foomuuri', 'zone'}:
             # Don't expand macros in these sections, print warning instead.
             # This is for security reasons. Bad things will happen if
             # there is "xyz" in these sections and macro "xyz" is added
@@ -1088,7 +1088,7 @@ def parse_config_special_chains(config):
             else:
                 ftype = items[1]
                 priority = items[2]
-                if ftype not in ('filter', 'nat', 'route'):
+                if ftype not in {'filter', 'nat', 'route'}:
                     fail(f'{fileline}Invalid section type: {section}')
 
             lines = config.pop(section)
@@ -1101,10 +1101,10 @@ def parse_config_special_chains(config):
 def parse_config_hook(config):
     """Parse hook{} from config."""
     for fileline, line in config.pop('hook', []):
-        if line[0] not in (
+        if line[0] not in {
                 'pre_start', 'post_start',
                 'pre_stop', 'post_stop',
-        ):
+        }:
             fail(f'{fileline}Unknown hook: {" ".join(line)}')
         INTERNAL[line[0]] = line[1:]
 
@@ -1199,7 +1199,7 @@ def is_port(value, protocol):
     if not protocol:
         return False
     for item in value.split(','):
-        if protocol in ('icmp', 'icmpv6') and (
+        if protocol in {'icmp', 'icmpv6'} and (
                 # See: "nft describe icmp type; nft describe icmpv6 type"
                 item == 'redirect' or
                 re.match(r'^[a-z2]{2,}-[-a-z]{5,}$', item)
@@ -1226,8 +1226,8 @@ def verify_rule_sanity(rule, fileline):
     for key, value in rule.items():
         if (
                 value == '' and  # noqa: RUF100,PLC1901 -- it can be None too
-                key not in ('nat_to', 'queue', 'counter', 'log',
-                            'fileline', 'line')
+                key not in {'nat_to', 'queue', 'counter', 'log',
+                            'fileline', 'line'}
         ):
             fail(f'{fileline}"{key}" without value is not valid')
 
@@ -1287,14 +1287,14 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if not rule['nat_to'] and rule['statement'] in (
-            'snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
+    if not rule['nat_to'] and rule['statement'] in {
+            'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
         fail(f'{fileline}"{rule["statement"]}" without address is not valid')
 
-    if rule['ct_status'] and rule['ct_status'] not in (
+    if rule['ct_status'] and rule['ct_status'] not in {
             'expected', 'seen-reply', 'assured', 'confirmed',
             'snat', 'dnat', 'dying',
-    ):
+    }:
         fail(f'{fileline}"Invalid "ct_status" value: {rule["ct_status"]}')
 
 
@@ -1396,14 +1396,14 @@ def parse_rule_line(fileline_line):
         # First item after start keyword is always a parameter for it, except
         # for "log" or "counter". Log will have good default value if not
         # defined. Counter without parameter will create anonymous counter.
-        if keyword and not ret[keyword] and keyword not in ('log', 'counter'):
+        if keyword and not ret[keyword] and keyword not in {'log', 'counter'}:
             ret[keyword] = item
             if keyword == 'protocol':  # Single word only
                 keyword = None
 
         # Non-start keywords
-        elif item in ('accept', 'drop', 'return', 'continue',
-                      'masquerade', 'notrack', 'nftrace'):
+        elif item in {'accept', 'drop', 'return', 'continue',
+                      'masquerade', 'notrack', 'nftrace'}:
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1413,43 +1413,43 @@ def parse_rule_line(fileline_line):
             ret['statement'] = 'reject with icmpx admin-prohibited'
             ret['plain'] = False
             keyword = None
-        elif item in ('multicast', 'broadcast'):
+        elif item in {'multicast', 'broadcast'}:
             rule_item_only_one(ret, 'cast', item)
             ret['cast'] = item
             ret['plain'] = False
             keyword = None
-        elif item in ('tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'):
+        elif item in {'tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'}:
             # "igmp" and "esp" are for backward compability (v0.21)
             rule_item_only_one(ret, 'protocol', item)
             ret['protocol'] = item
             ret['plain'] = False
             keyword = None
-        elif item in ('ipv4', 'ipv6'):
+        elif item in {'ipv4', 'ipv6'}:
             ret[item] = True
             ret['plain'] = False
             keyword = None
-        elif item in ('sipsec', 'dipsec'):
+        elif item in {'sipsec', 'dipsec'}:
             ret[item] = 'exists'
             ret['plain'] = False
             keyword = None
-        elif item in ('-sipsec', '-dipsec'):
+        elif item in {'-sipsec', '-dipsec'}:
             ret[item[1:]] = 'missing'
             ret['plain'] = False
             keyword = None
-        elif item in ('conntrack', '-conntrack'):
+        elif item in {'conntrack', '-conntrack'}:
             rule_item_only_one(ret, 'conntrack', item)
             ret['after_conntrack'] = item == 'conntrack'
             ret['plain'] = False
             keyword = None
 
         # Start keywords
-        elif item in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
+        elif item in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
             keyword = 'nat_to'
             ret[keyword] = ret[keyword] or ''
-        elif item in ('protocol',
+        elif item in {'protocol',
                       'saddr', 'sport',
                       'daddr', 'dport',
                       'oifname', 'iifname',
@@ -1480,13 +1480,13 @@ def parse_rule_line(fileline_line):
                       'ct_status',
                       'time',
                       'warning',
-                      ):
+                      }:
             keyword = item
             ret[keyword] = ret[keyword] or ''
             if item == 'queue':  # statement and start keyword
                 rule_item_only_one(ret, 'statement', item)
                 ret['statement'] = item
-            if item not in ('counter', 'log', 'log_level'):
+            if item not in {'counter', 'log', 'log_level'}:
                 ret['plain'] = False
 
         # More parameters for keyword
@@ -1520,7 +1520,7 @@ def parse_config_rules(config):
     """
     rules = {}
     for section, lines in config.items():
-        if section.startswith('_') or section in ('resolve', 'iplist'):
+        if section.startswith('_') or section in {'resolve', 'iplist'}:
             continue
         try:
             szone, dzone = section.split('-')
@@ -1838,8 +1838,8 @@ def time_match_single(rule, compare, value):
     hour = None
     date = None
     for item in value:
-        if item.lower() in ('monday', 'tuesday', 'wednesday', 'thursday',
-                            'friday', 'saturday', 'sunday'):
+        if item.lower() in {'monday', 'tuesday', 'wednesday', 'thursday',
+                            'friday', 'saturday', 'sunday'}:
             wday = time_only_one(rule, wday, item.capitalize())
         elif (
                 re.fullmatch(r'\d\d:\d\d(:\d\d)?', item) or  # hh:mm:ss, hh:mm
@@ -1876,7 +1876,7 @@ def time_match(rule):
     value = []
     ret = ''
     for item in rule['time'].split():
-        if item in ('==', '!=', '<', '>', '<=', '>='):
+        if item in {'==', '!=', '<', '>', '<=', '>='}:
             ret += time_match_single(rule, compare, value)
             compare = '' if item == '==' else f'{item} '
             value = []
@@ -2106,7 +2106,7 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
     - "protocol vlan 123" to nft "vlan id 123"
     """
     protocol = rule['protocol']
-    if not protocol or (skip_icmp and protocol in ('icmp', 'icmpv6')):
+    if not protocol or (skip_icmp and protocol in {'icmp', 'icmpv6'}):
         # Protocol is empty for rules like "drop log" and "dnat"
         # icmp is handled in output_icmp()
         return ''
@@ -2180,7 +2180,7 @@ def parse_nat_to(rule, ipv):
 
     # Generate rule
     to_text = 'to'
-    if rule['statement'] in ('snat_prefix', 'dnat_prefix'):
+    if rule['statement'] in {'snat_prefix', 'dnat_prefix'}:
         to_text = 'prefix to'
     return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target}'
 
@@ -2197,7 +2197,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
         return None  # multi/broadcast doesn't match
     if ipv == 6 and rule['cast'] == 'broadcast':
         return None  # broadcast is ipv4 only
-    if skip_icmp and rule['protocol'] in ('icmp', 'icmpv6'):
+    if skip_icmp and rule['protocol'] in {'icmp', 'icmpv6'}:
         return None
     if skip_options and rule['mss']:  # Handled in output_options()
         return None
@@ -2289,7 +2289,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             continue
         if not match and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
-        if rule['statement'] in ('snat', 'dnat', 'snat_prefix', 'dnat_prefix'):
+        if rule['statement'] in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
             fail(f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
                  f'be used in "{szone}-{dzone}" section')
         statement = rule_statement(szone, dzone, rule, ipv,
@@ -3530,7 +3530,7 @@ if HAVE_DBUS:
         try:
             bus = dbus.SystemBus()
             obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
-            if zone in ('', '-'):
+            if zone in {'', '-'}:
                 obj.removeInterface('', interface)
             else:
                 obj.changeZoneOfInterface(zone, interface)
@@ -3966,7 +3966,7 @@ def read_old_iplist_format(cache):
             items = line.split()
             if (
                     not line.startswith('add element inet') or
-                    len(items) not in (10, 12) or
+                    len(items) not in {10, 12} or
                     not is_ip_address(items[6])
             ):
                 continue
@@ -4064,7 +4064,7 @@ def parse_config_iplist(config) -> IPLists:
 
     for fileline, line in config.get('resolve', []) + config.get('iplist', []):
         # Parse old default option syntax
-        if line[0] in ('timeout', 'refresh'):
+        if line[0] in {'timeout', 'refresh'}:
             option = line[0]
             value = ' '.join(line[1:])
             warning(f'{fileline}Iplist "{option}" is obsolete, use '
@@ -4106,7 +4106,7 @@ def parse_config_iplist(config) -> IPLists:
         # Parse the rest of iplist definition
         for option in options:
             # Ignore insignificant tokens
-            if option in ('-', '+'):
+            if option in {'-', '+'}:
                 continue
 
             # Inline option?
@@ -4659,7 +4659,7 @@ def monitor_parse_line(targets, groups, target, line):
     verbose(f'target {target}: {line}', 2)
     stat_ms = None  # Value for statistics, assume error
 
-    if line in ('OK', 'ERROR'):
+    if line in {'OK', 'ERROR'}:
         # Generic "OK" or "ERROR" reply
         state = line == 'OK'
         if state:
@@ -5086,7 +5086,7 @@ def parse_command_line():
             option = 'verbose'
             CONFIG[option] -= 1
             CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
-        elif arg in ('--fork', '--syslog'):
+        elif arg in {'--fork', '--syslog'}:
             CONFIG[arg[2:]] = 1
             CONFIG_OVERRIDE[arg[2:]] = 1
         elif arg == '--force':
@@ -5115,8 +5115,8 @@ def parse_command_line():
 def run_command():
     """Run CONFIG[_command]."""
     # Only some commands can take arguments
-    if INTERNAL.parameters and INTERNAL.command not in (
-            'list', 'iplist', 'set'):
+    if INTERNAL.parameters and INTERNAL.command not in {
+            'list', 'iplist', 'set'}:
         return command_help()
 
     # Help/version doesn't need root
