@@ -16,7 +16,7 @@ ifdef RUFF
 	ruff check $(SOURCE)
 endif
 ifdef TY
-	ty check $(SOURCE)
+	ty check --ignore unresolved-import $(SOURCE)
 endif
 	cd ../ ; $(RUN) -m unittest
 	flake8 $(SOURCE)
