@@ -10,6 +10,7 @@ from foomuuri import TypedConfig
 
 class TestTypedConfig(unittest.TestCase):
     """Setters / getters / type conversion tests."""
+
     def set(self, name, value):
         """Set attribute and return value helper."""
         self.config[name] = value
@@ -30,6 +31,7 @@ class TestTypedConfig(unittest.TestCase):
         @dataclass
         class TestConfig(TypedConfig):
             """Test class."""
+
             initialized_str: str = 'init_value1'
             uninitialized_str: str = field(init=False)
             initialized_untyped = 'init_value2'

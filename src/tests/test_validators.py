@@ -8,6 +8,7 @@ from foomuuri import Validators
 
 class TestValidators(unittest.TestCase):
     """Test assert helpers."""
+
     def test_assert_str_word(self):
         """Test invalid and valid outcomes."""
         self.assertFalse(Validators.str_zone_name(''))

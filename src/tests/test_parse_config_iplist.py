@@ -25,6 +25,7 @@ from foomuuri import (
 )
 class TestIplistParseConfig(unittest.TestCase):
     """Test parse_config_iplist()."""
+
     @staticmethod
     @contextlib.contextmanager
     def mock_config_foomuuri(section: str = 'iplist', content: str = ''):

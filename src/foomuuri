@@ -67,6 +67,7 @@ VERSION = '0.32'
 
 class Validators:
     """Validators collection."""
+
     @staticmethod
     def str_zone_name(value: str):
         """Assert value is a valid zone name."""
@@ -121,6 +122,7 @@ class Validators:
 
 class Converters:  # pylint: disable=too-few-public-methods
     """Type converters collection."""
+
     @staticmethod
     def str_yes_no_to_bool(value: str) -> bool:
         """Convert str 'yes'/'no' to bool True/False, or raise ValueError."""
@@ -134,6 +136,7 @@ class Converters:  # pylint: disable=too-few-public-methods
 @dataclasses.dataclass
 class TypedConfig:
     """Storage class with simple attribute type enforcement and validation."""
+
     def __setattr__(self, name, value):
         """Set attribute value."""
         if (field := self._get_field(name)) is None:
@@ -234,6 +237,7 @@ class TypedConfig:
 @dataclasses.dataclass
 class Config(TypedConfig):
     """Parsed foomuuri{} section variables from config files."""
+
     # Basic settings
     log_rate: str = '1/second burst 3'
     log_input: str = 'yes'
@@ -305,6 +309,7 @@ class Config(TypedConfig):
 @dataclasses.dataclass
 class Internal(TypedConfig):
     """Internal variables and command line options."""
+
     # Command line
     command: str = ''     # Command to run: "start" etc
     parameters: list = dataclasses.field(
@@ -340,6 +345,7 @@ class Internal(TypedConfig):
 @dataclasses.dataclass
 class IPListOptions(TypedConfig):
     """iplist{} options container."""
+
     dns_timeout: int = dataclasses.field(
         default=86400, metadata={
             'convert_str': lambda d: parse_duration(d, 0),
@@ -403,6 +409,7 @@ class IPListOptions(TypedConfig):
 @dataclasses.dataclass(eq=False)
 class IPList:
     """Container of iplist options and sources."""
+
     options: IPListOptions = dataclasses.field(default_factory=IPListOptions)
     sources: list = dataclasses.field(default_factory=list)
 
@@ -410,6 +417,7 @@ class IPList:
 @dataclasses.dataclass(eq=False)
 class IPLists:
     """Mapping of iplist name to IPList."""
+
     _entries: dict[str, IPList] = dataclasses.field(
         default_factory=dict
     )
@@ -445,6 +453,7 @@ class IPLists:
 
 class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     """Container of iplist runtime source options."""
+
     timeout: int = sys.maxsize
     refresh: int = sys.maxsize
     max_size: int = sys.maxsize
@@ -3329,6 +3338,7 @@ if HAVE_DBUS:
 
     class DbusFoomuuri(DbusCommon):
         """D-Bus server for Foomuuri."""
+
         # pylint: disable=invalid-name  # dbus method names
 
         @dbus.service.method('fi.foobar.Foomuuri1.zone',

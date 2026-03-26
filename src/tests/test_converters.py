@@ -8,6 +8,7 @@ from foomuuri import Converters
 
 class TestConverters(unittest.TestCase):
     """Test converter helpers."""
+
     def test_str_yes_no_to_bool(self):
         """Test str_yes_no_to_bool."""
         self.assertTrue(Converters.str_yes_no_to_bool('yes'))

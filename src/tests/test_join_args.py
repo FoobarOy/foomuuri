@@ -9,6 +9,7 @@ from foomuuri import join_args
 
 class TestJoinArgs(unittest.TestCase):
     """Test join_args()."""
+
     def test_valid(self):
         """Test valid outcomes."""
         self.assertEqual(join_args([]), '')

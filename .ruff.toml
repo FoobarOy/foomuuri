@@ -8,7 +8,6 @@ lint.ignore = [
     "C901", # function is too complex
     "COM812", # [*] Trailing comma missing
     "D203",
-    "D204", # 1 blank line required after class docstring
     "D213",
     "D401", # First line of docstring should be in imperative mood:
     "DTZ007", #  Naive datetime constructed

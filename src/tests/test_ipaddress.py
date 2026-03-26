@@ -8,6 +8,7 @@ from foomuuri import is_ip_address, is_ipv4_address, is_ipv6_address
 
 class TestIsIPv4Address(unittest.TestCase):
     """Basic unit tests for test_ipv4_address()."""
+
     def test_ipv4_address(self):
         """Test for IPv4 address."""
         self.assertFalse(is_ipv4_address('', allow_network=False))
@@ -34,6 +35,7 @@ class TestIsIPv4Address(unittest.TestCase):
 
 class TestIsIPv6Address(unittest.TestCase):
     """Basic unit tests for test_ipv6_address()."""
+
     def test_ipv6_address(self):
         """Test for IPv6 address."""
         self.assertFalse(is_ipv6_address('', allow_network=False))
@@ -65,6 +67,7 @@ class TestIsIPv6Address(unittest.TestCase):
 
 class TestIsIPAddress(unittest.TestCase):
     """Basic unit tests for test_ip_address()."""
+
     def test_ip_address(self):
         """Test address detection for allow_negative=True/False."""
         self.assertEqual(is_ip_address('-127.0.0.1', allow_negative=True), 4)

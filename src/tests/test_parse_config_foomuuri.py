@@ -20,6 +20,7 @@ from foomuuri import minimal_config
 )
 class TestParseConfigFoomuuri(unittest.TestCase):
     """Test parse_config_foomuuri()."""
+
     @staticmethod
     @contextlib.contextmanager
     def mock_config_foomuuri(option, value):

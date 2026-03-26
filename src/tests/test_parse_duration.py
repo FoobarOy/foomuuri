@@ -8,6 +8,7 @@ from foomuuri import parse_duration
 
 class TestParseDuration(unittest.TestCase):
     """Test parse_duration()."""
+
     def test_valid_duration(self):
         """Test valid outcomes."""
         self.assertEqual(parse_duration(' 0s ', fallback=None), 0)

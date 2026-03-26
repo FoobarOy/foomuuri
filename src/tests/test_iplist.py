@@ -9,6 +9,7 @@ from foomuuri import IPList, IPLists
 
 class TestIPLists(unittest.TestCase):
     """Test IPLists."""
+
     def setUp(self):
         """Prepare test fixture."""
         self.iplists = IPLists()

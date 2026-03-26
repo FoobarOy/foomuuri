@@ -20,6 +20,7 @@ from foomuuri import parse_command_line
 )
 class TestParseCommandLine(unittest.TestCase):
     """Test parse_command_line()."""
+
     @unittest.mock.patch('sys.argv', ['foomuuri'])
     def test_no_arguments(self, INTERNAL, *_):
         """Test no arguments."""
