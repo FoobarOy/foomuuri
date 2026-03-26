@@ -463,17 +463,18 @@ LOGRATES = {}  # Lograte names and limits
 HELPERS = []   # List of helpers: (helper-object, protocol, ports)
 
 
-def fail(error=None, fatal=True):
+def fail(error: str, fatal: bool = True) -> int:
     """Exit with error message."""
-    if error and CONFIG.verbose >= -1:  # Double-quiet will suppress output
+    if CONFIG.verbose >= -1:  # Double-quiet will suppress output
         print(f'Error: {error}', flush=True)
         if CONFIG.syslog:
             syslog.syslog(syslog.LOG_ERR, f'Error: {error}')
     if fatal:
         sys.exit(1)
+    return 1
 
 
-def warning(text):
+def warning(text: str) -> None:
     """Print warning message."""
     if CONFIG.verbose >= 0:
         print(f'Warning: {text}', flush=True)
@@ -481,7 +482,7 @@ def warning(text):
             syslog.syslog(syslog.LOG_WARNING, f'Warning: {text}')
 
 
-def verbose(line, level=1):
+def verbose(line: str, level: int = 1) -> None:
     """Print line if --verbose was given in command line."""
     if CONFIG.verbose >= level:
         print(line, flush=True)
@@ -489,7 +490,7 @@ def verbose(line, level=1):
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
-def out(line):
+def out(line: str) -> None:
     """Add single line to ruleset."""
     OUT.append(line)
 
@@ -3187,7 +3188,7 @@ if HAVE_DBUS:
                 if is_authorized:
                     return
             except dbus.DBusException as error:
-                warning(error)
+                warning(str(error))
                 self.polkit = None  # Reconnect on next call
             raise FoomuuriDbusException('Authorization failed') from None
 
@@ -3531,7 +3532,7 @@ if HAVE_DBUS:
             else:
                 obj.changeZoneOfInterface(zone, interface)
         except dbus.exceptions.DBusException as error:
-            fail(error)
+            fail(str(error))
 
 else:  # HAVE_DBUS is false
 
@@ -5062,7 +5063,7 @@ Internally used commands:
   dbus         Start D-Bus daemon
   monitor      Start target monitor daemon""")
     if error:
-        fail()
+        sys.exit(1)
     return 0
 
 
@@ -5147,8 +5148,8 @@ def run_command():
         'monitor': command_monitor,
     }.get(INTERNAL.command)
     if not handler:
-        fail(f'Unknown command: {INTERNAL.command}')
-    return handler()  # ty: ignore[call-non-callable]
+        return fail(f'Unknown command: {INTERNAL.command}')
+    return handler()
 
 
 def main():
