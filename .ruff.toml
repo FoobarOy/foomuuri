@@ -3,7 +3,6 @@ lint.select = [
 ]
 
 lint.ignore = [
-    "S108", # Probable insecure usage of temporary file or directory: "/tmp/"
     "ANN",
     "C901", # function is too complex
     "COM812", # [*] Trailing comma missing
