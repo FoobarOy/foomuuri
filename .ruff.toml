@@ -40,7 +40,5 @@ lint.ignore = [
     "DOC402", # `yield` is not documented in docstring
     "DOC501", # Raised exception `KeyboardInterrupt` missing from docstring
     "FURB118", # Use `operator.add` instead of defining a lambda
-    "PLR0916", # Too many Boolean expressions (6 > 5)
-    "PLR0917", # Too many positional arguments (8/5)
     "S404", # `subprocess` module is possibly insecure
 ]
