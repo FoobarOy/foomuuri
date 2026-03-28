@@ -1914,6 +1914,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
                    do_lograte=True):
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
 
     # Map internal statement to nft statement
     if rule['mss']:
@@ -1933,7 +1934,7 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     # Rate, counter and log goes before statement
     prefix = rule_rate_limit(rule, ipv)
 
-    # "counter" in single rule line adds counters to it.
+    # "counter" in single rule line adds counter to it.
     #
     # "foomuuri { counter xxx }" can be used to add counters to all rules:
     #   yes        - add to all rules in all zone-zone
@@ -1941,13 +1942,11 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     #   zone-any   - add to all rules in all zone-*
     #   any-zone   - add to all rules in all *-zone
     # Multiple zone-pairs can be defined
-    counterlist = CONFIG.counter.split()
-    if not rule['nft'] and (  # pylint: disable=too-many-boolean-expressions
-            rule['counter'] is not None or  # "counter" in this rule
-            'yes' in counterlist or  # global "yes"
-            f'{szone}-{dzone}' in counterlist or  # matching zone-zone
-            f'{szone}-any' in counterlist or
-            f'any-{dzone}' in counterlist
+    configlist = set(CONFIG.counter.split())
+    checklist = {'yes', f'{szone}-{dzone}', f'{szone}-any', f'any-{dzone}'}
+    if not rule['nft'] and (
+            rule['counter'] is not None or  # "counter" in this single rule
+            not configlist.isdisjoint(checklist)  # zone level enable
     ):
         prefix += 'counter '
         if rule['counter']:
