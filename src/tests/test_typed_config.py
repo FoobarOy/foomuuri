@@ -96,8 +96,8 @@ class TestTypedConfig(unittest.TestCase):
         )
         # Supported conversion, from str to pathlib.PosixPath
         self.assertEqual(
-            self.set_from_str('type_conversion_posixpath', '/tmp/'),
-            pathlib.PosixPath('/tmp/')
+            self.set_from_str('type_conversion_posixpath', '/path/'),
+            pathlib.PosixPath('/path/')
         )
         # Assignment, str to str
         self.assertEqual(self.set_from_str('initialized_str', '123'), '123')

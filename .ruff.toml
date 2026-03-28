@@ -3,7 +3,6 @@ lint.select = [
 ]
 
 lint.ignore = [
-    "S108", # Probable insecure usage of temporary file or directory: "/tmp/"
     "ANN",
     "C901", # function is too complex
     "COM812", # [*] Trailing comma missing
@@ -18,7 +17,6 @@ lint.ignore = [
     "FBT002", # Boolean default positional argument in function definition
     "FBT003", # Boolean positional value in function call
     "N802", # Function name `changeZoneOfSource` should be lowercase
-    "PERF401", # Use `list.extend` to create a transformed list
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
@@ -42,7 +40,5 @@ lint.ignore = [
     "DOC402", # `yield` is not documented in docstring
     "DOC501", # Raised exception `KeyboardInterrupt` missing from docstring
     "FURB118", # Use `operator.add` instead of defining a lambda
-    "PLR0916", # Too many Boolean expressions (6 > 5)
-    "PLR0917", # Too many positional arguments (8/5)
     "S404", # `subprocess` module is possibly insecure
 ]

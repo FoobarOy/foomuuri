@@ -4431,9 +4431,7 @@ def command_reload():
     """Run start and refresh iplist."""
     # Use same args
     args = [sys.argv[0]]
-    for arg in sys.argv[1:]:
-        if arg.startswith('--'):
-            args.append(arg)
+    args.extend(arg for arg in sys.argv[1:] if arg.startswith('--'))
 
     # Run commands
     for sub, fatal in ((['start'], True),
