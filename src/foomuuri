@@ -4550,8 +4550,8 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
                         updown, extra, history)
 
 
-def monitor_run_command(targets, groups, cfg, grouptarget, name,
-                        updown, extra, history):
+def monitor_run_command(targets, groups, cfg,  # noqa: RUF100,PLR0917
+                        grouptarget, name, updown, extra, history):
     """Run monitor's external command if configured.
 
     It will receive current state change event info and all states in
