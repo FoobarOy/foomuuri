@@ -1,9 +1,9 @@
 #!/usr/bin/python3
-# pylint: disable=too-many-instance-attributes,too-many-lines
+# pylint: disable=too-many-lines
 
 """Foomuuri - Multizone bidirectional nftables firewall.
 
-Copyright 2023-2025, Kim B. Heino, Foobar Oy <b@bbbs.net>
+Copyright 2023-2026, Kim B. Heino, Foobar Oy <b@bbbs.net> and contributors.
 
 License: GPL-2.0-or-later
 """
@@ -238,6 +238,8 @@ class TypedConfig:
 class Config(TypedConfig):
     """Parsed foomuuri{} section variables from config files."""
 
+    # pylint: disable=too-many-instance-attributes
+
     # Basic settings
     log_rate: str = '1/second burst 3'
     log_input: str = 'yes'
@@ -309,6 +311,8 @@ class Config(TypedConfig):
 @dataclasses.dataclass
 class Internal(TypedConfig):
     """Internal variables and command line options."""
+
+    # pylint: disable=too-many-instance-attributes
 
     # Command line
     command: str = ''     # Command to run: "start" etc
