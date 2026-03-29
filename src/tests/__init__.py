@@ -1,10 +1,11 @@
 """Hack to import foomuuri without .py extension and proper package tree."""
+
 import sys
 from importlib.abc import Loader
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
 
-if (
+if (  # noqa: RUF100,RUF067
     (spec := spec_from_loader(
         'foomuuri', SourceFileLoader('foomuuri', './src/foomuuri')
     ))

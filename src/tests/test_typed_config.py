@@ -34,12 +34,12 @@ class TestTypedConfig(unittest.TestCase):
 
             initialized_str: str = 'init_value1'
             uninitialized_str: str = field(init=False)
-            initialized_untyped = 'init_value2'
+            initialized_untyped = 'init_value2'  # noqa: RUF100,RUF045
             type_conversion_int: int = 0
             type_conversion_list: list = field(default_factory=list)
             type_conversion_posixpath: pathlib.PosixPath = field(init=False)
             validation: str = field(
-                init=False, metadata={'validate': lambda v: v != ''}
+                init=False, metadata={'validate': lambda v: v}
             )
             conversion: list = field(
                 init=False, metadata={'convert_str': lambda v: v.split()}
