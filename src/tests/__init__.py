@@ -15,4 +15,4 @@ if (  # noqa: RUF100,RUF067
     spec.loader.exec_module(foomuuri)
     sys.modules['foomuuri'] = foomuuri
 else:
-    raise SystemError("Failed to add foomuuri to sys.modules")
+    raise SystemError('Failed to add foomuuri to sys.modules')

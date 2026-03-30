@@ -28,13 +28,12 @@ lint.ignore = [
     "PT009",
     "PT019", # Fixture `_` without value is injected as parameter, use `@pytest.mark.usefixtures` instead
     "PT027", # Use `pytest.raises` instead of unittest-style `assertRaises`
-    "Q000",
     "RUF005", # Consider `[*cmd[:1], '--loop', *cmd[1:]]` instead of concatenation
     "S602",
     "S603",
     "T201",
     "TRY003", # Avoid specifying long messages outside the exception class
-    "TRY301", # Abstract `raise` to an inner function"
+    "TRY301", # Abstract `raise` to an inner function
     "UP045", # [*] Use `X | None` for type annotations
 
     # --preview
@@ -45,3 +44,7 @@ lint.ignore = [
     "FURB118", # Use `operator.add` instead of defining a lambda
     "S404", # `subprocess` module is possibly insecure
 ]
+
+lint.flake8-quotes.inline-quotes = "single"
+format.quote-style = "single"
+line-length = 79

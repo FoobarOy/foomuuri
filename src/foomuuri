@@ -195,7 +195,7 @@ class TypedConfig:
         if isinstance(value, field.type):
             return value
         raise TypeError(
-            f"{name}: value conversion to {field.type} not implemented"
+            f'{name}: value conversion to {field.type} not implemented'
         )
 
     def set_from_str(self, name, value: str) -> None:
@@ -223,7 +223,7 @@ class TypedConfig:
             new_value = appender(self[name], new_value)
         else:
             raise TypeError(
-                f"{name}: appending of {field.type} not implemented"
+                f'{name}: appending of {field.type} not implemented'
             )
 
         setattr(self, name, new_value)
@@ -716,7 +716,7 @@ def read_config(require_etc_config: bool):
         try:
             content = filename.read_text(encoding='utf-8')
         except PermissionError as error:
-            fail(f'File {filename}: Can\'t read: {error}')
+            fail(f"File {filename}: Can't read: {error}")
 
         # Expand $(shell in configuration file. Do this for whole file instead
         # of single line so that command can return multiple lines.
@@ -743,7 +743,7 @@ def read_config(require_etc_config: bool):
                 lexer.wordchars = wordchars
                 tokens = list(lexer)
             except ValueError as error:
-                fail(f'{fileline}Can\'t parse line: {error}')
+                fail(f"{fileline}Can't parse line: {error}")
             if not tokens:
                 continue
 
@@ -999,7 +999,7 @@ def parse_config_foomuuri(config):
         name = line[0]
         value = ' '.join(line[1:])
         if name == 'try-reload_timeout':    # backward compatibility
-            name = "try_reload_timeout"
+            name = 'try_reload_timeout'
         if name not in CONFIG:
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
         try:
@@ -1693,7 +1693,7 @@ def suffix_mask(value, compare):
     if not compare:
         compare = '== '
     addr, mask = value.split('/-')
-    mask = f"{pow(2, int(mask)) - 1:x}"  # As long hex
+    mask = f'{pow(2, int(mask)) - 1:x}'  # As long hex
     splitted = ''  # Convert to ":1234" parts
     while mask:
         splitted = f':{mask[-4:]}{splitted}'
@@ -2604,7 +2604,7 @@ def output_header(chain_rules):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
-            fail(f'File {filename}: Can\'t read: {error}')
+            fail(f"File {filename}: Can't read: {error}")
         for line in lines:
             line = line.strip()
             if line:
@@ -2870,7 +2870,7 @@ def save_file(filename, lines):
         tmpfile.chmod(0o600)
         tmpfile.rename(filename)
     except PermissionError as error:
-        fail(f'File {filename}: Can\'t write: {error}')
+        fail(f"File {filename}: Can't write: {error}")
     except FileNotFoundError:  # Simultaneos saves and chmod gives error
         pass
 
@@ -2915,7 +2915,7 @@ def signal_childs():
         try:
             pid = int(filename.read_text(encoding='utf-8'))
         except PermissionError as error:
-            fail(f'File {filename}: Can\'t read: {error}')
+            fail(f"File {filename}: Can't read: {error}")
         except (FileNotFoundError, ValueError):
             continue
 
@@ -3273,7 +3273,7 @@ if HAVE_DBUS:
                 if new_zone != CONFIG.localhost_zone:
                     warning(f'Can\'t change interface "lo" to zone '
                             f'"{new_zone}"')
-                    raise FoomuuriDbusException(f'Can\'t change interface '
+                    raise FoomuuriDbusException(f"Can't change interface "
                                                 f'"lo" to zone "{new_zone}"')
                 return '', ''
             interface_zone = parse_active_interface_zone()
@@ -3483,7 +3483,7 @@ if HAVE_DBUS:
                     'fi.foobar.Foomuuri1', bus)
                 foomuuri_name.get_name()  # Dummy call to get rid of pylint
             except dbus.exceptions.DBusException:
-                fail('Can\'t bind to system D-Bus: fi.foobar.Foomuuri1')
+                fail("Can't bind to system D-Bus: fi.foobar.Foomuuri1")
             foomuuri_object = DbusFoomuuri(bus, '/fi/foobar/Foomuuri1', zones)
 
             # Firewalld emulation calls, if enabled in foomuuri{} config
@@ -3494,7 +3494,7 @@ if HAVE_DBUS:
                         'org.fedoraproject.FirewallD1', bus)
                     firewalld_name.get_name()  # Dummy call for pylint
                 except dbus.exceptions.DBusException:
-                    fail('Can\'t bind to system D-Bus: '
+                    fail("Can't bind to system D-Bus: "
                          'org.federaproject.FirewallD1')
                 firewalld_object = DbusFirewalld(
                     bus, '/org/fedoraproject/FirewallD1', zones)
@@ -4003,7 +4003,7 @@ def read_iplist_cache(iplist):
     except json.decoder.JSONDecodeError as error:
         warning(f'File {filename}: Broken JSON format: {error}')
     except PermissionError as error:
-        fail(f'File {filename}: Can\'t read: {error}')
+        fail(f"File {filename}: Can't read: {error}")
     except FileNotFoundError:
         read_old_iplist_format(cache)
 
