@@ -12,6 +12,7 @@ import subprocess
 import time
 from collections import Counter
 
+# pylint: disable=import-error
 from prometheus_client import REGISTRY, start_http_server
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
