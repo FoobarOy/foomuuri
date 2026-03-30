@@ -11,15 +11,15 @@ import re
 import subprocess
 import time
 from collections import Counter
-from prometheus_client import REGISTRY
-from prometheus_client import start_http_server
-from prometheus_client.core import GaugeMetricFamily
-from prometheus_client.core import CounterMetricFamily
+
+from prometheus_client import REGISTRY, start_http_server
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
 
 class MonitorCollector(Collector):
     """Collect Foomuuri Monitor metrics."""
+
     # pylint: disable=too-few-public-methods
 
     def __init__(self, args):
@@ -67,6 +67,7 @@ class MonitorCollector(Collector):
 
 class RulesetCollector(Collector):
     """Collect ruleset metrics."""
+
     # pylint: disable=too-few-public-methods
 
     def __init__(self, args):
@@ -138,7 +139,7 @@ def main():
     # Command line parser
     parser = argparse.ArgumentParser(
         description='Export Foomuuri statistics to Prometheus.')
-    parser.add_argument('--address',  default='::',
+    parser.add_argument('--address', default='::',
                         help='listen address (default: ::)')
     parser.add_argument('--port', type=int, default=11041,
                         help='listen port number (default: 11041)')
