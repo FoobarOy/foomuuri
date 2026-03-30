@@ -15,8 +15,8 @@ all: lint test
 
 lint:
 	ruff check $(SOURCE)
+	ruff format --diff $(SOURCE)
 	ty check --ignore unresolved-import $(SOURCE)
-	pycodestyle $(SOURCE)
 	pylint $(SOURCE)
 
 test: $(SUBDIRS)

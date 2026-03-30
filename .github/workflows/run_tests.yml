@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install pycodestyle pylint ruff ty
+        run: pip install pylint ruff ty
       - name: Run test suite
         run: make test
       - name: Run lint
