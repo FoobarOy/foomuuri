@@ -36,17 +36,21 @@ class MonitorCollector(Collector):
             return
 
         # Target/group state
-        g = GaugeMetricFamily('foomuuri_monitor_up',
-                              'Target connectivity status.',
-                              labels=['type', 'name'])
+        g = GaugeMetricFamily(
+            'foomuuri_monitor_up',
+            'Target connectivity status.',
+            labels=['type', 'name'],
+        )
         for name, value in stats.items():
             g.add_metric([value['type'], name], value['state'])
         yield g
 
         # Target packet loss
-        g = GaugeMetricFamily('foomuuri_monitor_packet_loss_ratio',
-                              'Average ping packet loss.',
-                              labels=['type', 'name'])
+        g = GaugeMetricFamily(
+            'foomuuri_monitor_packet_loss_ratio',
+            'Average ping packet loss.',
+            labels=['type', 'name'],
+        )
         for name, value in stats.items():
             if not value['time']:
                 continue
@@ -55,9 +59,11 @@ class MonitorCollector(Collector):
         yield g
 
         # Target packet ping latency
-        g = GaugeMetricFamily('foomuuri_monitor_ping_seconds',
-                              'Average network round trip time.',
-                              labels=['type', 'name'])
+        g = GaugeMetricFamily(
+            'foomuuri_monitor_ping_seconds',
+            'Average network round trip time.',
+            labels=['type', 'name'],
+        )
         for name, value in stats.items():
             times = [item / 1000 for item in value['time'] if item is not None]
             if not times:
@@ -82,9 +88,14 @@ class RulesetCollector(Collector):
     def collect(self):
         """Return ruleset metrics."""
         try:
-            nftdata = json.loads(subprocess.run(
-                ['nft', '--json', 'list', 'table', 'inet', 'foomuuri'],
-                stdout=subprocess.PIPE, check=False, encoding='utf-8').stdout)
+            nftdata = json.loads(
+                subprocess.run(
+                    ['nft', '--json', 'list', 'table', 'inet', 'foomuuri'],
+                    stdout=subprocess.PIPE,
+                    check=False,
+                    encoding='utf-8',
+                ).stdout
+            )
         except (OSError, ValueError):
             return
 
@@ -93,15 +104,16 @@ class RulesetCollector(Collector):
         for item in nftdata.get('nftables', {}):
             if 'set' in item:
                 name = item['set']['name'][:-2]  # Without "_4"
-                if (
-                        self._set_include.search(name) and
-                        not self._set_exclude.search(name)
-                ):
+                if self._set_include.search(
+                    name
+                ) and not self._set_exclude.search(name):
                     sets.update({name: len(item['set'].get('elem', []))})
 
-        g = GaugeMetricFamily('foomuuri_set_elements',
-                              'Number of elements in set.',
-                              labels=['name'])
+        g = GaugeMetricFamily(
+            'foomuuri_set_elements',
+            'Number of elements in set.',
+            labels=['name'],
+        )
         for name, value in sets.items():
             g.add_metric([name], value)
         yield g
@@ -111,25 +123,28 @@ class RulesetCollector(Collector):
         for item in nftdata.get('nftables', {}):
             if 'counter' in item:
                 name = item['counter']['name']
-                if (
-                        self._counter_include.search(name) and
-                        not self._counter_exclude.search(name)
-                ):
+                if self._counter_include.search(
+                    name
+                ) and not self._counter_exclude.search(name):
                     counters[name] = {
                         'bytes': item['counter']['bytes'],
                         'packets': item['counter']['packets'],
                     }
 
-        g = CounterMetricFamily('foomuuri_counter_bytes_total',
-                                'Counter bytes value.',
-                                labels=['name'])
+        g = CounterMetricFamily(
+            'foomuuri_counter_bytes_total',
+            'Counter bytes value.',
+            labels=['name'],
+        )
         for name, value in counters.items():
             g.add_metric([name], value['bytes'])
         yield g
 
-        g = CounterMetricFamily('foomuuri_counter_packets_total',
-                                'Counter packets value.',
-                                labels=['name'])
+        g = CounterMetricFamily(
+            'foomuuri_counter_packets_total',
+            'Counter packets value.',
+            labels=['name'],
+        )
         for name, value in counters.items():
             g.add_metric([name], value['packets'])
         yield g
@@ -139,34 +154,65 @@ def main():
     """Parse arguments and run."""
     # Command line parser
     parser = argparse.ArgumentParser(
-        description='Export Foomuuri statistics to Prometheus.')
-    parser.add_argument('--address', default='::',
-                        help='listen address (default: ::)')
-    parser.add_argument('--port', type=int, default=11041,
-                        help='listen port number (default: 11041)')
-    parser.add_argument('--tls-certificate', metavar='FILENAME',
-                        help='TLS certificate file name')
-    parser.add_argument('--tls-key', metavar='FILENAME',
-                        help='TLS key file name')
-    parser.add_argument('--no-monitor-statistics', action='store_true',
-                        help='do not export Foomuuri Monitor statistics')
-    parser.add_argument('--no-ruleset-statistics', action='store_true',
-                        help='do not export ruleset statistics')
-    parser.add_argument('--statistics-file', metavar='FILENAME',
-                        default='/var/lib/foomuuri/monitor.statistics',
-                        help='Foomuuri Monitor statistics file name')
+        description='Export Foomuuri statistics to Prometheus.'
+    )
     parser.add_argument(
-        '--set-include', metavar='REGEXP', default='.',  # default all
-        help='set names to be included to ruleset size statistics')
+        '--address', default='::', help='listen address (default: ::)'
+    )
     parser.add_argument(
-        '--set-exclude', metavar='REGEXP', default='$^',  # default nothing
-        help='set names to be excluded from ruleset size statistics')
+        '--port',
+        type=int,
+        default=11041,
+        help='listen port number (default: 11041)',
+    )
     parser.add_argument(
-        '--counter-include', metavar='REGEXP', default='.',
-        help='counter names to be included to ruleset traffic statistics')
+        '--tls-certificate',
+        metavar='FILENAME',
+        help='TLS certificate file name',
+    )
     parser.add_argument(
-        '--counter-exclude', metavar='REGEXP', default='$^',
-        help='counter names to be excluded from ruleset traffic statistics')
+        '--tls-key', metavar='FILENAME', help='TLS key file name'
+    )
+    parser.add_argument(
+        '--no-monitor-statistics',
+        action='store_true',
+        help='do not export Foomuuri Monitor statistics',
+    )
+    parser.add_argument(
+        '--no-ruleset-statistics',
+        action='store_true',
+        help='do not export ruleset statistics',
+    )
+    parser.add_argument(
+        '--statistics-file',
+        metavar='FILENAME',
+        default='/var/lib/foomuuri/monitor.statistics',
+        help='Foomuuri Monitor statistics file name',
+    )
+    parser.add_argument(
+        '--set-include',
+        metavar='REGEXP',
+        default='.',  # default all
+        help='set names to be included to ruleset size statistics',
+    )
+    parser.add_argument(
+        '--set-exclude',
+        metavar='REGEXP',
+        default='$^',  # default nothing
+        help='set names to be excluded from ruleset size statistics',
+    )
+    parser.add_argument(
+        '--counter-include',
+        metavar='REGEXP',
+        default='.',
+        help='counter names to be included to ruleset traffic statistics',
+    )
+    parser.add_argument(
+        '--counter-exclude',
+        metavar='REGEXP',
+        default='$^',
+        help='counter names to be excluded from ruleset traffic statistics',
+    )
     args = parser.parse_args()
 
     # Register collectors
@@ -176,9 +222,12 @@ def main():
         REGISTRY.register(RulesetCollector(args))
 
     # Run exporter
-    start_http_server(port=args.port, addr=args.address,
-                      certfile=args.tls_certificate,
-                      keyfile=args.tls_key)
+    start_http_server(
+        port=args.port,
+        addr=args.address,
+        certfile=args.tls_certificate,
+        keyfile=args.tls_key,
+    )
     while True:
         time.sleep(1)
 
