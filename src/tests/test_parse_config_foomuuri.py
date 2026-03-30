@@ -95,6 +95,7 @@ class TestParseConfigFoomuuri(unittest.TestCase):
     @unittest.mock.patch('foomuuri.CONFIG_OVERRIDE', new_callable=dict)
     def test_config_override(self, CONFIG_OVERRIDE, CONFIG, *_):
         """Test overriding of CONFIG from CONFIG_OVERRRIDE."""
+
         def test_override(option, override, config):
             with self.mock_config_foomuuri(option, '0'):
                 CONFIG_OVERRIDE[option] = override
@@ -108,6 +109,7 @@ class TestParseConfigFoomuuri(unittest.TestCase):
 
     def test_postprocess_priority_offset(self, _, INTERNAL):
         """Test postprocessing of priority_offset option."""
+
         def test_priority_offset(config, internal):
             with self.mock_config_foomuuri('priority_offset', config):
                 _ = minimal_config()

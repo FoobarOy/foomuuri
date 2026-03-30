@@ -6,9 +6,11 @@ from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
 
 if (  # noqa: RUF100,RUF067
-    (spec := spec_from_loader(
-        'foomuuri', SourceFileLoader('foomuuri', './src/foomuuri')
-    ))
+    (
+        spec := spec_from_loader(
+            'foomuuri', SourceFileLoader('foomuuri', './src/foomuuri')
+        )
+    )
     and (foomuuri := module_from_spec(spec))
     and isinstance(spec.loader, Loader)
 ):

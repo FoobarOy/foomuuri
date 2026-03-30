@@ -50,11 +50,14 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.warning')
     def test_obsolete_syntax(self, warning, *_):
         """Test obsolete resolve{} section and timeout/refresh options."""
-        with self.mock_config_foomuuri(section='resolve', content="""
+        with self.mock_config_foomuuri(
+            section='resolve',
+            content="""
             timeout 1d 5m
             refresh 0d 30m
             @foo https://foob.ar/
-        """) as config_file:
+        """,
+        ) as config_file:
             iplists = parse_config_iplist(minimal_config())
             options = iplists['@foo'].options
             self.assertEqual(options.dns_timeout, parse_duration('1d 5m', 0))
@@ -62,27 +65,32 @@ class TestIplistParseConfig(unittest.TestCase):
             self.assertEqual(options.dns_refresh, parse_duration('0d 30m', 0))
             self.assertEqual(options.url_refresh, parse_duration('0d 30m', 0))
             self.assertEqual(iplists['@foo'].sources, ['https://foob.ar/'])
-            warning.assert_has_calls([
-                unittest.mock.call(
-                    'Section "resolve" is obsolete, use "iplist" instead',
-                ),
-                unittest.mock.call(
-                    f'File {config_file} line 4: Iplist "timeout" is obsolete,'
-                    ' use "dns_timeout" or "url_timeout" instead',
-                ),
-                unittest.mock.call(
-                    f'File {config_file} line 5: Iplist "refresh" is obsolete,'
-                    ' use "dns_refresh" or "url_refresh" instead',
-                ),
-            ])
+            warning.assert_has_calls(
+                [
+                    unittest.mock.call(
+                        'Section "resolve" is obsolete, use "iplist" instead',
+                    ),
+                    unittest.mock.call(
+                        f'File {config_file} line 4: Iplist "timeout" is '
+                        'obsolete, use "dns_timeout" or "url_timeout" instead',
+                    ),
+                    unittest.mock.call(
+                        f'File {config_file} line 5: Iplist "refresh" is '
+                        'obsolete, use "dns_refresh" or "url_refresh" instead',
+                    ),
+                ]
+            )
 
     @unittest.mock.patch('foomuuri.warning')
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_obsolete_syntax_fail(self, fail, warning, *_):
         """Test iplist{} section with invalid obsolete timeout option."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             timeout  # value is missing
-        """) as config_file:
+        """,
+        ) as config_file:
             with self.assertRaises(SystemExit):
                 _ = parse_config_iplist(minimal_config())
             warning.assert_called_once_with(
@@ -96,19 +104,25 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_empty_iplist_definition(self, *_):
         """Test empty iplist definition."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo
             @foo -
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             self.assertEqual(iplists['@foo'].sources, [])
 
     def test_single_line_multiple_valid_default_options(self, *_):
         """Test multple valid default options on single line."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             url_timeout=69d url_refresh=42d
             @foo https://foob.ar/
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             options = iplists['@foo'].options
             self.assertEqual(options.url_timeout, parse_duration('69d', 0))
@@ -117,10 +131,13 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_first_invalid_default_option(self, fail, *_):
         """Test first invalid default option on single line."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             invalid url_timeout=2d url_refresh=1d
             @foo https://foob.ar/
-        """) as config_file:
+        """,
+        ) as config_file:
             with self.assertRaises(SystemExit):
                 _ = parse_config_iplist(minimal_config())
 
@@ -132,10 +149,13 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_second_invalid_default_option(self, fail, *_):
         """Test second invalid default option on single line."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             url_timeout=2d invalid url_refresh=1d
             @foo https://foob.ar/
-        """) as config_file:
+        """,
+        ) as config_file:
             with self.assertRaises(SystemExit):
                 _ = parse_config_iplist(minimal_config())
 
@@ -147,9 +167,12 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_name(self, fail, *_):
         """Test invalid default option name."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             invalid_option=whatever_value
-        """) as config_file:
+        """,
+        ) as config_file:
             with self.assertRaises(SystemExit):
                 _ = parse_config_iplist(minimal_config())
 
@@ -161,9 +184,12 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_value(self, fail, *_):
         """Test invalid default option value."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             url_max_size=abcd
-        """) as config_file:
+        """,
+        ) as config_file:
             with self.assertRaises(SystemExit):
                 _ = parse_config_iplist(minimal_config())
 
@@ -174,12 +200,15 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_start_merge_url_size_options(self, *_):
         """Test start, merge, url_size options."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             -start -merge url_max_size=1024
             @foo https://foob.ar/
             @bar https://b.ar/ start=no merge=no
             @baz https://b.az/ start=yes merge=yes url_max_size=2048
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             default_options = IPListOptions()
             # Testing applcation as default options
@@ -192,7 +221,7 @@ class TestIplistParseConfig(unittest.TestCase):
             )
             self.assertNotEqual(
                 iplists['@foo'].options.url_max_size,
-                default_options.url_max_size
+                default_options.url_max_size,
             )
             # Asserting applied option values are exactly as set
             self.assertFalse(iplists['@foo'].options.start)
@@ -210,10 +239,13 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.warning')
     def test_iplist_sources_overwrite(self, warning, *_):
         """Test overwriting of iplist sources."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo https://foob.ar/
             @foo https://rabo.of/
-        """) as config_file:
+        """,
+        ) as config_file:
             iplists = parse_config_iplist(minimal_config())
             self.assertEqual(
                 iplists['@foo'].sources,
@@ -226,14 +258,17 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_iplist_sources_append(self, *_):
         """Test appending of iplist sources."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo https://foob.ar/
             @foo + https://rabo.of/
 
             @bar + https://foo.bar/
 
             @baz +
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             self.assertEqual(
                 iplists['@foo'].sources,
@@ -244,9 +279,12 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_intermixing_iplist_sources_options(self, *_):
         """Test itermixing of iplist sources and options."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo start=no https://foob.ar/ merge=no https://rabo.of/
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             default_options = IPListOptions()
             # Asserting applied options differ from default values
@@ -266,29 +304,36 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_last_option_priority_wins(self, *_):
         """Test last option defined for same ipset definition wins."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo url_timeout=42d
             @foo url_timeout=69d
-        """):
+        """,
+        ):
             iplists = parse_config_iplist(minimal_config())
             self.assertEqual(
                 iplists['@foo'].options.url_timeout, parse_duration('69d', 0)
             )
 
     @unittest.mock.patch('foomuuri.verbose')
-    def test_iplist_name_and_sources_vebose_output(self, verbose,
-                                                   CONFIG, *_):
+    def test_iplist_name_and_sources_vebose_output(self, verbose, CONFIG, *_):
         """Test output of iplists name and sources when verbose >= 2."""
-        with self.mock_config_foomuuri(section='iplist', content="""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
             @foo https://foob.ar/
             @bar https://foo.bar/
-        """):
+        """,
+        ):
             CONFIG.verbose = 2
             _ = parse_config_iplist(minimal_config())
-            verbose.assert_has_calls([
-                unittest.mock.call('@foo       https://foob.ar/'),
-                unittest.mock.call('@bar       https://foo.bar/'),
-            ])
+            verbose.assert_has_calls(
+                [
+                    unittest.mock.call('@foo       https://foob.ar/'),
+                    unittest.mock.call('@bar       https://foo.bar/'),
+                ]
+            )
 
     def test_internal_iplist_missing_ok_init(self, _, INTERNAL, *__):
         """Test INTERNAL.iplist_missing_ok is initialized."""

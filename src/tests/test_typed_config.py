@@ -28,6 +28,7 @@ class TestTypedConfig(unittest.TestCase):
 
     def setUp(self):
         """Setup tests."""
+
         @dataclass
         class TestConfig(TypedConfig):
             """Test class."""
@@ -61,9 +62,7 @@ class TestTypedConfig(unittest.TestCase):
             AttributeError, lambda: self.config['unknown_attribute']
         )
 
-        self.assertRaises(
-            AttributeError, self.set, 'unknown_attribute', '123'
-        )
+        self.assertRaises(AttributeError, self.set, 'unknown_attribute', '123')
 
     def test_initialized_typed(self):
         """Test assigning values to initialized typed attributes."""
@@ -91,13 +90,11 @@ class TestTypedConfig(unittest.TestCase):
             TypeError, self.config.set_from_str, 'type_conversion_int', 123
         )
         # Supported conversion, from str to int
-        self.assertEqual(
-            self.set_from_str('type_conversion_int', '123'), 123
-        )
+        self.assertEqual(self.set_from_str('type_conversion_int', '123'), 123)
         # Supported conversion, from str to pathlib.PosixPath
         self.assertEqual(
             self.set_from_str('type_conversion_posixpath', '/path/'),
-            pathlib.PosixPath('/path/')
+            pathlib.PosixPath('/path/'),
         )
         # Assignment, str to str
         self.assertEqual(self.set_from_str('initialized_str', '123'), '123')
@@ -140,15 +137,18 @@ class TestTypedConfig(unittest.TestCase):
 
     def test_iter(self):
         """Test __iter__."""
-        self.assertEqual(sorted(self.config), [
-            'conversion',
-            'initialized_str',
-            'type_conversion_int',
-            'type_conversion_list',
-            'type_conversion_posixpath',
-            'uninitialized_str',
-            'validation',
-        ])
+        self.assertEqual(
+            sorted(self.config),
+            [
+                'conversion',
+                'initialized_str',
+                'type_conversion_int',
+                'type_conversion_list',
+                'type_conversion_posixpath',
+                'uninitialized_str',
+                'validation',
+            ],
+        )
 
     def test_get(self):
         """Test get."""
