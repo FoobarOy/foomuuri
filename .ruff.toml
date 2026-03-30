@@ -31,6 +31,7 @@ lint.ignore = [
     "RUF005", # Consider `[*cmd[:1], '--loop', *cmd[1:]]` instead of concatenation
     "S602",
     "S603",
+    "S607", # Starting a process with a partial executable path
     "T201",
     "TRY003", # Avoid specifying long messages outside the exception class
     "TRY301", # Abstract `raise` to an inner function

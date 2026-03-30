@@ -1,9 +1,9 @@
 # Foomuuri - Multizone bidirectional nftables firewall.
 
 SUBDIRS	?= $(sort $(wildcard ??-*))
-SOURCE	?= ../src/foomuuri ../src/tests/
+SOURCE	?= ../src/foomuuri ../src/tests/ ../prometheus/prometheus-foomuuri-exporter
 
-.PHONY: all clean distclean $(SUBDIRS)
+.PHONY: all lint test clean distclean $(SUBDIRS)
 
 ifdef COVERAGE
 export RUN	= unshare --map-root-user --net coverage run --append --data-file=$(CURDIR)/../.coverage
@@ -11,18 +11,16 @@ else
 export RUN	= python3
 endif
 
-all:
-ifdef RUFF
+all: lint test
+
+lint:
 	ruff check $(SOURCE)
-endif
-ifdef TY
 	ty check --ignore unresolved-import $(SOURCE)
-endif
-	cd ../ ; $(RUN) -m unittest
-	flake8 $(SOURCE)
 	pycodestyle $(SOURCE)
 	pylint $(SOURCE)
-	$(MAKE) $(SUBDIRS)
+
+test: $(SUBDIRS)
+	cd ../ ; $(RUN) -m unittest
 
 clean distclean:
 	rm -f */*.fw

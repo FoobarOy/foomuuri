@@ -1,21 +1,19 @@
 # Foomuuri - Multizone bidirectional nftables firewall.
 
-.PHONY: all test devel clean distclean install sysupdate release tar
+.PHONY: all lint test devel clean distclean install sysupdate release tar
 
 CURRENT_VERSION		?= $(shell grep ^VERSION src/foomuuri | awk -F\' '{ print $$2 }')
 
-# Default target is to run tests
+# Default target is to run lint and test
 
-all: test
+all: lint test
 
 # Run testsuite and check source
 #
 # Enable test coverage report:  make clean test COVERAGE=y && coverage html
-# Enable ruff check:            make test RUFF=y
-# Enable ty check:              make test TY=y
 
-test:
-	$(MAKE) -C test
+lint test:
+	$(MAKE) -C test $@
 
 # Generate firewall ruleset to file, used in development
 

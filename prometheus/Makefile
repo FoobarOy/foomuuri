@@ -2,16 +2,9 @@
 
 .PHONY: all test clean distclean install sysupdate
 
-# Default target is to run tests
+# Tests are run as part of top level makefile. Nothing to do here.
 
-all: test
-
-# Check source
-
-test:
-	flake8 prometheus-foomuuri-exporter
-	pycodestyle prometheus-foomuuri-exporter
-	pylint prometheus-foomuuri-exporter
+all test:
 
 # Nothing to be cleaned
 

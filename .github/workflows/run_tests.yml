@@ -23,6 +23,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install flake8 pycodestyle pylint ruff ty
+        run: pip install pycodestyle pylint ruff ty
       - name: Run test suite
-        run: make test RUFF=y TY=y
+        run: make test
+      - name: Run lint
+        run: make lint
