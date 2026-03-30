@@ -37,6 +37,7 @@ try:
     import dbus.mainloop.glib
     import dbus.service
     from gi.repository import GLib
+
     HAVE_DBUS = True
 except ImportError:
     HAVE_DBUS = False
@@ -44,6 +45,7 @@ except ImportError:
 # urllib3 is optional, used by iplist http download
 try:
     import urllib3
+
     HAVE_URLLIB3 = True
 except ImportError:
     HAVE_URLLIB3 = False
@@ -51,6 +53,7 @@ except ImportError:
 # lxml is optional, used by iplist xml and html filters
 try:
     import lxml.etree
+
     HAVE_LXML = True
 except ImportError:
     HAVE_LXML = False
@@ -58,6 +61,7 @@ except ImportError:
 # systemd notify support is optional
 try:
     import systemd.daemon
+
     HAVE_SYSTEMD = True
 except ImportError:
     HAVE_SYSTEMD = False
@@ -71,18 +75,19 @@ class Validators:
     @staticmethod
     def str_zone_name(value: str):
         """Assert value is a valid zone name."""
-        return all([
-            value.isascii(),
-            re.fullmatch(r'[a-zA-Z][a-zA-Z_0-9./]*', value)
-        ])
+        return all(
+            [value.isascii(), re.fullmatch(r'[a-zA-Z][a-zA-Z_0-9./]*', value)]
+        )
 
     @staticmethod
     def str_iplist_name(value: str):
         """Assert value is a valid iplist name, including @."""
-        return all([
-            value.isascii(),
-            re.fullmatch(r'@[a-zA-Z_][-a-zA-Z_0-9./]*', value)
-        ])
+        return all(
+            [
+                value.isascii(),
+                re.fullmatch(r'@[a-zA-Z_][-a-zA-Z_0-9./]*', value),
+            ]
+        )
 
     @staticmethod
     def str_interface_name(value: str):
@@ -217,9 +222,9 @@ class TypedConfig:
             list: lambda value, append: value + append,
         }
 
-        if (
-            appender := implicit_appenders.get(field.type)
-        ) and isinstance(new_value, field.type):
+        if (appender := implicit_appenders.get(field.type)) and isinstance(
+            new_value, field.type
+        ):
             new_value = appender(self[name], new_value)
         else:
             raise TypeError(
@@ -273,8 +278,7 @@ class Config(TypedConfig):
         default='no', metadata={'validate': Validators.str_yes_no}
     )
     nft_bin: list = dataclasses.field(
-            default_factory=lambda: ['nft'],
-            metadata={'convert_str': shlex.split}
+        default_factory=lambda: ['nft'], metadata={'convert_str': shlex.split}
     )
     try_reload_timeout: int = dataclasses.field(
         default=15, metadata={'validate': Validators.int_positive}
@@ -303,9 +307,9 @@ class Config(TypedConfig):
     monitor_statistics_file: str = 'monitor.statistics'
 
     # Variable in foomuuri{}, or command line
-    fork: int = 0          # --fork
-    verbose: int = 0       # --verbose
-    syslog: int = 0        # --syslog
+    fork: int = 0  # --fork
+    verbose: int = 0  # --verbose
+    syslog: int = 0  # --syslog
 
 
 @dataclasses.dataclass
@@ -315,11 +319,11 @@ class Internal(TypedConfig):
     # pylint: disable=too-many-instance-attributes
 
     # Command line
-    command: str = ''     # Command to run: "start" etc
+    command: str = ''  # Command to run: "start" etc
     parameters: list = dataclasses.field(
         default_factory=list
     )  # Parameters for command
-    force: int = 0        # --force
+    force: int = 0  # --force
 
     # Other internally used variables
     # Added without default value to prevent uninitialized use
@@ -339,10 +343,12 @@ class Internal(TypedConfig):
         default_factory=lambda: {'connect': 3.05, 'read': 3.05}
     )  # Timeouts (seconds)
     url_get_retries: dict = dataclasses.field(
-        default_factory=lambda: {'connect': 3,
-                                 'redirect': 3,
-                                 'read': 3,
-                                 'raise_on_redirect': False}
+        default_factory=lambda: {
+            'connect': 3,
+            'redirect': 3,
+            'read': 3,
+            'raise_on_redirect': False,
+        }
     )  # Retries count and redirect behaviour
 
 
@@ -351,28 +357,32 @@ class IPListOptions(TypedConfig):
     """iplist{} options container."""
 
     dns_timeout: int = dataclasses.field(
-        default=86400, metadata={
+        default=86400,
+        metadata={
             'convert_str': lambda d: parse_duration(d, 0),
             'validate': Validators.int_positive,
-        }
+        },
     )  # 24h
     dns_refresh: int = dataclasses.field(
-        default=900, metadata={
+        default=900,
+        metadata={
             'convert_str': lambda d: parse_duration(d, 0),
             'validate': Validators.int_positive,
-        }
+        },
     )  # 15m
     url_timeout: int = dataclasses.field(
-        default=864000, metadata={
+        default=864000,
+        metadata={
             'convert_str': lambda d: parse_duration(d, 0),
             'validate': Validators.int_positive,
-        }
+        },
     )  # 10d
     url_refresh: int = dataclasses.field(
-        default=86400, metadata={
+        default=86400,
+        metadata={
             'convert_str': lambda d: parse_duration(d, 0),
             'validate': Validators.int_positive,
-        }
+        },
     )  # 1d
     url_max_size: int = dataclasses.field(
         default=33_554_432, metadata={'validate': Validators.int_positive}
@@ -422,9 +432,7 @@ class IPList:
 class IPLists:
     """Mapping of iplist name to IPList."""
 
-    _entries: dict[str, IPList] = dataclasses.field(
-        default_factory=dict
-    )
+    _entries: dict[str, IPList] = dataclasses.field(default_factory=dict)
 
     def __getitem__(self, name):
         """Get iplist value via index operator."""
@@ -471,9 +479,9 @@ CONFIG = Config()
 CONFIG_OVERRIDE = {}
 INTERNAL = Internal()
 
-OUT = []       # Generated nftables ruleset / commands
+OUT = []  # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
-HELPERS = []   # List of helpers: (helper-object, protocol, ports)
+HELPERS = []  # List of helpers: (helper-object, protocol, ports)
 
 
 def fail(error: str, fatal: bool = True) -> int:
@@ -541,24 +549,32 @@ def syslog_open_or_close() -> None:
         syslog.closelog()
 
 
-def run_program_rc(args: list, *, env=None, stdin=None, print_output=True,
-                   quiet=False) -> int:
+def run_program_rc(
+    args: list, *, env=None, stdin=None, print_output=True, quiet=False
+) -> int:
     """Run external program and return its errorcode. Print its output."""
     if not args:
         return 0
     verbose(join_args(args))
     try:
-        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding='utf-8',
-                              env=env, input=stdin, timeout=60)
+        proc = subprocess.run(
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding='utf-8',
+            env=env,
+            input=stdin,
+            timeout=60,
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
         fail(f'Failed to run command "{join_args(args)}": {error}', False)
         return 1
     output = proc.stdout.rstrip()
     if (
-            output and
-            (proc.returncode or print_output or CONFIG.verbose > 0) and
-            not quiet
+        output
+        and (proc.returncode or print_output or CONFIG.verbose > 0)
+        and not quiet
     ):
         verbose(output, 0)
     return proc.returncode
@@ -571,15 +587,22 @@ def run_program_pipe(
     if not args:
         return ''
     try:
-        proc = subprocess.run(args, check=False, input=text_input,
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT,
-                              encoding='utf-8', timeout=60)
+        proc = subprocess.run(
+            args,
+            check=False,
+            input=text_input,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding='utf-8',
+            timeout=60,
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
         fail(f'Failed to run command "{join_args(args)}": {error}')
     if proc.returncode:
-        warning(f'Failed to run command "{join_args(args)}": '
-                f'return code {proc.returncode}')
+        warning(
+            f'Failed to run command "{join_args(args)}": '
+            f'return code {proc.returncode}'
+        )
         return None
     return proc.stdout
 
@@ -592,14 +615,22 @@ def run_program_shell(args: str, fileline: str) -> str:
     if not args:
         return ''
     try:
-        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding='utf-8',
-                              shell=True, timeout=60)
+        proc = subprocess.run(
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding='utf-8',
+            shell=True,
+            timeout=60,
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
         fail(f'{fileline}Failed to run command "{args}": {error}')
     if proc.returncode:
-        fail(f'{fileline}Failed to run command "{args}": '
-             f'return code {proc.returncode}')
+        fail(
+            f'{fileline}Failed to run command "{args}": '
+            f'return code {proc.returncode}'
+        )
     return proc.stdout.rstrip()
 
 
@@ -615,9 +646,14 @@ def nft_json(cmd):
     args = CONFIG.nft_bin + ['--json', cmd]
     verbose(join_args(args), 2)
     try:
-        proc = subprocess.run(args, check=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding='utf-8',
-                              timeout=60)
+        proc = subprocess.run(
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding='utf-8',
+            timeout=60,
+        )
     except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode:
@@ -697,20 +733,25 @@ def read_config(require_etc_config: bool):
     share_config = find_config_files(CONFIG.share_dir, '*.conf')
     etc_config = find_config_files(CONFIG.etc_dir, '*.conf')
     if not etc_config and require_etc_config:
-        fail(f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
-             '\n'
-             'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
-             'for example\n'
-             'configuration.')
+        fail(
+            f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
+            '\n'
+            'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
+            'for example\n'
+            'configuration.'
+        )
 
     # There characters will combine to single word in shlex
-    wordchars = ''.join(chr(letter) for letter in range(33, 256)
-                        # excludes: " # ' ; { }
-                        if letter not in {34, 35, 39, 59, 123, 125})
+    wordchars = ''.join(
+        chr(letter)
+        for letter in range(33, 256)
+        # excludes: " # ' ; { }
+        if letter not in {34, 35, 39, 59, 123, 125}
+    )
 
     # Read all config files
-    config = {}        # Final config dict
-    section = None     # Currently open section name
+    config = {}  # Final config dict
+    section = None  # Currently open section name
     section_line = {}  # Section_name -> filename_line for error messages
     for filename in share_config + etc_config:
         try:
@@ -760,21 +801,34 @@ def read_config(require_etc_config: bool):
             # - "prerouting filter mangle - 10 {"
             elif len(tokens) >= 2 and tokens[-1] == '{':
                 if section:
-                    fail(f'{fileline}New "{" ".join(tokens)}" while section '
-                         f'"{section}" is still open')
+                    fail(
+                        f'{fileline}New "{" ".join(tokens)}" while section '
+                        f'"{section}" is still open'
+                    )
                 if (
-                        tokens[0] in {'template', 'target', 'group'} and
-                        len(tokens) != 3
+                    tokens[0] in {'template', 'target', 'group'}
+                    and len(tokens) != 3
                 ):
-                    fail(f'{fileline}Section "{tokens[0]}" must have single '
-                         f' word name: {" ".join(tokens)}')
+                    fail(
+                        f'{fileline}Section "{tokens[0]}" must have single '
+                        f' word name: {" ".join(tokens)}'
+                    )
                 if len(tokens) > 2 and tokens[0] not in {
-                        'template', 'target', 'group',
-                        'snat', 'dnat',
-                        'prerouting', 'postrouting',
-                        'forward', 'input', 'output'}:
-                    fail(f'{fileline}Section "{tokens[0]}" does not take '
-                         f'parameters: {" ".join(tokens)}')
+                    'template',
+                    'target',
+                    'group',
+                    'snat',
+                    'dnat',
+                    'prerouting',
+                    'postrouting',
+                    'forward',
+                    'input',
+                    'output',
+                }:
+                    fail(
+                        f'{fileline}Section "{tokens[0]}" does not take '
+                        f'parameters: {" ".join(tokens)}'
+                    )
 
                 section = ' '.join(tokens[:-1])
                 if section.startswith('_'):  # _name is protected
@@ -795,8 +849,10 @@ def read_config(require_etc_config: bool):
         if continuation:
             fail(f'File {filename}: Continuation "\\" at end of file')
         if section:
-            fail(f'File {filename}: Section "{section}" is missing "}}" at '
-                 f'end of file')
+            fail(
+                f'File {filename}: Section "{section}" is missing "}}" at '
+                f'end of file'
+            )
 
     # Include section_name -> filename_line to config for error messages
     config['_section_line'] = section_line
@@ -836,8 +892,10 @@ def parse_config_macros(config):
             macros[key] = macros.get(key, []) + value[1:]
         else:
             if INTERNAL.command == 'check' and macros.get(key):
-                warning(f'{fileline}Overwriting macro "{key}" '
-                        f'with value "{" ".join(value)}"')
+                warning(
+                    f'{fileline}Overwriting macro "{key}" '
+                    f'with value "{" ".join(value)}"'
+                )
             macros[key] = value  # overwrite
 
     # Expand macro in macro{}. Keep going as long as there was some expansion
@@ -851,10 +909,12 @@ def parse_config_macros(config):
                 except ValueError:
                     continue
                 if check == macro:  # Macro "foo" expands to "foo bar"
-                    fail(f'{macroline[macro]}Macro "{macro}" expands to '
-                         f'itself: {" ".join(mvalue)}')
+                    fail(
+                        f'{macroline[macro]}Macro "{macro}" expands to '
+                        f'itself: {" ".join(mvalue)}'
+                    )
                 # Expand macro
-                macros[macro] = mvalue[:pos] + cvalue + mvalue[pos + 1:]
+                macros[macro] = mvalue[:pos] + cvalue + mvalue[pos + 1 :]
                 found = True
         if not found:  # No new expansion was done
             return macros
@@ -901,10 +961,10 @@ def expand_single_line(fileline, line, macros):
             word, word_suffix = word.split('/')
             word_suffix = f'/{word_suffix}'
         if (
-                word[0] == '[' and
-                macro_isdigit(word, ']:') and
-                not word_prefix and
-                not word_suffix
+            word[0] == '['
+            and macro_isdigit(word, ']:')
+            and not word_prefix
+            and not word_suffix
         ):  # [IPv6]:port
             word, word_suffix = word[1:].split(']:')
             word_prefix = '['
@@ -927,10 +987,14 @@ def expand_single_line(fileline, line, macros):
 
         # Expand mvalue to line and return list of expanded lines
         prefix = line[:pos]
-        suffix = line[pos + 1:]
-        return [(fileline, prefix + list(group) + suffix)
-                for is_split, group in itertools.groupby(
-                        mvalue, lambda spl: spl == ';') if not is_split]
+        suffix = line[pos + 1 :]
+        return [
+            (fileline, prefix + list(group) + suffix)
+            for is_split, group in itertools.groupby(
+                mvalue, lambda spl: spl == ';'
+            )
+            if not is_split
+        ]
     return None
 
 
@@ -949,8 +1013,10 @@ def expand_macros(config):
             for line in orig_lines:
                 for item in line[1]:
                     if item in macros:
-                        warning(f'{line[0]}Macro "{item}" is not expanded in '
-                                f'"{section}" section: {" ".join(line[1])}')
+                        warning(
+                            f'{line[0]}Macro "{item}" is not expanded in '
+                            f'"{section}" section: {" ".join(line[1])}'
+                        )
             continue
 
         new_lines = []
@@ -969,8 +1035,10 @@ def expand_macros(config):
             # Check for expansion loop
             recursion_limit.update([fileline])
             if recursion_limit[fileline] > CONFIG.recursion_limit:
-                fail(f'{fileline}Possible macro or template loop '
-                     f'in "{section}": {" ".join(line[:10])} ...')
+                fail(
+                    f'{fileline}Possible macro or template loop '
+                    f'in "{section}": {" ".join(line[:10])} ...'
+                )
         config[section] = new_lines
 
 
@@ -986,8 +1054,8 @@ def remove_quotes(config):
         for _dummy_fileline, line in lines:
             for index, item in enumerate(line):
                 if len(item) >= 2 and (
-                        (item[0] == item[-1] == '"') or
-                        (item[0] == item[-1] == "'")
+                    (item[0] == item[-1] == '"')
+                    or (item[0] == item[-1] == "'")
                 ):
                     line[index] = item[1:-1]
 
@@ -998,7 +1066,7 @@ def parse_config_foomuuri(config):
     for fileline, line in config.pop('foomuuri', []):
         name = line[0]
         value = ' '.join(line[1:])
-        if name == 'try-reload_timeout':    # backward compatibility
+        if name == 'try-reload_timeout':  # backward compatibility
             name = 'try_reload_timeout'
         if name not in CONFIG:
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
@@ -1030,9 +1098,8 @@ def parse_config_foomuuri(config):
 
     # Add "packets" to log rates
     for key in list(CONFIG):
-        if (
-                key.startswith('log_') and
-                re.match(r'^\d+/(second|minute|hour) burst \d+$', CONFIG[key])
+        if key.startswith('log_') and re.match(
+            r'^\d+/(second|minute|hour) burst \d+$', CONFIG[key]
         ):
             CONFIG[key] += ' packets'
 
@@ -1055,13 +1122,17 @@ def parse_config_zonemap(config, zones):
     for fileline, line in config.pop('zonemap', []):
         rule = parse_rule_line((fileline, line))
         if not rule['new_dzone'] and not rule['new_szone']:
-            fail(f'{fileline}Zonemap without "new_dzone" or "new_szone" '
-                 f'has no effect: {" ".join(line)}')
+            fail(
+                f'{fileline}Zonemap without "new_dzone" or "new_szone" '
+                f'has no effect: {" ".join(line)}'
+            )
         for key in ('szone', 'dzone', 'new_szone', 'new_dzone'):
             value = rule[key]
             if value and value not in zones:
-                fail(f'{fileline}Zonemap "{key}" has unknown zone "{value}": '
-                     f'{" ".join(line)}')
+                fail(
+                    f'{fileline}Zonemap "{key}" has unknown zone "{value}": '
+                    f'{" ".join(line)}'
+                )
         zonemap.append(rule)
     return zonemap
 
@@ -1073,16 +1144,17 @@ def parse_config_special_chains(config):
         ('output', 'route', 'mangle' + INTERNAL.priority_offset): [],
     }
     for prefix, def_type, def_priority in (
-            ('snat', 'nat', 'srcnat'),
-            ('dnat', 'nat', 'dstnat'),
-            ('prerouting', 'filter', 'mangle'),
-            ('postrouting', 'filter', 'mangle'),
-            ('forward', 'filter', 'mangle'),
-            ('input', 'filter', 'mangle'),
-            ('output', 'route', 'mangle'),
-            ('invalid', None, None),
-            ('rpfilter', None, None),
-            ('smurfs', None, None)):
+        ('snat', 'nat', 'srcnat'),
+        ('dnat', 'nat', 'dstnat'),
+        ('prerouting', 'filter', 'mangle'),
+        ('postrouting', 'filter', 'mangle'),
+        ('forward', 'filter', 'mangle'),
+        ('input', 'filter', 'mangle'),
+        ('output', 'route', 'mangle'),
+        ('invalid', None, None),
+        ('rpfilter', None, None),
+        ('smurfs', None, None),
+    ):
         for section in list(config):
             if not (section == prefix or section.startswith(f'{prefix} ')):
                 continue
@@ -1090,8 +1162,10 @@ def parse_config_special_chains(config):
             fileline = config['_section_line'][section]
             items = section.split(' ', 2)
             if len(items) == 2:
-                fail(f'{fileline}Invalid section: type or priority missing: '
-                     f'{section}')
+                fail(
+                    f'{fileline}Invalid section: type or priority missing: '
+                    f'{section}'
+                )
 
             if len(items) == 1:
                 ftype = def_type
@@ -1115,8 +1189,10 @@ def parse_config_hook(config):
     """Parse hook{} from config."""
     for fileline, line in config.pop('hook', []):
         if line[0] not in {
-                'pre_start', 'post_start',
-                'pre_stop', 'post_stop',
+            'pre_start',
+            'post_start',
+            'pre_stop',
+            'post_stop',
         }:
             fail(f'{fileline}Unknown hook: {" ".join(line)}')
         INTERNAL[line[0]] = line[1:]
@@ -1136,8 +1212,9 @@ def is_ipv4_address(value, allow_network=True):
     if value.count('-') == 1:  # Interval "IP-IP"
         try:
             addr_from, addr_to = value.split('-')
-            return (ipaddress.IPv4Address(addr_from)
-                    <= ipaddress.IPv4Address(addr_to))
+            return ipaddress.IPv4Address(addr_from) <= ipaddress.IPv4Address(
+                addr_to
+            )
         except ValueError:
             return False
 
@@ -1145,8 +1222,13 @@ def is_ipv4_address(value, allow_network=True):
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv4Address)
     except ValueError:
         try:  # Network "IP/mask"
-            return isinstance(ipaddress.ip_network(value, strict=False),
-                              ipaddress.IPv4Network) and allow_network
+            return (
+                isinstance(
+                    ipaddress.ip_network(value, strict=False),
+                    ipaddress.IPv4Network,
+                )
+                and allow_network
+            )
         except ValueError:
             return False
 
@@ -1165,8 +1247,9 @@ def is_ipv6_address(value, allow_network=True):
     if value.count('-') == 1:  # Interval "IP-IP"
         try:
             addr_from, addr_to = value.split('-')
-            return (ipaddress.IPv6Address(addr_from)
-                    <= ipaddress.IPv6Address(addr_to))
+            return ipaddress.IPv6Address(addr_from) <= ipaddress.IPv6Address(
+                addr_to
+            )
         except ValueError:
             return False
 
@@ -1176,15 +1259,20 @@ def is_ipv6_address(value, allow_network=True):
     if value.startswith('['):
         if value.endswith(']'):  # "[ipv6]"
             value = value[1:-1]
-        elif ']/' in value:      # "[ipv6]/56"
+        elif ']/' in value:  # "[ipv6]/56"
             value = value[1:].replace(']/', '/')
 
     try:  # Address "IP"
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
     except ValueError:
         try:  # Network "IP/mask"
-            return isinstance(ipaddress.ip_network(value, strict=False),
-                              ipaddress.IPv6Network) and allow_network
+            return (
+                isinstance(
+                    ipaddress.ip_network(value, strict=False),
+                    ipaddress.IPv6Network,
+                )
+                and allow_network
+            )
         except ValueError:
             return False
 
@@ -1213,9 +1301,8 @@ def is_port(value, protocol):
         return False
     for item in value.split(','):
         if protocol in {'icmp', 'icmpv6'} and (
-                # See: "nft describe icmp type; nft describe icmpv6 type"
-                item == 'redirect' or
-                re.match(r'^[a-z2]{2,}-[-a-z]{5,}$', item)
+            # See: "nft describe icmp type; nft describe icmpv6 type"
+            item == 'redirect' or re.match(r'^[a-z2]{2,}-[-a-z]{5,}$', item)
         ):
             continue
         for number in item.split('-'):
@@ -1228,8 +1315,10 @@ def rule_item_only_one(rule, keyword, value):
     """Verify that keyword is set only once, or set to same value."""
     old = rule.get(f'_only_one_{keyword}', value)
     if old != value:
-        fail(f'{rule["fileline"]}Rule\'s {keyword} is already set to '
-             f'"{old}": {" ".join(rule["line"])}')
+        fail(
+            f"{rule['fileline']}Rule's {keyword} is already set to "
+            f'"{old}": {" ".join(rule["line"])}'
+        )
     rule[f'_only_one_{keyword}'] = value
 
 
@@ -1238,14 +1327,20 @@ def verify_rule_sanity(rule, fileline):
     # pylint: disable=too-many-branches
     for key, value in rule.items():
         if (
-                value == '' and  # noqa: RUF100,PLC1901 -- it can be None too
-                key not in {'nat_to', 'queue', 'counter', 'log',
-                            'fileline', 'line'}
+            value == ''  # noqa: RUF100,PLC1901 -- it can be None too
+            and key
+            not in {'nat_to', 'queue', 'counter', 'log', 'fileline', 'line'}
         ):
             fail(f'{fileline}"{key}" without value is not valid')
 
-    for key in ('saddr_rate_name', 'daddr_rate_name', 'saddr_daddr_rate_name',
-                'helper', 'counter', 'mss'):
+    for key in (
+        'saddr_rate_name',
+        'daddr_rate_name',
+        'saddr_daddr_rate_name',
+        'helper',
+        'counter',
+        'mss',
+    ):
         value = rule[key] or ''
         if ' ' in value:
             fail(f'{fileline}"{key}" must be single word: {value}')
@@ -1273,40 +1368,56 @@ def verify_rule_sanity(rule, fileline):
         #
         # ct count 8
         # ct count over 8
-        if re.match(r'^(over )?\d+/(second|minute|hour) burst \d+$',
-                    rule[key]):
+        if re.match(
+            r'^(over )?\d+/(second|minute|hour) burst \d+$', rule[key]
+        ):
             rule[key] += ' packets'  # Add missing "packets"
         if not (
-                re.match(r'^(over )?'
-                         r'\d+/(second|minute|hour)'
-                         r'( burst \d+ packets)?$', rule[key]) or
-                re.match(r'^(over )?'
-                         r'\d+ [km]?bytes/(second|minute|hour)'
-                         r'( burst \d+ [km]?bytes)?$', rule[key]) or
-                re.match(r'^ct count (over )?\d+$', rule[key])
+            re.match(
+                r'^(over )?'
+                r'\d+/(second|minute|hour)'
+                r'( burst \d+ packets)?$',
+                rule[key],
+            )
+            or re.match(
+                r'^(over )?'
+                r'\d+ [km]?bytes/(second|minute|hour)'
+                r'( burst \d+ [km]?bytes)?$',
+                rule[key],
+            )
+            or re.match(r'^ct count (over )?\d+$', rule[key])
         ):
             fail(f'{fileline}Invalid "{key}" value: {rule[key]}')
 
     for basic, extra in (
-            ('protocol', 'sport'),
-            ('protocol', 'dport'),
-            ('saddr_rate', 'saddr_rate_name'),
-            ('saddr_rate', 'saddr_rate_mask'),
-            ('daddr_rate', 'daddr_rate_name'),
-            ('daddr_rate', 'daddr_rate_mask'),
-            ('saddr_daddr_rate', 'saddr_daddr_rate_name'),
-            ('saddr_daddr_rate', 'saddr_daddr_rate_mask'),
+        ('protocol', 'sport'),
+        ('protocol', 'dport'),
+        ('saddr_rate', 'saddr_rate_name'),
+        ('saddr_rate', 'saddr_rate_mask'),
+        ('daddr_rate', 'daddr_rate_name'),
+        ('daddr_rate', 'daddr_rate_mask'),
+        ('saddr_daddr_rate', 'saddr_daddr_rate_name'),
+        ('saddr_daddr_rate', 'saddr_daddr_rate_mask'),
     ):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
     if not rule['nat_to'] and rule['statement'] in {
-            'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
+        'snat',
+        'dnat',
+        'snat_prefix',
+        'dnat_prefix',
+    }:
         fail(f'{fileline}"{rule["statement"]}" without address is not valid')
 
     if rule['ct_status'] and rule['ct_status'] not in {
-            'expected', 'seen-reply', 'assured', 'confirmed',
-            'snat', 'dnat', 'dying',
+        'expected',
+        'seen-reply',
+        'assured',
+        'confirmed',
+        'snat',
+        'dnat',
+        'dying',
     }:
         fail(f'{fileline}"Invalid "ct_status" value: {rule["ct_status"]}')
 
@@ -1382,7 +1493,6 @@ def parse_rule_line(fileline_line):
         'time': None,
         'after_conntrack': True,
         'warning': None,  # Print warning to user
-
         # Internal housekeeping
         'plain': True,  # Plain "log" or "counter" without anything else
         'fileline': fileline,  # For error messages
@@ -1392,8 +1502,10 @@ def parse_rule_line(fileline_line):
     keyword = None
     for item in line:
         if item == ';':
-            fail(f'{fileline}";" is not supported in rule, split it to '
-                 f'separate lines: {" ".join(line)}')
+            fail(
+                f'{fileline}";" is not supported in rule, split it to '
+                f'separate lines: {" ".join(line)}'
+            )
 
         # "tcp 22" is shortcut for "tcp dport 22"
         if not keyword and is_port(item, ret['protocol']):
@@ -1415,8 +1527,15 @@ def parse_rule_line(fileline_line):
                 keyword = None
 
         # Non-start keywords
-        elif item in {'accept', 'drop', 'return', 'continue',
-                      'masquerade', 'notrack', 'nftrace'}:
+        elif item in {
+            'accept',
+            'drop',
+            'return',
+            'continue',
+            'masquerade',
+            'notrack',
+            'nftrace',
+        }:
             rule_item_only_one(ret, 'statement', item)
             ret['statement'] = item
             ret['plain'] = False
@@ -1462,38 +1581,51 @@ def parse_rule_line(fileline_line):
             ret['plain'] = False
             keyword = 'nat_to'
             ret[keyword] = ret[keyword] or ''
-        elif item in {'protocol',
-                      'saddr', 'sport',
-                      'daddr', 'dport',
-                      'oifname', 'iifname',
-                      'mac_saddr', 'mac_daddr',
-                      'global_rate',
-                      'saddr_rate', 'saddr_rate_mask', 'saddr_rate_name',
-                      'daddr_rate', 'daddr_rate_mask', 'daddr_rate_name',
-                      'saddr_daddr_rate', 'saddr_daddr_rate_mask',
-                      'saddr_daddr_rate_name',
-                      'uid', 'gid',
-                      'szone', 'dzone',
-                      'new_szone', 'new_dzone',
-                      'counter',
-                      'helper',
-                      'log',
-                      'log_level',
-                      'nft',
-                      'mss',
-                      'template',
-                      'queue',
-                      'tproxy',
-                      'mark_set',
-                      'mark_match',
-                      'priority_set',
-                      'priority_match',
-                      'dscp',
-                      'cgroup',
-                      'ct_status',
-                      'time',
-                      'warning',
-                      }:
+        elif item in {
+            'protocol',
+            'saddr',
+            'sport',
+            'daddr',
+            'dport',
+            'oifname',
+            'iifname',
+            'mac_saddr',
+            'mac_daddr',
+            'global_rate',
+            'saddr_rate',
+            'saddr_rate_mask',
+            'saddr_rate_name',
+            'daddr_rate',
+            'daddr_rate_mask',
+            'daddr_rate_name',
+            'saddr_daddr_rate',
+            'saddr_daddr_rate_mask',
+            'saddr_daddr_rate_name',
+            'uid',
+            'gid',
+            'szone',
+            'dzone',
+            'new_szone',
+            'new_dzone',
+            'counter',
+            'helper',
+            'log',
+            'log_level',
+            'nft',
+            'mss',
+            'template',
+            'queue',
+            'tproxy',
+            'mark_set',
+            'mark_match',
+            'priority_set',
+            'priority_match',
+            'dscp',
+            'cgroup',
+            'ct_status',
+            'time',
+            'warning',
+        }:
             keyword = item
             ret[keyword] = ret[keyword] or ''
             if item == 'queue':  # statement and start keyword
@@ -1510,7 +1642,7 @@ def parse_rule_line(fileline_line):
 
         # Unknown word after non-start keyword
         else:
-            fail(f'{fileline}Can\'t parse line: {" ".join(line)}')
+            fail(f"{fileline}Can't parse line: {' '.join(line)}")
 
     # Use no-op statement "continue" for plain "log" or "counter" rule,
     # everything else defaults to "accept". Also mark them as -conntrack
@@ -1538,8 +1670,9 @@ def parse_config_rules(config):
         try:
             szone, dzone = section.split('-')
         except ValueError:
-            fail(f'{config["_section_line"][section]}Unknown section: '
-                 f'{section}')
+            fail(
+                f'{config["_section_line"][section]}Unknown section: {section}'
+            )
         rules[szone, dzone] = [parse_rule_line(line) for line in lines]
     return rules
 
@@ -1547,21 +1680,25 @@ def parse_config_rules(config):
 def filter_any_zonelist(rule, srcdst):
     """Parse rule[szone] list and return pos/neg boolean + zonelist."""
     if not rule[srcdst]:
-        return False, []   # "not in empty list" == everything
+        return False, []  # "not in empty list" == everything
 
     inside = True
     zonelist = []
     for item in rule[srcdst].split():
         if item.startswith('-'):
             if inside and zonelist:
-                fail(f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
-                     f'{rule[srcdst]}')
+                fail(
+                    f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                    f'{rule[srcdst]}'
+                )
             inside = False
             zonelist.append(item[1:])
         else:
             if not inside:
-                fail(f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
-                     f'{rule[srcdst]}')
+                fail(
+                    f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                    f'{rule[srcdst]}'
+                )
             zonelist.append(item)
     return inside, zonelist
 
@@ -1615,17 +1752,23 @@ def verify_config(config, zones, rules):
     localhost = CONFIG.localhost_zone
     if localhost not in zones:
         zones[localhost] = {'interface': []}
-        warning(f'{config["_section_line"]["zone"]}Zone "{localhost}" '
-                f'is missing from zone{{}}, adding it')
+        warning(
+            f'{config["_section_line"]["zone"]}Zone "{localhost}" '
+            f'is missing from zone{{}}, adding it'
+        )
 
     if zones[localhost]['interface']:
-        fail(f'{config["_section_line"]["zone"]}Zone "{localhost}" has '
-             f'interfaces "{" ".join(zones[localhost]["interface"])}", '
-             f'it must be empty')
+        fail(
+            f'{config["_section_line"]["zone"]}Zone "{localhost}" has '
+            f'interfaces "{" ".join(zones[localhost]["interface"])}", '
+            f'it must be empty'
+        )
 
     if CONFIG.dbus_zone not in zones:
-        warning(f'Config option dbus_zone value '
-                f'"{CONFIG.dbus_zone}" is missing from zone{{}}')
+        warning(
+            f'Config option dbus_zone value '
+            f'"{CONFIG.dbus_zone}" is missing from zone{{}}'
+        )
 
     # All zone-zone pairs must be known
     for szone, dzone in rules:
@@ -1711,8 +1854,10 @@ def single_or_set(data, fileline='', quote=False):
     for index, value in enumerate(values):
         if value.startswith('-'):
             if index and not neg:
-                fail(f'{fileline}Can\'t mix "+" and "-" items: '
-                     f'{" ".join(values)}')
+                fail(
+                    f'{fileline}Can\'t mix "+" and "-" items: '
+                    f'{" ".join(values)}'
+                )
             neg = '!= '
         elif neg:
             fail(f'{fileline}Can\'t mix "+" and "-" items: {" ".join(values)}')
@@ -1722,8 +1867,9 @@ def single_or_set(data, fileline='', quote=False):
     # Quote interface names and similar items. "inet" is a reserved word
     # but can also be an interface name. It must be quoted.
     if quote:
-        values = [value if value.isnumeric() else f'"{value}"'
-                  for value in values]
+        values = [
+            value if value.isnumeric() else f'"{value}"' for value in values
+        ]
 
     # Single item
     if len(values) == 1 and ' ' not in values[0]:
@@ -1809,7 +1955,7 @@ def mark_set_argument(rule):
         mask = int(x_y[1], 0)  # dec or hex
     except ValueError:
         fail(f'{rule["fileline"]}Invalid "mark_set" value: {value}')
-    return f'meta mark & {hex(0xffffffff ^ mask)} | {x_y[0]}'
+    return f'meta mark & {hex(0xFFFFFFFF ^ mask)} | {x_y[0]}'
 
 
 def mark_match(rule):
@@ -1826,8 +1972,10 @@ def mark_match(rule):
         value = value[1:]
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(f'{rule["fileline"]}Invalid "mark_match" value: '
-             f'{rule["mark_match"]}')
+        fail(
+            f'{rule["fileline"]}Invalid "mark_match" value: '
+            f'{rule["mark_match"]}'
+        )
     if len(x_y) == 1:
         return f'meta mark {check} {value} '
     return f'meta mark & {x_y[1]} {check} {x_y[0]} '
@@ -1851,12 +1999,19 @@ def time_match_single(rule, compare, value):
     hour = None
     date = None
     for item in value:
-        if item.lower() in {'monday', 'tuesday', 'wednesday', 'thursday',
-                            'friday', 'saturday', 'sunday'}:
+        if item.lower() in {
+            'monday',
+            'tuesday',
+            'wednesday',
+            'thursday',
+            'friday',
+            'saturday',
+            'sunday',
+        }:
             wday = time_only_one(rule, wday, item.capitalize())
         elif (
-                re.fullmatch(r'\d\d:\d\d(:\d\d)?', item) or  # hh:mm:ss, hh:mm
-                re.fullmatch(r'\d\d:\d\d-\d\d:\d\d', item)   # hh:mm-hh:mm
+            re.fullmatch(r'\d\d:\d\d(:\d\d)?', item)  # hh:mm:ss, hh:mm
+            or re.fullmatch(r'\d\d:\d\d-\d\d:\d\d', item)  # hh:mm-hh:mm
         ):
             hour = time_only_one(rule, hour, item)
         elif re.fullmatch(r'\d\d\d\d-\d\d-\d\d', item):  # yyyy-mm-dd
@@ -1914,8 +2069,9 @@ def cgroup_match(rule):
     return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
 
 
-def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
-                   do_lograte=True):
+def rule_statement(
+    szone, dzone, rule, ipv, *, force_statement=None, do_lograte=True
+):
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
@@ -1949,8 +2105,8 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
     configlist = set(CONFIG.counter.split())
     checklist = {'yes', f'{szone}-{dzone}', f'{szone}-any', f'any-{dzone}'}
     if not rule['nft'] and (
-            rule['counter'] is not None or  # "counter" in this single rule
-            not configlist.isdisjoint(checklist)  # zone level enable
+        rule['counter'] is not None  # "counter" in this single rule
+        or not configlist.isdisjoint(checklist)  # zone level enable
     ):
         prefix += 'counter '
         if rule['counter']:
@@ -1968,17 +2124,23 @@ def rule_statement(szone, dzone, rule, ipv, *, force_statement=None,
                 log_prefix = rule['log']
         log_prefix = log_prefix.replace('$(szone)', szone)
         log_prefix = log_prefix.replace('$(dzone)', dzone)
-        log_prefix = log_prefix.replace('$(statement)',
-                                        statement.split()[0].upper())
-        log_level = (CONFIG.log_level if rule['log_level'] is None else
-                     rule['log_level'])
+        log_prefix = log_prefix.replace(
+            '$(statement)', statement.split()[0].upper()
+        )
+        log_level = (
+            CONFIG.log_level
+            if rule['log_level'] is None
+            else rule['log_level']
+        )
         log_nft = f'log prefix "{log_prefix} " {log_level}'
         if do_lograte and CONFIG.log_rate:
             # Limit maximum amount of logging to "foomuuri { log_rate }".
             # This is important to avoid overlogging (DoS or filesystem full).
-            rate = (f'update @_lograte_set_{ipv} '
-                    f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
-                    f'limit rate {CONFIG.log_rate} }} ')
+            rate = (
+                f'update @_lograte_set_{ipv} '
+                f'{{ {"ip" if ipv == 4 else "ip6"} saddr '
+                f'limit rate {CONFIG.log_rate} }} '
+            )
             if statement == 'continue':
                 return f'{prefix}{rate}{log_nft}'
             logname = f'lograte_{len(LOGRATES) + 1}'
@@ -2015,9 +2177,9 @@ def output_icmp(szone, dzone, rules, ipv):
         proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
         out(f'{proto_ports}{match}{statement}')
         if (
-                rule['dport'] and
-                ping not in rule['dport'].split() and
-                'echo-request' not in rule['dport'].split()
+            rule['dport']
+            and ping not in rule['dport'].split()
+            and 'echo-request' not in rule['dport'].split()
         ):
             continue  # Continue to next rule if this wasn't ping or match all
 
@@ -2025,7 +2187,8 @@ def output_icmp(szone, dzone, rules, ipv):
         # explicit rule to drop overflow and all other pings.
         has_ping_rule = True
         if (match + statement).startswith(
-                ('accept', 'drop', 'reject', 'jump', 'queue')):
+            ('accept', 'drop', 'reject', 'jump', 'queue')
+        ):
             has_match_all = True
         elif has_match_all:  # Specific ping rule after match-all rule
             warning(f'{rule["fileline"]}Unreachable ping rule')
@@ -2053,16 +2216,20 @@ def parse_iplist(rule, direction, ipv):
             if ipv_addr == ipv:  # Address for this ipv - add to list
                 ips.append(item)
             elif not ipv_addr:  # Invalid IP address
-                fail(f'{rule["fileline"]}Invalid IP address "{item}" in: '
-                     f'{iplist}')
+                fail(
+                    f'{rule["fileline"]}Invalid IP address "{item}" in: '
+                    f'{iplist}'
+                )
 
     # No matching addresses for this ipv family
     if not ips:
         raise ValueError
 
     # Return "ip saddr 10.2.3.4 " string
-    return (f'{"ip" if ipv == 4 else "ip6"} {direction} '
-            f'{single_or_set(ips, rule["fileline"])} ')
+    return (
+        f'{"ip" if ipv == 4 else "ip6"} {direction} '
+        f'{single_or_set(ips, rule["fileline"])} '
+    )
 
 
 def parse_maclist(rule, direction):
@@ -2077,8 +2244,9 @@ def parse_maclist(rule, direction):
         if re.match(r'^(-)?([0-9a-f]{2}:){5}[0-9a-f]{2}$', item):
             macs.append(item)
         else:
-            fail(f'{rule["fileline"]}Invalid MAC address "{item}" in: '
-                 f'{maclist}')
+            fail(
+                f'{rule["fileline"]}Invalid MAC address "{item}" in: {maclist}'
+            )
 
     # Return "ether saddr 0a:00:27:00:00:00 " string
     return f'ether {direction[4:]} {single_or_set(macs, rule["fileline"])} '
@@ -2146,8 +2314,10 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
                     'vlan': 'id',
                     'arp': 'htype',
                 }.get(protocol, protokey)
-            ports += (f'{protocol} {protokey} '
-                      f'{single_or_set(rule[key], rule["fileline"])} ')
+            ports += (
+                f'{protocol} {protokey} '
+                f'{single_or_set(rule[key], rule["fileline"])} '
+            )
     if ports:
         return ports
     return f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol} '
@@ -2160,16 +2330,18 @@ def parse_iplist_to_single_ip(rule, key, value, ipv):
         if check.count(':') == 1 and is_ip_address(check.split(':')[0]) == 4:
             check_ipv = 4  # IPv4 address with port
         elif (
-                check.startswith('[') and
-                ']:' in check and
-                is_ip_address(check[1:].split(']:')[0]) == 6
+            check.startswith('[')
+            and ']:' in check
+            and is_ip_address(check[1:].split(']:')[0]) == 6
         ):
             check_ipv = 6  # IPv6 address with port
         else:
             check_ipv = is_ip_address(check)
         if check_ipv == 0:
-            fail(f'{rule["fileline"]}Invalid IP address in '
-                 f'"{key}" target: {check}')
+            fail(
+                f'{rule["fileline"]}Invalid IP address in '
+                f'"{key}" target: {check}'
+            )
         if check_ipv == ipv:
             target.append(check)
     if not target:  # Nothing found for this ipv, don't generate rule
@@ -2185,8 +2357,9 @@ def parse_nat_to(rule, ipv):
         return ''
 
     # "to" can be IPv4, IPv6 or both, find correct one
-    target = parse_iplist_to_single_ip(rule, rule['statement'], rule['nat_to'],
-                                       ipv)
+    target = parse_iplist_to_single_ip(
+        rule, rule['statement'], rule['nat_to'], ipv
+    )
     if not target:
         return None
 
@@ -2241,32 +2414,40 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
 
     uid = ''
     if rule['uid']:
-        uid = (f'meta skuid '
-               f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} ')
+        uid = (
+            f'meta skuid '
+            f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} '
+        )
     gid = ''
     if rule['gid']:
-        gid = (f'meta skgid '
-               f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} ')
+        gid = (
+            f'meta skgid '
+            f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} '
+        )
 
     meta_set = ''
     if rule['mark_set']:
-        meta_set += (f'meta mark set {mark_set_argument(rule)} '
-                     f'ct mark set meta mark ')
+        meta_set += (
+            f'meta mark set {mark_set_argument(rule)} ct mark set meta mark '
+        )
     if rule['priority_set']:
         meta_set += f'meta priority set "{rule["priority_set"]}" '
 
     tproxy = ''
     if rule['tproxy']:
-        tproxy_to = parse_iplist_to_single_ip(rule, 'tproxy', rule['tproxy'],
-                                              ipv)
+        tproxy_to = parse_iplist_to_single_ip(
+            rule, 'tproxy', rule['tproxy'], ipv
+        )
         if not tproxy_to:
             return None
         tproxy = f'tproxy {"ip" if ipv == 4 else "ip6"} to {tproxy_to} '
 
     dscp = ''
     if rule['dscp']:
-        dscp = (f'{"ip" if ipv == 4 else "ip6"} dscp '
-                f'{single_or_set(rule["dscp"], rule["fileline"])} ')
+        dscp = (
+            f'{"ip" if ipv == 4 else "ip6"} dscp '
+            f'{single_or_set(rule["dscp"], rule["fileline"])} '
+        )
 
     ifname = parse_interface_names(rule)
 
@@ -2284,9 +2465,11 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
         return None
 
     # Return matcher string
-    return (f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
-            f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
-            f'{priority_match}{dscp}{uid}{gid}{tproxy}{meta_set}')
+    return (
+        f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
+        f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
+        f'{priority_match}{dscp}{uid}{gid}{tproxy}{meta_set}'
+    )
 
 
 def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
@@ -2302,10 +2485,13 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
         if not match and cast is None and rule['cast'] != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
         if rule['statement'] in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
-            fail(f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
-                 f'be used in "{szone}-{dzone}" section')
-        statement = rule_statement(szone, dzone, rule, ipv,
-                                   force_statement=rule['nft'])
+            fail(
+                f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
+                f'be used in "{szone}-{dzone}" section'
+            )
+        statement = rule_statement(
+            szone, dzone, rule, ipv, force_statement=rule['nft']
+        )
 
         # Automatically restore mark from conntrack before mark match or set
         # is used. Mark set needs it too for OR-operations.
@@ -2318,8 +2504,9 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
         # Does this rule need kernel helper?
         if rule['helper']:
             if rule['helper'].count('-') != 1:
-                fail(f'{rule["fileline"]}Invalid helper name: '
-                     f'{rule["helper"]}')
+                fail(
+                    f'{rule["fileline"]}Invalid helper name: {rule["helper"]}'
+                )
             HELPERS.append((rule['helper'], rule['protocol'], rule['dport']))
             kernelname = rule['helper'].split('-')[0].replace('_', '-')
             out(f'ct helper "{kernelname}" {rule["statement"]}')
@@ -2350,8 +2537,9 @@ def output_options(szone, dzone, rules, ipv):
             match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
                 continue
-            statement = rule_statement(szone, dzone, rule, ipv,
-                                       do_lograte=False)
+            statement = rule_statement(
+                szone, dzone, rule, ipv, do_lograte=False
+            )
             out(f'{match}{statement}')
 
 
@@ -2385,7 +2573,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     if ipv == 4 and output_chain and not input_chain:
         out('ip protocol igmp ip daddr 224.0.0.22 accept')  # membership report
     if ipv == 4 and input_chain and not output_chain:
-        out('ip protocol igmp ip daddr 224.0.0.1 accept')   # query
+        out('ip protocol igmp ip daddr 224.0.0.1 accept')  # query
 
     # Broadcast and multicast.
     #
@@ -2469,8 +2657,10 @@ def output_zone_vmaps(zones, rules):
         for dzone, dvalue in zones.items():
             for sinterface in svalue['interface']:
                 for dinterface in dvalue['interface']:
-                    out(f'"{sinterface}" . "{dinterface}" : '
-                        f'jump {szone}-{dzone},')
+                    out(
+                        f'"{sinterface}" . "{dinterface}" : '
+                        f'jump {szone}-{dzone},'
+                    )
     out('}')
     out('}')
 
@@ -2506,14 +2696,18 @@ def output_rule_section_no_header(rules, section):
             match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
                 continue
-            statement = rule_statement(section.upper(), '', rule, ipv,
-                                       force_statement=rule['nft'],
-                                       do_lograte=False)
+            statement = rule_statement(
+                section.upper(),
+                '',
+                rule,
+                ipv,
+                force_statement=rule['nft'],
+                do_lograte=False,
+            )
 
             # Automatically restore mark from conntrack when needed
-            if (
-                    not has_mark_restore and
-                    (rule['mark_match'] or rule['mark_set'])
+            if not has_mark_restore and (
+                rule['mark_match'] or rule['mark_set']
             ):
                 has_mark_restore = True
                 out('meta mark set ct mark')
@@ -2528,9 +2722,15 @@ def output_rule_section_no_header(rules, section):
 
 def output_special_chains(chain_rules):
     """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
-    for prefix in ('snat', 'dnat',
-                   'prerouting', 'postrouting',
-                   'forward', 'input', 'output'):
+    for prefix in (
+        'snat',
+        'dnat',
+        'prerouting',
+        'postrouting',
+        'forward',
+        'input',
+        'output',
+    ):
         for (section, ftype, priority), rules in chain_rules.items():
             if prefix != section:
                 continue
@@ -2542,7 +2742,8 @@ def output_special_chains(chain_rules):
             # Simply restore mark if mark_set was used in any chain. For that
             # reason output-chain should be outputted last.
             need_mark_restore = section == 'output' and any(
-                'ct mark set' in line for line in OUT)
+                'ct mark set' in line for line in OUT
+            )
 
             if not rules and not need_mark_restore:
                 continue
@@ -2583,10 +2784,14 @@ def output_static_chain_logging(chain, statement):
         out(f'log prefix "{chain} {statement} "{flags}')
         return
 
-    out(f'update @_lograte_set_4 {{ ip saddr limit rate {lograte} }} '
-        f'log prefix "{chain} {statement} "{flags}')
-    out(f'update @_lograte_set_6 {{ ip6 saddr limit rate {lograte} }} '
-        f'log prefix "{chain} {statement} "{flags}')
+    out(
+        f'update @_lograte_set_4 {{ ip saddr limit rate {lograte} }} '
+        f'log prefix "{chain} {statement} "{flags}'
+    )
+    out(
+        f'update @_lograte_set_6 {{ ip6 saddr limit rate {lograte} }} '
+        f'log prefix "{chain} {statement} "{flags}'
+    )
 
 
 def output_header(chain_rules):
@@ -2599,8 +2804,9 @@ def output_header(chain_rules):
     out('')
 
     # Insert include files
-    for filename in (find_config_files(CONFIG.share_dir, '*.nft') +
-                     find_config_files(CONFIG.etc_dir, '*.nft')):
+    for filename in find_config_files(
+        CONFIG.share_dir, '*.nft'
+    ) + find_config_files(CONFIG.etc_dir, '*.nft'):
         try:
             lines = filename.read_text('utf-8').splitlines()
         except PermissionError as error:
@@ -2613,8 +2819,9 @@ def output_header(chain_rules):
     # Logging chains
     for chain in ('invalid', 'smurfs', 'rpfilter'):
         out(f'chain {chain}_drop {{')
-        output_rule_section_no_header(chain_rules.get((chain, None, None), []),
-                                      chain)
+        output_rule_section_no_header(
+            chain_rules.get((chain, None, None), []), chain
+        )
         if chain == 'rpfilter':
             out('udp sport 67 udp dport 68 return')
         output_static_chain_logging(chain, 'drop')
@@ -2641,9 +2848,7 @@ def output_header(chain_rules):
     out('}')
 
     out('chain forward {')
-    out(
-        f'type filter hook forward priority filter{INTERNAL.priority_offset}'
-    )
+    out(f'type filter hook forward priority filter{INTERNAL.priority_offset}')
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
@@ -2717,9 +2922,8 @@ def optimize_accepts():
         line = OUT[linenum]
         if line == 'continue':  # No-op line generated by plain "counter"
             del OUT[linenum]
-        elif (
-                line.endswith(' accept') and
-                line.startswith(tuple(MERGES) + ('ip ', 'ip6 '))
+        elif line.endswith(' accept') and line.startswith(
+            tuple(MERGES) + ('ip ', 'ip6 ')
         ):
             # Line is "tcp dport ... accept"
             accepts.append(line)
@@ -2825,12 +3029,16 @@ def output_helpers():
 
     # Output prerouting
     out('chain helper {')
-    out(f'type filter hook prerouting priority filter'
-        f'{INTERNAL.priority_offset}')
+    out(
+        f'type filter hook prerouting priority filter'
+        f'{INTERNAL.priority_offset}'
+    )
     for name, protos in helpers.items():
         for proto, ports in protos.items():
-            out(f'{proto} dport {single_or_set(" ".join(ports))} '
-                f'ct helper set "{name}"')
+            out(
+                f'{proto} dport {single_or_set(" ".join(ports))} '
+                f'ct helper set "{name}"'
+            )
     out('}')
 
 
@@ -2839,14 +3047,17 @@ def output_rpfilter():
     if CONFIG.rpfilter == 'no':
         return
     out('chain rpfilter {')
-    out(f'type filter hook prerouting priority filter'
-        f'{INTERNAL.priority_offset}')
+    out(
+        f'type filter hook prerouting priority filter'
+        f'{INTERNAL.priority_offset}'
+    )
     interfaces = ''
     if CONFIG.rpfilter != 'yes':  # Specific interfaces?
-        interfaces = (f'iifname '
-                      f'{single_or_set(CONFIG.rpfilter, quote=True)} ')
-    out(f'{interfaces}fib saddr . mark . iif oif 0 meta ipsec missing '
-        f'jump rpfilter_drop')
+        interfaces = f'iifname {single_or_set(CONFIG.rpfilter, quote=True)} '
+    out(
+        f'{interfaces}fib saddr . mark . iif oif 0 meta ipsec missing '
+        f'jump rpfilter_drop'
+    )
     out('}')
 
 
@@ -2863,8 +3074,9 @@ def save_file(filename, lines):
     try:
         tmpfile.unlink(missing_ok=True)
         if isinstance(lines, dict):
-            tmpfile.write_text(json.dumps(lines, indent=2, sort_keys=True) +
-                               '\n', 'utf-8')
+            tmpfile.write_text(
+                json.dumps(lines, indent=2, sort_keys=True) + '\n', 'utf-8'
+            )
         else:
             tmpfile.write_text('\n'.join(lines) + '\n', 'utf-8')
         tmpfile.chmod(0o600)
@@ -2931,8 +3143,9 @@ def apply_final():
     next_file = state_file('next_file')
     if INTERNAL.command == 'check':
         if INTERNAL.root_power:  # "nft check" requires root
-            ret = run_program_rc(CONFIG.nft_bin + ['--check', '--file',
-                                                   next_file])
+            ret = run_program_rc(
+                CONFIG.nft_bin + ['--check', '--file', next_file]
+            )
         else:
             ret = 0
             warning('Not running as "root", skipping "nft check"')
@@ -2946,8 +3159,9 @@ def apply_final():
     run_program_rc(INTERNAL.get(f'pre_{INTERNAL.command}'))
 
     # Load "next"
-    ret = run_program_rc(CONFIG.nft_bin + ['--file', next_file],
-                         print_output=False)
+    ret = run_program_rc(
+        CONFIG.nft_bin + ['--file', next_file], print_output=False
+    )
 
     # Check failure
     if ret:
@@ -2966,6 +3180,7 @@ def apply_final():
 
 def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
     """Print assembled configuration in foomuuri.conf format."""
+
     def print_section(name: str, lines: list, indent: int = 2) -> None:
         """Section print helper."""
         if lines:
@@ -2975,44 +3190,52 @@ def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
 
     print('Assembled configuration << EOF')
 
-    print_section('foomuuri', [
-        f'{option} {value}'
-        for option, value in dataclasses.asdict(CONFIG).items()
-    ])
+    print_section(
+        'foomuuri',
+        [
+            f'{option} {value}'
+            for option, value in dataclasses.asdict(CONFIG).items()
+        ],
+    )
 
-    print_section('zone', [
-        f'{zone} {" ".join(statement["interface"])}'
-        for zone, statement in zones.items()
-    ])
+    print_section(
+        'zone',
+        [
+            f'{zone} {" ".join(statement["interface"])}'
+            for zone, statement in zones.items()
+        ],
+    )
 
-    print_section('zonemap', [
-        f'{" ".join(statement["line"])}'
-        for statement in zonemap
-    ])
+    print_section(
+        'zonemap', [f'{" ".join(statement["line"])}' for statement in zonemap]
+    )
 
     for chains, statements in chain_rules.items():
-        print_section(' '.join(chains), [
-            f'{" ".join(statement["line"])}'
-            for statement in statements
-        ])
+        print_section(
+            ' '.join(chains),
+            [f'{" ".join(statement["line"])}' for statement in statements],
+        )
 
-    print_section('iplist', [
-        f'{" ".join(line[1])}'
-        for line in config.get('iplist', [])
-    ])
+    print_section(
+        'iplist', [f'{" ".join(line[1])}' for line in config.get('iplist', [])]
+    )
 
     for zone2zone, statements in rules.items():
-        print_section('-'.join(zone2zone), [
-            f'{" ".join(statement["line"])}'
-            for statement in statements
-        ])
+        print_section(
+            '-'.join(zone2zone),
+            [f'{" ".join(statement["line"])}' for statement in statements],
+        )
 
-    print_section('hook', [
-        f'{hook} {join_args(INTERNAL.get(hook))}'
-        for hook in (
-            filter(lambda k: k.startswith(('pre_', 'post_')), INTERNAL)
-        ) if INTERNAL.get(hook)
-    ])
+    print_section(
+        'hook',
+        [
+            f'{hook} {join_args(INTERNAL.get(hook))}'
+            for hook in (
+                filter(lambda k: k.startswith(('pre_', 'post_')), INTERNAL)
+            )
+            if INTERNAL.get(hook)
+        ],
+    )
 
     print('EOF')
 
@@ -3053,7 +3276,7 @@ def command_start():
         command_iplist_refresh(
             iplists=iplists,
             currently_active=set(iplists),
-            override_update_only=iplists_add_on_start
+            override_update_only=iplists_add_on_start,
         )
 
     # Print assembled configuration
@@ -3081,8 +3304,9 @@ def command_stop():
 def command_block():
     """Load "block all traffic" ruleset."""
     minimal_config()
-    return run_program_rc(CONFIG.nft_bin + [
-        '--file', CONFIG.share_dir / 'block.fw'])
+    return run_program_rc(
+        CONFIG.nft_bin + ['--file', CONFIG.share_dir / 'block.fw']
+    )
 
 
 def parse_active_interface_zone():
@@ -3119,8 +3343,12 @@ def command_status():
             pid = int(filename.read_text(encoding='utf-8'))
             os.kill(pid, 0)
             print(f'Foomuuri-{child} is running, PID {pid}')
-        except (FileNotFoundError, ValueError, PermissionError,
-                ProcessLookupError):
+        except (
+            FileNotFoundError,
+            ValueError,
+            PermissionError,
+            ProcessLookupError,
+        ):
             print(f'Foomuuri-{child} is not running')
 
     # Zones
@@ -3131,9 +3359,11 @@ def command_status():
     print()
     print('zone {')
     for zone in zones:
-        interfaces = [interface
-                      for interface, int_zones in zone_interface.items()
-                      if zone == int_zones]
+        interfaces = [
+            interface
+            for interface, int_zones in zone_interface.items()
+            if zone == int_zones
+        ]
         print(f'  {zone:15s} {" ".join(interfaces)}')
     print('}')
     return 0
@@ -3169,8 +3399,9 @@ if HAVE_DBUS:
         def apply_out():
             """Apply current OUT commands."""
             lines = '\n'.join(save_final(None))
-            return run_program_rc(CONFIG.nft_bin + ['--file', '-'],
-                                  stdin=lines)
+            return run_program_rc(
+                CONFIG.nft_bin + ['--file', '-'], stdin=lines
+            )
 
         def verify_polkit_privilege(self, sender, privilege):
             """Verify authorization from PolicyKit."""
@@ -3180,25 +3411,35 @@ if HAVE_DBUS:
                     self.polkit = dbus.Interface(
                         dbus.SystemBus().get_object(
                             'org.freedesktop.PolicyKit1',
-                            '/org/freedesktop/PolicyKit1/Authority'),
-                        'org.freedesktop.PolicyKit1.Authority')
+                            '/org/freedesktop/PolicyKit1/Authority',
+                        ),
+                        'org.freedesktop.PolicyKit1.Authority',
+                    )
                 except dbus.DBusException:
                     # No polkit, fallback to check that UID == 0
                     iface = dbus.Interface(
-                        dbus.SystemBus().get_object('org.freedesktop.DBus',
-                                                    '/org/freedesktop/DBus'),
-                        'org.freedesktop.DBus')
+                        dbus.SystemBus().get_object(
+                            'org.freedesktop.DBus', '/org/freedesktop/DBus'
+                        ),
+                        'org.freedesktop.DBus',
+                    )
                     with contextlib.suppress(ValueError):
                         if int(iface.GetConnectionUnixUser(sender)) == 0:
                             return
-                    raise FoomuuriDbusException('Authorization failed') \
-                        from None
+                    raise FoomuuriDbusException(
+                        'Authorization failed'
+                    ) from None
 
             # Verify authorization from polkit
             try:
                 result = self.polkit.CheckAuthorization(
                     ('system-bus-name', {'name': sender}),
-                    privilege, {}, 1, '', timeout=60)
+                    privilege,
+                    {},
+                    1,
+                    '',
+                    timeout=60,
+                )
                 is_authorized = result[0]
                 if is_authorized:
                     return
@@ -3216,22 +3457,30 @@ if HAVE_DBUS:
                 return ''
 
             # Remove from input and output
-            out(f'delete element inet foomuuri input_zones '
+            out(
+                f'delete element inet foomuuri input_zones '
                 f'{{ "{interface}" : jump '
-                f'{zone}-{CONFIG.localhost_zone} }}')
-            out(f'delete element inet foomuuri output_zones '
+                f'{zone}-{CONFIG.localhost_zone} }}'
+            )
+            out(
+                f'delete element inet foomuuri output_zones '
                 f'{{ "{interface}" : jump '
-                f'{CONFIG.localhost_zone}-{zone} }}')
+                f'{CONFIG.localhost_zone}-{zone} }}'
+            )
 
             # Remove from forward
             for other, otherzone in interface_zone.items():
-                out(f'delete element inet foomuuri forward_zones '
+                out(
+                    f'delete element inet foomuuri forward_zones '
                     f'{{ "{other}" . "{interface}" : jump '
-                    f'{otherzone}-{zone} }}')
+                    f'{otherzone}-{zone} }}'
+                )
                 if other != interface:
-                    out(f'delete element inet foomuuri forward_zones '
+                    out(
+                        f'delete element inet foomuuri forward_zones '
                         f'{{ "{interface}" . "{other}" : '
-                        f'jump {zone}-{otherzone} }}')
+                        f'jump {zone}-{otherzone} }}'
+                    )
             return zone
 
         @staticmethod
@@ -3241,24 +3490,34 @@ if HAVE_DBUS:
             It must be already removed from other zones.
             """
             # Add to input and output
-            out(f'add element inet foomuuri input_zones '
+            out(
+                f'add element inet foomuuri input_zones '
                 f'{{ "{interface}" : jump '
-                f'{zone}-{CONFIG.localhost_zone} }}')
-            out(f'add element inet foomuuri output_zones '
+                f'{zone}-{CONFIG.localhost_zone} }}'
+            )
+            out(
+                f'add element inet foomuuri output_zones '
                 f'{{ "{interface}" : jump '
-                f'{CONFIG.localhost_zone}-{zone} }}')
+                f'{CONFIG.localhost_zone}-{zone} }}'
+            )
 
             # Add to forward
             for other, otherzone in interface_zone.items():
                 if other != interface:
-                    out(f'add element inet foomuuri forward_zones '
+                    out(
+                        f'add element inet foomuuri forward_zones '
                         f'{{ "{other}" . "{interface}" : '
-                        f'jump {otherzone}-{zone} }}')
-                    out(f'add element inet foomuuri forward_zones '
+                        f'jump {otherzone}-{zone} }}'
+                    )
+                    out(
+                        f'add element inet foomuuri forward_zones '
                         f'{{ "{interface}" . "{other}" : '
-                        f'jump {zone}-{otherzone} }}')
-            out(f'add element inet foomuuri forward_zones '
-                f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}')
+                        f'jump {zone}-{otherzone} }}'
+                    )
+            out(
+                f'add element inet foomuuri forward_zones '
+                f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}'
+            )
 
         def change_interface_zone(self, interface, new_zone):
             """Change interface to new_zone, or delete if new_zone is empty."""
@@ -3271,10 +3530,12 @@ if HAVE_DBUS:
                 # Other interfaces can be added to "localhost" only if
                 # "localhost-localhost" section is defined.
                 if new_zone != CONFIG.localhost_zone:
-                    warning(f'Can\'t change interface "lo" to zone '
-                            f'"{new_zone}"')
-                    raise FoomuuriDbusException(f"Can't change interface "
-                                                f'"lo" to zone "{new_zone}"')
+                    warning(
+                        f'Can\'t change interface "lo" to zone "{new_zone}"'
+                    )
+                    raise FoomuuriDbusException(
+                        f'Can\'t change interface "lo" to zone "{new_zone}"'
+                    )
                 return '', ''
             interface_zone = parse_active_interface_zone()
             self.clean_out()
@@ -3282,8 +3543,10 @@ if HAVE_DBUS:
             if new_zone:
                 self.add_interface(interface_zone, interface, new_zone)
             if self.apply_out():
-                raise FoomuuriDbusException('Failed to modify interface. See '
-                                            'journal for more information.')
+                raise FoomuuriDbusException(
+                    'Failed to modify interface. See '
+                    'journal for more information.'
+                )
             return old_zone, new_zone
 
         def parse_default_zone(self, interface, zone):
@@ -3303,8 +3566,9 @@ if HAVE_DBUS:
 
             "localhost" can't have any interfaces so don't include it.
             """
-            return [name for name in self.zones
-                    if name != CONFIG.localhost_zone]
+            return [
+                name for name in self.zones if name != CONFIG.localhost_zone
+            ]
 
         def method_remove_interface(self, zone, interface):
             """Remove interface from zone, or from all if zone is empty.
@@ -3312,8 +3576,9 @@ if HAVE_DBUS:
             This is currently always handled as "from all".
             """
             if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(f'Invalid interface name: '
-                                            f'{interface}')
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
             verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
             return self.change_interface_zone(interface, '')[0]
 
@@ -3324,8 +3589,9 @@ if HAVE_DBUS:
             from previous zone if needed.
             """
             if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(f'Invalid interface name: '
-                                            f'{interface}')
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
             zone = self.parse_default_zone(interface, zone)
             verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
             return self.change_interface_zone(interface, zone)[1]
@@ -3333,8 +3599,9 @@ if HAVE_DBUS:
         def method_change_zone_of_interface(self, zone, interface):
             """Change interface to zone."""
             if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(f'Invalid interface name: '
-                                            f'{interface}')
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
             zone = self.parse_default_zone(interface, zone)
             verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
             return self.change_interface_zone(interface, zone)[0]
@@ -3344,17 +3611,23 @@ if HAVE_DBUS:
 
         # pylint: disable=invalid-name  # dbus method names
 
-        @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='', out_signature='as',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'fi.foobar.Foomuuri1.zone',
+            in_signature='',
+            out_signature='as',
+            sender_keyword='sender',
+        )
         def getZones(self, sender=None):
             """Get list of available zones."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
 
-        @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'fi.foobar.Foomuuri1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def removeInterface(self, zone, interface, sender=None):
             """Remove interface from zone, or from all if zone is empty.
 
@@ -3363,9 +3636,12 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_remove_interface(zone, interface)
 
-        @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'fi.foobar.Foomuuri1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def addInterface(self, zone, interface, sender=None):
             """Add interface to zone.
 
@@ -3374,9 +3650,12 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_add_interface(zone, interface)
 
-        @dbus.service.method('fi.foobar.Foomuuri1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'fi.foobar.Foomuuri1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def changeZoneOfInterface(self, zone, interface, sender=None):
             """Change interface to zone.
 
@@ -3390,17 +3669,23 @@ if HAVE_DBUS:
 
         # pylint: disable=invalid-name  # dbus method names
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='', out_signature='as',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='',
+            out_signature='as',
+            sender_keyword='sender',
+        )
         def getZones(self, sender=None):
             """Get list of available zones."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def removeInterface(self, zone, interface, sender=None):
             """Remove interface from zone, or from all if zone is empty.
 
@@ -3409,9 +3694,12 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_remove_interface(zone, interface)
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def addInterface(self, zone, interface, sender=None):
             """Add interface to zone.
 
@@ -3420,9 +3708,12 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_add_interface(zone, interface)
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def changeZoneOfInterface(self, zone, interface, sender=None):
             """Change interface to zone.
 
@@ -3431,9 +3722,12 @@ if HAVE_DBUS:
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             return self.method_change_zone_of_interface(zone, interface)
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='s', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='s',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def getZoneOfSource(self, source, sender=None):
             """Get current zone of source.
 
@@ -3446,23 +3740,31 @@ if HAVE_DBUS:
                 raise FoomuuriDbusException('Invalid source address')
             return ''  # It's not in any zone
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def changeZoneOfSource(self, zone, source, sender=None):
             """Change source to zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            raise FoomuuriDbusException(f'Not implemented: change {source} '
-                                        f'to "{zone}"')
+            raise FoomuuriDbusException(
+                f'Not implemented: change {source} to "{zone}"'
+            )
 
-        @dbus.service.method('org.fedoraproject.FirewallD1.zone',
-                             in_signature='ss', out_signature='s',
-                             sender_keyword='sender')
+        @dbus.service.method(
+            'org.fedoraproject.FirewallD1.zone',
+            in_signature='ss',
+            out_signature='s',
+            sender_keyword='sender',
+        )
         def removeSource(self, zone, source, sender=None):
             """Remove source from zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            raise FoomuuriDbusException(f'Not implemented: remove {source} '
-                                        f'from "{zone}"')
+            raise FoomuuriDbusException(
+                f'Not implemented: remove {source} from "{zone}"'
+            )
 
     def command_dbus():
         """Start D-Bus daemon."""
@@ -3480,7 +3782,8 @@ if HAVE_DBUS:
             # Foomuuri D-Bus calls
             try:
                 foomuuri_name = dbus.service.BusName(
-                    'fi.foobar.Foomuuri1', bus)
+                    'fi.foobar.Foomuuri1', bus
+                )
                 foomuuri_name.get_name()  # Dummy call to get rid of pylint
             except dbus.exceptions.DBusException:
                 fail("Can't bind to system D-Bus: fi.foobar.Foomuuri1")
@@ -3491,13 +3794,17 @@ if HAVE_DBUS:
             if CONFIG.dbus_firewalld == 'yes':
                 try:
                     firewalld_name = dbus.service.BusName(
-                        'org.fedoraproject.FirewallD1', bus)
+                        'org.fedoraproject.FirewallD1', bus
+                    )
                     firewalld_name.get_name()  # Dummy call for pylint
                 except dbus.exceptions.DBusException:
-                    fail("Can't bind to system D-Bus: "
-                         'org.federaproject.FirewallD1')
+                    fail(
+                        "Can't bind to system D-Bus: "
+                        'org.federaproject.FirewallD1'
+                    )
                 firewalld_object = DbusFirewalld(
-                    bus, '/org/fedoraproject/FirewallD1', zones)
+                    bus, '/org/fedoraproject/FirewallD1', zones
+                )
 
             # Define reload/stop signal handler
             mainloop = GLib.MainLoop()
@@ -3512,8 +3819,7 @@ if HAVE_DBUS:
 
             signal.signal(signal.SIGHUP, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
-            save_file(CONFIG.run_dir / 'foomuuri-dbus.pid',
-                      [str(os.getpid())])
+            save_file(CONFIG.run_dir / 'foomuuri-dbus.pid', [str(os.getpid())])
 
             # Start processing messages
             verbose('D-Bus handler ready', 0)
@@ -3533,9 +3839,9 @@ if HAVE_DBUS:
     def command_set():
         """Modify runtime config by calling D-Bus methods."""
         if (
-                len(INTERNAL.parameters) != 4 or
-                INTERNAL.parameters[0] != 'interface' or
-                INTERNAL.parameters[2] != 'zone'
+            len(INTERNAL.parameters) != 4
+            or INTERNAL.parameters[0] != 'interface'
+            or INTERNAL.parameters[2] != 'zone'
         ):
             command_help()
         interface = INTERNAL.parameters[1]
@@ -3570,13 +3876,13 @@ def iplist_verify_filters(name, values, fileline):
     """Verify that iplist entry's filter is known."""
     for value in values:
         for spec in value.split('|')[1:]:
-            if not spec.startswith(('missing-ok',
-                                    'shell:',
-                                    'json:',
-                                    'html:',
-                                    'xml:')):
-                warning(f'{fileline}Unknown filter "|{spec}" in iplist '
-                        f'"{name} {value}"')
+            if not spec.startswith(
+                ('missing-ok', 'shell:', 'json:', 'html:', 'xml:')
+            ):
+                warning(
+                    f'{fileline}Unknown filter "|{spec}" in iplist '
+                    f'"{name} {value}"'
+                )
 
 
 def resolve_one_hostname(hostname):
@@ -3602,8 +3908,7 @@ def resolve_all_hostnames(resolve, cache):
                 cache[hostname]['ip'] = {}
                 cache[hostname]['dirty'] = True
             elif now < cacherefresh + options.refresh and INTERNAL.force < 0:
-                verbose(f'Using cached value for '
-                        f'"{remove_filters(hostname)}"')
+                verbose(f'Using cached value for "{remove_filters(hostname)}"')
                 continue
         todo.add(hostname)
     if not todo:
@@ -3612,8 +3917,10 @@ def resolve_all_hostnames(resolve, cache):
     # Resolve them
     verbose(f'DNS lookup for: {", ".join(todo)}')
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        jobs = {executor.submit(resolve_one_hostname, hostname): hostname
-                for hostname in todo}
+        jobs = {
+            executor.submit(resolve_one_hostname, hostname): hostname
+            for hostname in todo
+        }
         for future in concurrent.futures.as_completed(jobs):
             hostname = jobs[future]
             addrlist = future.result()
@@ -3628,13 +3935,17 @@ def resolve_all_hostnames(resolve, cache):
                 expire = now + resolve[hostname][0]
                 for addr in addrlist:
                     cache[hostname]['ip'][addr] = expire
-                verbose(f'Hostname "{remove_filters(hostname)}" resolved '
-                        f'to: {", ".join(addrlist)}')
+                verbose(
+                    f'Hostname "{remove_filters(hostname)}" resolved '
+                    f'to: {", ".join(addrlist)}'
+                )
             elif '|missing-ok' in hostname:
                 INTERNAL.iplist_missing_ok.add(hostname)
             else:
-                warning(f'No IP address found for hostname '
-                        f'"{remove_filters(hostname)}" in iplist')
+                warning(
+                    f'No IP address found for hostname '
+                    f'"{remove_filters(hostname)}" in iplist'
+                )
 
 
 def active_sets():
@@ -3666,21 +3977,16 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
                     raise urllib3.exceptions.ProtocolError(
                         f'status code: {response.status}'
                     )
-                content_length = int(
-                    response.headers.get('content-length', 0)
-                )
+                content_length = int(response.headers.get('content-length', 0))
                 if content_length > max_size:
                     raise ValueError(
-                        f'content length {content_length} '
-                        f'exceeds {max_size}'
+                        f'content length {content_length} exceeds {max_size}'
                     )
                 content = io.BytesIO()
                 for chunk in response.stream(INTERNAL.url_chunk_size):
                     content.write(chunk)
                     if content.tell() > max_size:
-                        raise ValueError(
-                            f'content length exceeds {max_size}'
-                        )
+                        raise ValueError(f'content length exceeds {max_size}')
                 return content.getvalue().decode('utf-8', errors='ignore')
         except (ValueError, urllib3.exceptions.HTTPError) as error:
             err = f'error: {error}'
@@ -3705,8 +4011,10 @@ def get_file(wildcard):
         if '|missing-ok' in wildcard:
             INTERNAL.iplist_missing_ok.add(wildcard)
         else:
-            warning(f'Can\'t read iplist file "{remove_filters(wildcard)}": '
-                    f'No such file')
+            warning(
+                f'Can\'t read iplist file "{remove_filters(wildcard)}": '
+                f'No such file'
+            )
         return None
     text = ''
     for filename in filenames:
@@ -3759,8 +4067,10 @@ def iterate_set_elements(data):
             elif 'range' in ipaddr:
                 yield f'{ipaddr["range"][0]}-{ipaddr["range"][1]}', expire
             else:
-                yield (f'{ipaddr["prefix"]["addr"]}/'
-                       f'{ipaddr["prefix"]["len"]}'), expire
+                yield (
+                    (f'{ipaddr["prefix"]["addr"]}/{ipaddr["prefix"]["len"]}'),
+                    expire,
+                )
 
 
 def command_iplist_list():
@@ -3796,8 +4106,10 @@ def command_iplist_add():
         setname = f'@{setname}'
     if setname not in iplists:
         fail(f'Unknown iplist name: {setname}')
-    timeout = max(iplists[setname].options.url_timeout,
-                  iplists[setname].options.dns_timeout)
+    timeout = max(
+        iplists[setname].options.url_timeout,
+        iplists[setname].options.dns_timeout,
+    )
     now = int(time.time())
     expire = now + timeout
 
@@ -3886,8 +4198,9 @@ def iplist_url_filters(url, text):
             text = run_program_pipe(['jq', '--raw-output', spec[5:]], text)
         elif spec.startswith('html:'):
             if HAVE_LXML:
-                text = lxml_parser(url, lxml.etree.HTMLParser(), spec[5:],
-                                   text)
+                text = lxml_parser(
+                    url, lxml.etree.HTMLParser(), spec[5:], text
+                )
             else:
                 warning('No python-lxml installed')
         elif spec.startswith('xml:'):
@@ -3918,8 +4231,9 @@ def iplist_cleanup_file(url: str, text: str) -> list[str]:
     return addresses
 
 
-def get_url_or_file(url: str, options: IPListSourceOptions,
-                    cache: dict) -> None:
+def get_url_or_file(
+    url: str, options: IPListSourceOptions, cache: dict
+) -> None:
     """Get URL or file content with cache check."""
     now = int(time.time())
     cachevalue = cache.get(url, {}).get('ip', {})
@@ -3947,8 +4261,10 @@ def get_url_or_file(url: str, options: IPListSourceOptions,
             'dirty': True,
             'refresh': now,
         }
-        verbose(f'Iplist content for "{url}" refreshed, '
-                f'{len(cache[url]["ip"])} entries')
+        verbose(
+            f'Iplist content for "{url}" refreshed, '
+            f'{len(cache[url]["ip"])} entries'
+        )
 
 
 def str_to_time(timestamp):
@@ -3978,9 +4294,9 @@ def read_old_iplist_format(cache):
             line = line.removeprefix('# ')
             items = line.split()
             if (
-                    not line.startswith('add element inet') or
-                    len(items) not in {10, 12} or
-                    not is_ip_address(items[6])
+                not line.startswith('add element inet')
+                or len(items) not in {10, 12}
+                or not is_ip_address(items[6])
             ):
                 continue
             setname = f'manual.@{items[4][:-2]}'
@@ -4010,9 +4326,9 @@ def read_iplist_cache(iplist):
     now = int(time.time())
     for key in list(cache):
         if (
-                (key.startswith('@') and key not in iplist) or
-                (key.startswith('manual.@') and key[7:] not in iplist) or
-                'ip' not in cache[key]
+            (key.startswith('@') and key not in iplist)
+            or (key.startswith('manual.@') and key[7:] not in iplist)
+            or 'ip' not in cache[key]
         ):
             # Iplist in cache, not in config
             del cache[key]
@@ -4056,6 +4372,7 @@ def write_iplist_cache(cache):
 
 def parse_config_iplist(config) -> IPLists:
     """Parse iplist{} sections from config."""
+
     # pylint: disable=too-many-branches
     def parse_option(
         options: IPListOptions, option: str, fileline: str
@@ -4080,8 +4397,10 @@ def parse_config_iplist(config) -> IPLists:
         if line[0] in {'timeout', 'refresh'}:
             option = line[0]
             value = ' '.join(line[1:])
-            warning(f'{fileline}Iplist "{option}" is obsolete, use '
-                    f'"dns_{option}" or "url_{option}" instead')
+            warning(
+                f'{fileline}Iplist "{option}" is obsolete, use '
+                f'"dns_{option}" or "url_{option}" instead'
+            )
             parse_option(default_options, f'dns_{option}={value}', fileline)
             parse_option(default_options, f'url_{option}={value}', fileline)
             continue
@@ -4112,8 +4431,10 @@ def parse_config_iplist(config) -> IPLists:
             if iplists[name].sources:
                 # Overwrite iplist sources
                 iplists[name].sources.clear()
-                warning(f'{fileline}Overwriting iplist "{name}" with value '
-                        f'"{" ".join(line[1:])}"')
+                warning(
+                    f'{fileline}Overwriting iplist "{name}" with value '
+                    f'"{" ".join(line[1:])}"'
+                )
             options = line[1:]
 
         # Parse the rest of iplist definition
@@ -4223,8 +4544,10 @@ def iplist_output_add_element(cache, setname, now):
 
 
 def iplist_output_values(
-    iplists: IPLists, cache: dict, currently_active: set[str],
-    update_only: set[str]
+    iplists: IPLists,
+    cache: dict,
+    currently_active: set[str],
+    update_only: set[str],
 ) -> int:
     """Output and apply nft commands to add iplist entries."""
     now = int(time.time())
@@ -4254,8 +4577,10 @@ def iplist_output_values(
         if update_only and setname not in update_only:
             continue  # Filtered away by command line parameter
         if setname not in currently_active:
-            warning(f'Iplist "{setname}" does not exist in currently active '
-                    f'firewall')
+            warning(
+                f'Iplist "{setname}" does not exist in currently active '
+                f'firewall'
+            )
             continue
         if not cache[setname].get('dirty') and INTERNAL.force < 0:
             verbose(f'Iplist "{setname}" is clean, skipping update')
@@ -4263,9 +4588,9 @@ def iplist_output_values(
 
         # Print error if set had values, but result is empty
         if (
-                setvalues and
-                not cache[setname]['ip'] and
-                INTERNAL.command == 'iplist'
+            setvalues
+            and not cache[setname]['ip']
+            and INTERNAL.command == 'iplist'
         ):
             if all(name in INTERNAL.iplist_missing_ok for name in setvalues):
                 warning(f'Iplist "{setname}" is empty')
@@ -4273,8 +4598,10 @@ def iplist_output_values(
                 fail(f'Iplist "{setname}" is empty', False)
                 error = 2
         else:
-            verbose(f'Updating iplist "{setname}", '
-                    f'{len(cache[setname]["ip"])} entries')
+            verbose(
+                f'Updating iplist "{setname}", '
+                f'{len(cache[setname]["ip"])} entries'
+            )
 
         # Add elements to sets
         iplist_output_add_element(cache, setname, now)
@@ -4298,7 +4625,7 @@ def iplist_apply_values(cache):
 def command_iplist_refresh(
     iplists: typing.Optional[IPLists] = None,
     currently_active: typing.Optional[set[str]] = None,
-    override_update_only: typing.Optional[set[str]] = None
+    override_update_only: typing.Optional[set[str]] = None,
 ) -> int:
     """Refresh iplist{} entries."""
     # Read minimal config and parse it
@@ -4321,8 +4648,7 @@ def command_iplist_refresh(
 
         # Special case for testing (non-root) or faked nft_bin
         if not currently_active and (
-                not INTERNAL.root_power or
-                CONFIG.nft_bin == ['true']
+            not INTERNAL.root_power or CONFIG.nft_bin == ['true']
         ):
             currently_active = set(iplists)
 
@@ -4332,8 +4658,10 @@ def command_iplist_refresh(
     else:
         # Default is to update all iplists (empty set).
         # This can be filtered with "foomuuri iplist refresh setname...".
-        update_only = {name if name.startswith('@') else f'@{name}'
-                       for name in INTERNAL.parameters[1:]}
+        update_only = {
+            name if name.startswith('@') else f'@{name}'
+            for name in INTERNAL.parameters[1:]
+        }
 
     # Make sure systemd's TimeoutStartSec doesn't trigger while updating
     # ruleset or writing cache file.
@@ -4397,9 +4725,9 @@ def command_list() -> int:
         print('macro {')
         for macro in sorted(macros):
             if not macro.startswith('_template_') and (
-                    not list_params or
-                    macro in list_params or
-                    any(item in list_params for item in macros[macro])
+                not list_params
+                or macro in list_params
+                or any(item in list_params for item in macros[macro])
             ):
                 print(f'  {macro:15s} {" ".join(macros[macro])}')
         print('}')
@@ -4415,8 +4743,9 @@ def command_list() -> int:
             ret |= list_named_counter('list counters table inet foomuuri')
         else:
             for counter in list_params:
-                ret |= list_named_counter(f'list counter inet foomuuri '
-                                          f'{counter}')
+                ret |= list_named_counter(
+                    f'list counter inet foomuuri {counter}'
+                )
         return ret
 
     # List zone-zone rules
@@ -4437,8 +4766,7 @@ def command_reload():
     args.extend(arg for arg in sys.argv[1:] if arg.startswith('--'))
 
     # Run commands
-    for sub, fatal in ((['start'], True),
-                       (['iplist', 'refresh'], False)):
+    for sub, fatal in ((['start'], True), (['iplist', 'refresh'], False)):
         ret = run_program_rc(args + sub)
         if ret and fatal:
             return ret
@@ -4483,8 +4811,9 @@ def command_try_reload():
     """
     # Get copy of currently active ruleset
     minimal_config()
-    old_rules = run_program_pipe(CONFIG.nft_bin +
-                                 ['list', 'table', 'inet', 'foomuuri'], None)
+    old_rules = run_program_pipe(
+        CONFIG.nft_bin + ['list', 'table', 'inet', 'foomuuri'], None
+    )
     if not old_rules or not old_rules.startswith('table inet foomuuri {'):
         fail('Foomuuri is not running, use "foomuuri start" instead')
 
@@ -4496,21 +4825,23 @@ def command_try_reload():
     # Verify from user if ruleset is ok
     timeout = CONFIG.try_reload_timeout
     print(f'You have {timeout} seconds to accept the changes.')
-    answer = input_timeout('Can you establish NEW connections (yes/no)? ',
-                           timeout)
+    answer = input_timeout(
+        'Can you establish NEW connections (yes/no)? ', timeout
+    )
     if answer.lower().startswith('y'):
         return 0
 
     # Revert to old ruleset and return errorcode 2
     warning('Revert to old config')
 
-    save_file(state_file('good_file'), [
-        'table inet foomuuri',
-        'delete table inet foomuuri',
-        '',
-        old_rules])
-    return run_program_rc(CONFIG.nft_bin +
-                          ['--file', state_file('good_file')]) + 2
+    save_file(
+        state_file('good_file'),
+        ['table inet foomuuri', 'delete table inet foomuuri', '', old_rules],
+    )
+    return (
+        run_program_rc(CONFIG.nft_bin + ['--file', state_file('good_file')])
+        + 2
+    )
 
 
 def seconds_to_human(seconds):
@@ -4541,8 +4872,10 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
                 if cfg['history'][-1 - cons] != cfg['state']:
                     break
             historycount = cfg['history'].count(cfg['state'])
-            extra = (f'{extra}, consecutive_{updown} {cons}, '
-                     f'history_{updown} {historycount}')
+            extra = (
+                f'{extra}, consecutive_{updown} {cons}, '
+                f'history_{updown} {historycount}'
+            )
             history = ''.join('.' if item else '!' for item in cfg['history'])
     else:
         extra = 'startup change'
@@ -4550,12 +4883,21 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     if history:
         verbose(f'{grouptarget} {name} history: {history}', 0)
     cfg['state_time'] = cfg['last_down_interval'] = now
-    monitor_run_command(targets, groups, cfg, grouptarget, name,
-                        updown, extra, history)
+    monitor_run_command(
+        targets, groups, cfg, grouptarget, name, updown, extra, history
+    )
 
 
-def monitor_run_command(targets, groups, cfg,  # noqa: RUF100,PLR0917
-                        grouptarget, name, updown, extra, history):
+def monitor_run_command(  # noqa: RUF100,PLR0917
+    targets,
+    groups,
+    cfg,
+    grouptarget,
+    name,
+    updown,
+    extra,
+    history,
+):
     """Run monitor's external command if configured.
 
     It will receive current state change event info and all states in
@@ -4580,10 +4922,12 @@ def monitor_run_command(targets, groups, cfg,  # noqa: RUF100,PLR0917
     }
     for target, icfg in targets.items():
         env[f'FOOMUURI_TARGET_{env_cleanup(target)}'] = (
-            'up' if icfg['state'] else 'down')
+            'up' if icfg['state'] else 'down'
+        )
     for group, icfg in groups.items():
         env[f'FOOMUURI_GROUP_{env_cleanup(group)}'] = (
-            'up' if icfg.get('state', True) else 'down')
+            'up' if icfg.get('state', True) else 'down'
+        )
     run_program_rc(proc, env=env)
 
 
@@ -4596,8 +4940,9 @@ def monitor_down_interval(targets, groups, cfg, grouptarget, name):
     seconds = int(now - cfg['state_time'] + 0.5)
     extra = f'previous change was {seconds_to_human(seconds)} ago'
     verbose(f'{grouptarget} {name} is still down, {extra}', 0)
-    monitor_run_command(targets, groups, cfg, grouptarget, name,
-                        'down_interval', extra, None)
+    monitor_run_command(
+        targets, groups, cfg, grouptarget, name, 'down_interval', extra, None
+    )
 
 
 def monitor_update_groups(targets, groups):
@@ -4644,18 +4989,16 @@ def monitor_update_target(targets, groups, target, state):
         # - history has too many downs
         # OR
         # - last n items were down
-        if (
-                cfg['history_size'] - count_up >= cfg['history_down'] or
-                not any(cfg['history'][-cfg['consecutive_down']:])
+        if cfg['history_size'] - count_up >= cfg['history_down'] or not any(
+            cfg['history'][-cfg['consecutive_down'] :]
         ):
             cfg['state'] = False
             monitor_state_command(targets, groups, cfg, 'target', target)
         elif startup_change:  # Always send an event on startup
             monitor_state_command(targets, groups, cfg, 'target', target)
 
-    elif (
-            count_up >= cfg['history_up'] and
-            all(cfg['history'][-cfg['consecutive_up']:])
+    elif count_up >= cfg['history_up'] and all(
+        cfg['history'][-cfg['consecutive_up'] :]
     ):
         # Currently down. Target goes up if:
         # - history has enough ups
@@ -4705,7 +5048,7 @@ def monitor_parse_line(targets, groups, target, line):
 
     # Add result to statistics
     cfg = targets[target]
-    cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size']:]
+    cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size'] :]
 
 
 def command_option_values(cmd):
@@ -4746,8 +5089,10 @@ def mangle_fping_command(target, cfg):
     elif squiet and interval:
         with contextlib.suppress(ValueError):
             if int(squiet) * 1000 != int(interval):
-                warning(f'Mismatching "--squiet" and "--interval" values in '
-                        f'target "{target}": {" ".join(cmd)}')
+                warning(
+                    f'Mismatching "--squiet" and "--interval" values in '
+                    f'target "{target}": {" ".join(cmd)}'
+                )
 
     # Add --loop if missing to get continous reports
     if '--loop' not in options:
@@ -4772,11 +5117,13 @@ def monitor_start_targets(targets, groups):
         cmd = mangle_fping_command(target, cfg)
         verbose(f'target {target} command: {" ".join(map(str, cmd))}', 2)
         try:
-            cfg['proc'] = subprocess.Popen(cmd,
-                                           stdin=subprocess.DEVNULL,
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.STDOUT,
-                                           encoding='utf-8')
+            cfg['proc'] = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding='utf-8',
+            )
             verbose(f'target {target} monitoring command started')
             started_something = True
         except OSError as error:
@@ -4798,8 +5145,9 @@ def monitor_start_targets(targets, groups):
 def monitor_close_target(targets, groups, target):
     """Target monitoring command died. Mark it as down."""
     # Terminate proc and schedule restart
-    verbose(f'target {target} monitoring command died, restarting it in 30s',
-            0)
+    verbose(
+        f'target {target} monitoring command died, restarting it in 30s', 0
+    )
     cfg = targets[target]
     cfg['proc'].terminate()
     cfg['proc'].wait(timeout=0.1)
@@ -4818,8 +5166,7 @@ def monitor_read_targets(targets, groups):
     monitor_start_targets(targets, groups)
 
     # Wait for incoming lines from any client, up to 10 seconds
-    readfd = [item['proc'].stdout for item in targets.values()
-              if item['proc']]
+    readfd = [item['proc'].stdout for item in targets.values() if item['proc']]
     poll = select.select(readfd, [], [], 10.0)
 
     # Read all incoming lines
@@ -4858,23 +5205,22 @@ def parse_config_targets(config):
             'command_up': [],
             'command_down': [],
             'command_down_interval': [],
-            'consecutive_up': 20,    # last n were UP        => UP
+            'consecutive_up': 20,  # last n were UP        => UP
             'consecutive_down': 10,  # last n were DOWN      => DOWN
-            'history_up': 80,        # count of UPs => n     => UP
-            'history_down': 30,      # count of DOWNs >= n   => DOWN
+            'history_up': 80,  # count of UPs => n     => UP
+            'history_down': 30,  # count of DOWNs >= n   => DOWN
             'history_size': 100,
-            'statistics_size': 300,     # Keep last 300 results
+            'statistics_size': 300,  # Keep last 300 results
             'statistics_interval': 60,  # Write it once a minute
-            'down_interval': 600,    # How often to run command_down_interval
-
+            'down_interval': 600,  # How often to run command_down_interval
             # Internal items, don't set in config:
             # 'state': True,         # Up or down
             # 'state_time': time(),  # Timestamp for last state change
             # 'last_down_interval': time(),  # Still down timestamp
             # 'history': [True] * history_size,
             # 'proc': Popen()
-            'proc_restart': 0,       # Start immediately
-            'time': [],              # Statistics
+            'proc_restart': 0,  # Start immediately
+            'time': [],  # Statistics
         }
         fileline = ''
         for fileline, line in config.pop(f'target {name}'):
@@ -4891,22 +5237,31 @@ def parse_config_targets(config):
         # Verify section
         if not cfg['command']:
             fail(f'{fileline}Missing "command" keyword in "target {name}"')
-        for key in ('consecutive_up', 'consecutive_down',
-                    'history_up', 'history_down'):
-            if (
-                cfg[key] >  # ty: ignore[unsupported-operator]
-                cfg['history_size']
-            ):
-                fail(f'{fileline}{key} is larger than history_size in '
-                     f'"target {name}": {cfg[key]} > {cfg["history_size"]}')
-        if (
-            cfg['history_size'] -  # ty: ignore[unsupported-operator]
-            cfg['history_up'] >= cfg['history_down']
+        for key in (
+            'consecutive_up',
+            'consecutive_down',
+            'history_up',
+            'history_down',
         ):
-            warning(f'{fileline}Possible up-down loop in '
-                    f'"target {name}": history_size {cfg["history_size"]} - '
-                    f'history_up {cfg["history_up"]} >= '
-                    f'history_down {cfg["history_down"]}')
+            if (
+                cfg[key]  # ty: ignore[unsupported-operator]
+                > cfg['history_size']
+            ):
+                fail(
+                    f'{fileline}{key} is larger than history_size in '
+                    f'"target {name}": {cfg[key]} > {cfg["history_size"]}'
+                )
+        if (
+            cfg['history_size']  # ty: ignore[unsupported-operator]
+            - cfg['history_up']
+            >= cfg['history_down']
+        ):
+            warning(
+                f'{fileline}Possible up-down loop in '
+                f'"target {name}": history_size {cfg["history_size"]} - '
+                f'history_up {cfg["history_up"]} >= '
+                f'history_down {cfg["history_down"]}'
+            )
 
     return targets
 
@@ -4922,7 +5277,7 @@ def parse_config_groups(config, targets):
             'command_up': [],
             'command_down': [],
             'command_down_interval': [],
-            'down_interval': 600,    # How often to run command_down_interval
+            'down_interval': 600,  # How often to run command_down_interval
         }
         fileline = ''
         for fileline, line in config.pop(f'group {name}'):
@@ -5004,14 +5359,14 @@ def command_monitor():
         INTERNAL.keep_going = 1
         signal.signal(signal.SIGHUP, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
-        save_file(CONFIG.run_dir / 'foomuuri-monitor.pid',
-                  [str(os.getpid())])
+        save_file(CONFIG.run_dir / 'foomuuri-monitor.pid', [str(os.getpid())])
 
         # Start monitoring
         verbose('Target monitor ready', 0)
         notify('READY=1')
-        stat_interval = min(cfg['statistics_interval']
-                            for cfg in targets.values())
+        stat_interval = min(
+            cfg['statistics_interval'] for cfg in targets.values()
+        )
         next_stat = time.time() + stat_interval / 5
         while INTERNAL.keep_going == 1:
             monitor_read_targets(targets, groups)
@@ -5127,7 +5482,10 @@ def run_command():
     """Run CONFIG[_command]."""
     # Only some commands can take arguments
     if INTERNAL.parameters and INTERNAL.command not in {
-            'list', 'iplist', 'set'}:
+        'list',
+        'iplist',
+        'set',
+    }:
         return command_help()
 
     # Help/version doesn't need root
