@@ -3008,7 +3008,7 @@ def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
         ])
 
     print_section('hook', [
-        join_args(INTERNAL.get(hook))
+        f'{hook} {join_args(INTERNAL.get(hook))}'
         for hook in (
             filter(lambda k: k.startswith(('pre_', 'post_')), INTERNAL)
         ) if INTERNAL.get(hook)
