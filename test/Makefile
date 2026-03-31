@@ -28,6 +28,6 @@ clean distclean:
 	rm -f */zone
 
 $(SUBDIRS):
+	[ ! -f $@/Makefile ] || $(MAKE) -C $@
 	$(RUN) ../src/foomuuri --set=etc_dir=$@ --set=share_dir=../etc --set=state_dir=$@ --set=run_dir=$@ check
 	diff -u $@/golden.txt $@/next.fw
-	[ ! -f $@/Makefile ] || $(MAKE) -C $@
