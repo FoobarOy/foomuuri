@@ -260,6 +260,18 @@ table inet foomuuri {
 		timeout 1m
 	}
 
+	set dns_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set dns_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
 	set empty_4 {
 		type ipv4_addr
 		flags interval,timeout
@@ -302,6 +314,12 @@ table inet foomuuri {
 	}
 
 }
+
+flush set inet foomuuri dns_4
+add element inet foomuuri dns_4 {
+	127.0.0.1,
+}
+flush set inet foomuuri dns_6
 
 flush set inet foomuuri empty_4
 flush set inet foomuuri empty_6
