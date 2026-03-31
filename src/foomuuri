@@ -3952,7 +3952,7 @@ def resolve_all_hostnames(resolve, cache):
                 iplist_cache_init(cache, hostname)
                 cache[hostname]['dirty'] = True
                 cache[hostname]['refresh'] = now
-                expire = now + resolve[hostname][0]
+                expire = now + resolve[hostname].timeout
                 for addr in addrlist:
                     cache[hostname]['ip'][addr] = expire
                 verbose(
