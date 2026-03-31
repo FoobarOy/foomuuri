@@ -43,6 +43,13 @@ class TestValidators(unittest.TestCase):
         self.assertTrue(Validators.str_words('word'))
         self.assertTrue(Validators.str_words('word word'))
 
+        self.assertFalse(Validators.has_elements([]))
+        self.assertTrue(Validators.has_elements(['a']))
+        self.assertTrue(Validators.has_elements(['a', 'b']))
+        self.assertFalse(Validators.has_elements({}))
+        self.assertTrue(Validators.has_elements({'a'}))
+        self.assertTrue(Validators.has_elements({'a', 'b'}))
+
         self.assertFalse(Validators.int_positive_or_zero(-1))
         self.assertTrue(Validators.int_positive_or_zero(0))
         self.assertTrue(Validators.int_positive_or_zero(1))

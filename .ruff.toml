@@ -35,6 +35,7 @@ lint.ignore = [
     "T201",
     "TRY003", # Avoid specifying long messages outside the exception class
     "TRY301", # Abstract `raise` to an inner function
+    "UP007", # [*] Use `X | Y` for type annotations
     "UP045", # [*] Use `X | None` for type annotations
 
     # --preview

@@ -105,9 +105,14 @@ class Validators:
         return 1 <= len(value) <= 15  # IFNAMSIZ=16 including NUL
 
     @staticmethod
-    def str_words(value: str):
+    def str_words(value: str) -> bool:
         """Assert value is one or more words."""
         return len(value.split()) >= 1
+
+    @staticmethod
+    def has_elements(value: typing.Union[set, list]) -> bool:
+        """Assert value is non-empty list or set."""
+        return len(value) >= 1
 
     @staticmethod
     def int_positive_or_zero(value: int):
@@ -189,6 +194,8 @@ class TypedConfig:
         # convert_str is not defined in field metadata.
         implicit_converters = {
             int: int,
+            set: lambda v: set(v.split()),
+            list: str.split,
             pathlib.PosixPath: pathlib.PosixPath,
         }
 
@@ -219,6 +226,7 @@ class TypedConfig:
         # "Built-in" implicit appenders.
         implicit_appenders = {
             str: lambda value, append: f'{value} {append}',
+            set: lambda value, append: value | append,
             list: lambda value, append: value + append,
         }
 
@@ -261,11 +269,13 @@ class Config(TypedConfig):
     dbus_zone: str = dataclasses.field(
         default='public', metadata={'validate': Validators.str_zone_name}
     )
-    rpfilter: str = dataclasses.field(
-        default='yes', metadata={'validate': Validators.str_words}
+    rpfilter: set = dataclasses.field(
+        default_factory=lambda: {'yes'},
+        metadata={'validate': Validators.has_elements},
     )
-    counter: str = dataclasses.field(
-        default='no', metadata={'validate': Validators.str_words}
+    counter: set = dataclasses.field(
+        default_factory=lambda: {'no'},
+        metadata={'validate': Validators.has_elements},
     )
     set_size: int = dataclasses.field(
         default=65535, metadata={'validate': Validators.int_positive}
@@ -278,7 +288,11 @@ class Config(TypedConfig):
         default='no', metadata={'validate': Validators.str_yes_no}
     )
     nft_bin: list = dataclasses.field(
-        default_factory=lambda: ['nft'], metadata={'convert_str': shlex.split}
+        default_factory=lambda: ['nft'],
+        metadata={
+            'convert_str': shlex.split,
+            'validate': Validators.has_elements,
+        },
     )
     try_reload_timeout: int = dataclasses.field(
         default=15, metadata={'validate': Validators.int_positive}
@@ -1844,10 +1858,19 @@ def suffix_mask(value, compare):
     return f'& :{splitted} {compare}{addr}'
 
 
-def single_or_set(data, fileline='', quote=False):
-    """Convert data to single item or set if multiple values."""
+def single_or_set(
+    data: typing.Union[str, list, set],
+    fileline: str = '',
+    quote: bool = False,
+) -> str:
+    """Convert data to nft string containing single item or set."""
     # Convert to list
-    values = data if isinstance(data, list) else data.split()
+    if isinstance(data, str):
+        values = data.split()
+    elif isinstance(data, list):
+        values = data
+    else:
+        values = list(data)
 
     # Handle negative: add "!=" to final rule
     neg = ''
@@ -1859,10 +1882,9 @@ def single_or_set(data, fileline='', quote=False):
                     f'{" ".join(values)}'
                 )
             neg = '!= '
+            values[index] = value.removeprefix('-')
         elif neg:
             fail(f'{fileline}Can\'t mix "+" and "-" items: {" ".join(values)}')
-        if neg:
-            values[index] = value[1:]
 
     # Quote interface names and similar items. "inet" is a reserved word
     # but can also be an interface name. It must be quoted.
@@ -1879,7 +1901,7 @@ def single_or_set(data, fileline='', quote=False):
 
     # nft doesn't support "saddr { @foo, @bar }"
     if any(value.startswith('@') for value in values):
-        fail(f'{fileline}Only single @list can be used: {" ".join(values)}')
+        fail(f'{fileline}Only one @iplist can be used: {" ".join(values)}')
 
     # Multiple, use "{set}"
     return f'{neg}{{ {", ".join(sorted(set(values)))} }}'
@@ -2074,7 +2096,6 @@ def rule_statement(
 ):
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-locals
 
     # Map internal statement to nft statement
     if rule['mss']:
@@ -2102,11 +2123,10 @@ def rule_statement(
     #   zone-any   - add to all rules in all zone-*
     #   any-zone   - add to all rules in all *-zone
     # Multiple zone-pairs can be defined
-    configlist = set(CONFIG.counter.split())
     checklist = {'yes', f'{szone}-{dzone}', f'{szone}-any', f'any-{dzone}'}
     if not rule['nft'] and (
         rule['counter'] is not None  # "counter" in this single rule
-        or not configlist.isdisjoint(checklist)  # zone level enable
+        or not checklist.isdisjoint(CONFIG.counter)  # zone level enable
     ):
         prefix += 'counter '
         if rule['counter']:
@@ -3044,7 +3064,7 @@ def output_helpers():
 
 def output_rpfilter():
     """Prerouting chain to check rpfilter."""
-    if CONFIG.rpfilter == 'no':
+    if 'no' in CONFIG.rpfilter:
         return
     out('chain rpfilter {')
     out(
@@ -3052,7 +3072,7 @@ def output_rpfilter():
         f'{INTERNAL.priority_offset}'
     )
     interfaces = ''
-    if CONFIG.rpfilter != 'yes':  # Specific interfaces?
+    if 'yes' not in CONFIG.rpfilter:  # Specific interfaces?
         interfaces = f'iifname {single_or_set(CONFIG.rpfilter, quote=True)} '
     out(
         f'{interfaces}fib saddr . mark . iif oif 0 meta ipsec missing '

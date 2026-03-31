@@ -33,12 +33,15 @@ class TestTypedConfig(unittest.TestCase):
         class TestConfig(TypedConfig):
             """Test class."""
 
+            # pylint: disable=too-many-instance-attributes
             initialized_str: str = 'init_value1'
             uninitialized_str: str = field(init=False)
             initialized_untyped = 'init_value2'  # noqa: RUF100,RUF045
+            type_conversion_float: float = 0.0
             type_conversion_int: int = 0
             type_conversion_list: list = field(default_factory=list)
             type_conversion_posixpath: pathlib.PosixPath = field(init=False)
+            type_conversion_set: set = field(default_factory=set)
             validation: str = field(
                 init=False, metadata={'validate': lambda v: v}
             )
@@ -96,13 +99,26 @@ class TestTypedConfig(unittest.TestCase):
             self.set_from_str('type_conversion_posixpath', '/path/'),
             pathlib.PosixPath('/path/'),
         )
+        # Supported conversion, from str to list
+        self.assertEqual(
+            self.set_from_str('type_conversion_list', '1 2 2 3 4'),
+            ['1', '2', '2', '3', '4'],
+        )
+        # Supported conversion, from str to set
+        self.assertEqual(
+            self.set_from_str('type_conversion_set', '1 2 2 3 4'),
+            {'1', '2', '3', '4'},
+        )
         # Assignment, str to str
         self.assertEqual(self.set_from_str('initialized_str', '123'), '123')
         # Assignment, list converted from str
         self.assertEqual(self.set_from_str('conversion', '1'), ['1'])
-        # Unsupported conversion, from str to list
+        # Unsupported conversion, from str to float
         self.assertRaises(
-            TypeError, self.config.set_from_str, 'type_conversion_list', '[]'
+            TypeError,
+            self.config.set_from_str,
+            'type_conversion_float',
+            '42.0',
         )
         # Assign non-existing attribute
         self.assertRaises(
@@ -121,6 +137,24 @@ class TestTypedConfig(unittest.TestCase):
         # Appending, list converted from str to list
         self.assertEqual(self.set_from_str('conversion', '1'), ['1'])
         self.assertEqual(self.append_from_str('conversion', '2'), ['1', '2'])
+        # Appending, str to list
+        self.assertEqual(
+            self.set_from_str('type_conversion_list', '1 2'),
+            ['1', '2'],
+        )
+        self.assertEqual(
+            self.append_from_str('type_conversion_list', '2 3'),
+            ['1', '2', '2', '3'],
+        )
+        # Appending, str to set
+        self.assertEqual(
+            self.set_from_str('type_conversion_set', '1 2'),
+            {'1', '2'},
+        )
+        self.assertEqual(
+            self.append_from_str('type_conversion_set', '2 3'),
+            {'1', '2', '3'},
+        )
         # Unsupported append, from str to int
         self.assertRaises(
             TypeError, self.append_from_str, 'type_conversion_int', '1'
@@ -142,9 +176,11 @@ class TestTypedConfig(unittest.TestCase):
             [
                 'conversion',
                 'initialized_str',
+                'type_conversion_float',
                 'type_conversion_int',
                 'type_conversion_list',
                 'type_conversion_posixpath',
+                'type_conversion_set',
                 'uninitialized_str',
                 'validation',
             ],
