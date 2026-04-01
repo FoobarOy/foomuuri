@@ -114,8 +114,28 @@ class TestIplistParseConfig(unittest.TestCase):
             iplists = parse_config_iplist(minimal_config())
             self.assertEqual(iplists['@foo'].sources, [])
 
+    def test_valid_default_options(self, *_):
+        """Test valid default options, space and equal-sign styles."""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
+            url_max_size 1024
+            url_timeout=69d
+            url_refresh=42d
+            dns_timeout 1d 2h  # space-separated option value is
+                               # supported by parse_duration()
+            @foo https://foob.ar/
+        """,
+        ):
+            iplists = parse_config_iplist(minimal_config())
+            options = iplists['@foo'].options
+            self.assertEqual(options.url_timeout, parse_duration('69d', 0))
+            self.assertEqual(options.url_refresh, parse_duration('42d', 0))
+            self.assertEqual(options.dns_timeout, parse_duration('1d 2h', 0))
+            self.assertEqual(options.url_max_size, 1024)
+
     def test_single_line_multiple_valid_default_options(self, *_):
-        """Test multple valid default options on single line."""
+        """Test mulitple valid default options on single line."""
         with self.mock_config_foomuuri(
             section='iplist',
             content="""
@@ -142,8 +162,8 @@ class TestIplistParseConfig(unittest.TestCase):
                 _ = parse_config_iplist(minimal_config())
 
             fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist name: '
-                'invalid url_timeout=2d url_refresh=1d'
+                f'File {config_file} line 4: Invalid iplist{{}} option name: '
+                'invalid=url_timeout=2d url_refresh=1d'
             )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
@@ -162,6 +182,40 @@ class TestIplistParseConfig(unittest.TestCase):
             fail.assert_called_once_with(
                 f'File {config_file} line 4: Unsupported syntax: '
                 'url_timeout=2d invalid url_refresh=1d'
+            )
+
+    @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
+    def test_invalid_space_style_default_option_name(self, fail, *_):
+        """Test invalid space-style default option name."""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
+            url_min_size 1024
+        """,
+        ) as config_file:
+            with self.assertRaises(SystemExit):
+                _ = parse_config_iplist(minimal_config())
+
+            fail.assert_called_once_with(
+                f'File {config_file} line 4: Invalid iplist{{}} option name: '
+                'url_min_size=1024'
+            )
+
+    @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
+    def test_invalid_space_style_default_option_value(self, fail, *_):
+        """Test invalid space-style default option value."""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
+            url_max_size abcd
+        """,
+        ) as config_file:
+            with self.assertRaises(SystemExit):
+                _ = parse_config_iplist(minimal_config())
+
+            fail.assert_called_once_with(
+                f'File {config_file} line 4: Invalid iplist{{}} option value: '
+                'url_max_size=abcd'
             )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
