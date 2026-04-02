@@ -7,6 +7,7 @@
   `foomuuri-iplist.timer` service. This can be used with "unsafe" external
   iplists to make sure Foomuuri start will not fail or block your access
   for first minutes after reboot.
+* Change `iplist` section option `-merge` to `merge=no`.
 
 ## 0.32 (2026-03-11)
 
