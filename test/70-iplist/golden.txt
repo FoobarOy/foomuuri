@@ -284,6 +284,16 @@ table inet foomuuri {
 		auto-merge
 	}
 
+	set empty_no_merge_4 {
+		type ipv4_addr
+		flags interval,timeout
+	}
+
+	set empty_no_merge_6 {
+		type ipv6_addr
+		flags interval,timeout
+	}
+
 	set file_4 {
 		type ipv4_addr
 		flags interval,timeout
@@ -294,6 +304,40 @@ table inet foomuuri {
 		type ipv6_addr
 		flags interval,timeout
 		auto-merge
+	}
+
+	set one_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set one_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set start_4 {
+		type ipv4_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set start_6 {
+		type ipv6_addr
+		flags interval,timeout
+		auto-merge
+	}
+
+	set three_4 {
+		type ipv4_addr
+		flags interval,timeout
+	}
+
+	set three_6 {
+		type ipv6_addr
+		flags interval,timeout
 	}
 
 	set two_4 {
@@ -324,6 +368,9 @@ flush set inet foomuuri dns_6
 flush set inet foomuuri empty_4
 flush set inet foomuuri empty_6
 
+flush set inet foomuuri empty_no_merge_4
+flush set inet foomuuri empty_no_merge_6
+
 flush set inet foomuuri file_4
 add element inet foomuuri file_4 {
 	10.1.0.1,
@@ -334,6 +381,22 @@ flush set inet foomuuri file_6
 add element inet foomuuri file_6 {
 	ff00::10,
 	ff00::20,
+}
+
+flush set inet foomuuri one_4
+add element inet foomuuri one_4 {
+	10.0.0.1,
+}
+flush set inet foomuuri one_6
+
+flush set inet foomuuri three_4
+add element inet foomuuri three_4 {
+	10.0.0.4,
+	10.0.0.5,
+}
+flush set inet foomuuri three_6
+add element inet foomuuri three_6 {
+	ff00::1,
 }
 
 flush set inet foomuuri two_4
