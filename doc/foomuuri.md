@@ -93,7 +93,8 @@ ruleset or only specified **ZONE-ZONE**.
 : List entries of all or specified IPLIST(s).
 
 **iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...**
-: Add or refresh IPADDRESS(es) to IPLIST.
+: Add or refresh IPADDRESS(es) to IPLIST. TIMEOUT format is the same as in
+iplist{} section, for example "4h".
 
 **iplist del IPLIST IPADDRESS [IPADDRESS]...**
 : Delete IPADDRESS(es) from IPLIST.
