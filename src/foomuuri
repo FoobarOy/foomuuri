@@ -4425,13 +4425,18 @@ def parse_config_iplist(config) -> IPLists:
             parse_option(default_options, f'url_{option}={value}', fileline)
             continue
 
-        # Parse one or more default options in single line
+        # Parse one or more 'equal-sign'-style default options in single line
         for index, default_option in enumerate(line):
             if not parse_option(default_options, default_option, fileline):
                 if index == 0:
                     break
                 fail(f'{fileline}Unsupported syntax: {" ".join(line)}')
         else:
+            continue
+
+        # Parse 'space-separated'-style default option
+        option = f'{line[0]}={" ".join(line[1:])}'
+        if parse_option(default_options, option, fileline):
             continue
 
         # Is it an iplist?
