@@ -68,8 +68,8 @@ destination IP.
 
 ### mac_saddr, mac_daddr
 
-Matches source / destination MAC address for incoming traffic.
-This doesn't work for outgoing traffic.
+Matches source / destination MAC address for incoming traffic. This doesn't
+work for outgoing traffic.
 
 Address can be:
 
@@ -166,9 +166,8 @@ from same port.
 
 ### protocol
 
-Matches specific protocol traffic. For example
-`protocol gre` will match all GRE traffic and `protocol sctp 22` will
-match SCTP traffic to port 22.
+Matches specific protocol traffic. For example `protocol gre` will match all
+GRE traffic and `protocol sctp 22` will match SCTP traffic to port 22.
 
 For TCP, UDP, ICMP and ICMPv6 protocols it is recommended to use
 [shortcut](Rule.md#tcp-udp-icmp-icmpv6) matchers.
@@ -265,9 +264,8 @@ forward {
 ### ct_status
 
 Matches packet's conntrack status, mostly used with
-[SNAT or DNAT](Configuration.md#dnat).
-Valid arguments are: expected, seen-reply, assured, confirmed, snat, dnat,
-dying.
+[SNAT or DNAT](Configuration.md#dnat). Valid arguments are: expected,
+seen-reply, assured, confirmed, snat, dnat, dying.
 
 
 ### cgroup
@@ -289,8 +287,7 @@ startup.
 
 ### time
 
-Matches current time, date and day of the week.
-Argument can be:
+Matches current time, date and day of the week. Argument can be:
 
 * Time `hh:mm` or `hh:mm:ss`
 * Time interval `hh:mm-hh:mm`
@@ -319,8 +316,7 @@ public-localhost {
 
 ### dscp
 
-Matches packet's differentiated services code point (DSCP) value.
-Example:
+Matches packet's differentiated services code point (DSCP) value. Example:
 
 ```
 internal-public {
@@ -364,9 +360,9 @@ You should always add explicit final statement as last rule to every
 
 ### continue
 
-Continues to next rule. This is used mostly to debug
-rules. For example rule `saddr 10.0.0.4 counter log continue` counts and
-logs traffic from 10.0.0.4 and continues to next rule.
+Continues to next rule. This is used mostly to debug rules. For example rule
+`saddr 10.0.0.4 counter log continue` counts and logs traffic from 10.0.0.4 and
+continues to next rule.
 
 
 ### return
@@ -377,16 +373,16 @@ chain. Not normally used.
 
 ### masquerade, snat, dnat, snat_prefix, dnat_prefix
 
-These statements are used in `snat` and `dnat` [sections](Configuration.md#snat)
-to mangle traffic source or destination IP address. See that page for description
-and examples.
+These statements are used in `snat` and `dnat`
+[sections](Configuration.md#snat) to mangle traffic source or destination
+IP address. See that page for description and examples.
 
 
 ### notrack
 
-Mark matching packet to not be added to conntrack. This
-has to be done early in `prerouting` section. For example high load DNS server
-can use this for DNS queries.
+Mark matching packet to not be added to conntrack. This has to be done early
+in `prerouting` section. For example high load DNS server can use this for
+DNS queries.
 
 Example:
 
@@ -409,8 +405,8 @@ output filter raw {
 
 ### queue
 
-Forward packet to userspace for example for IPS/IDS inspection.
-Optional flags and target can be specified. Example:
+Forward packet to userspace for example for IPS/IDS inspection. Optional flags
+and target can be specified. Example:
 
 ```
 forward {
@@ -425,9 +421,9 @@ forward {
 
 ### nftrace
 
-Enable nftrace ruleset debugging for matching packets.
-This is usually done in `input`, `output` or `forward` section. Tracing events
-can be viewed with `nft monitor trace` command.
+Enable nftrace ruleset debugging for matching packets. This is usually done
+in `input`, `output` or `forward` section. Tracing events can be viewed with
+`nft monitor trace` command.
 
 Example:
 
@@ -519,8 +515,8 @@ additional entry per second.
 
 ### log_level
 
-This overrides global `foomuuri { log_level ... }` logging level for this.
-
+This overrides global `foomuuri { log_level ... }` logging level for this
+single rule.
 
 Possible values are:
 
@@ -775,9 +771,9 @@ output {   # localhost-public
 ### conntrack, -conntrack
 
 Rules are processed after conntrack check (flag `conntrack`, default value).
-Flag `-conntrack` can be added to process rule before
-conntrack. Conntrack will accept established and related traffic so normal
-rule will see only new traffic.
+Flag `-conntrack` can be added to process rule before conntrack. Conntrack
+will accept established and related traffic so normal rule will see only new
+traffic.
 
 This can be used to count all traffic instead of new connections only, or
 to accept traffic without adding it to conntrack. For example high load

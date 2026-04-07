@@ -105,7 +105,7 @@ Foomuuri depends on `nftables` (version 1.0.0 or higher) and `python`
 needs `python3-dbus` and `python3-gobject` (called `python3-gi` in some
 distributions).
 
-Optionally Foomuuri will use `python3-systemd`, `python3-requests` and
+Optionally Foomuuri will use `python3-systemd`, `python3-urllib3` and
 `python3-lxml` if they are available.
 
 Older version of `nftables` will work if

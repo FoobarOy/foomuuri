@@ -44,7 +44,7 @@ All outgoing (`localhost-public`) traffic is accepted. This is usually safe
 but more specific bidirectional firewall is safer.
 
 Normally NetworkManager assigns network interfaces to zones via D-Bus and
-Foomuuri's FirewallD emulation. Alternative is to specify network interface(s)
+Foomuuri's firewalld emulation. Alternative is to specify network interface(s)
 in `zone` section:
 
 ```
