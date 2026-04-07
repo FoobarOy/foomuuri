@@ -236,7 +236,7 @@ enable it with `systemctl enable foomuuri-multi-isp.service`.
 ```
 [Unit]
 Description=Multizone bidirectional nftables firewall - Multi-ISP
-Documentation=https://github.com/FoobarOy/foomuuri/wiki
+Documentation=https://foomuuri.foobar.fi/latest/
 After=network-online.target
 Requires=network-online.target
 PartOf=foomuuri.service

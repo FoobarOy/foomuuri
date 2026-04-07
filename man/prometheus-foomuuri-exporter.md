@@ -73,4 +73,4 @@ Submit bug reports <https://github.com/FoobarOy/foomuuri/issues>
 
 # SEE ALSO
 
-Full documentation <https://github.com/FoobarOy/foomuuri/wiki>
+Full documentation <https://foomuuri.foobar.fi/latest/>

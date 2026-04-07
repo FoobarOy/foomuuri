@@ -1,6 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall
-Documentation=https://github.com/FoobarOy/foomuuri/wiki
+Documentation=https://foomuuri.foobar.fi/latest/
 After=local-fs.target
 After=foomuuri-boot.service
 Before=network-pre.target

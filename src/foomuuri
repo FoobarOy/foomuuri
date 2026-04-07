@@ -750,7 +750,7 @@ def read_config(require_etc_config: bool):
         fail(
             f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
             '\n'
-            'See https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall '
+            'See https://foomuuri.foobar.fi/latest/Host-Firewall/ '
             'for example\n'
             'configuration.'
         )

@@ -1,6 +1,6 @@
 [Unit]
 Description=Multizone bidirectional nftables firewall - Connectivity monitor
-Documentation=https://github.com/FoobarOy/foomuuri/wiki
+Documentation=https://foomuuri.foobar.fi/latest/
 After=network-online.target
 After=foomuuri.service
 PartOf=foomuuri.service

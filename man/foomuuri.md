@@ -112,7 +112,7 @@ iplist{} section, for example "4h".
 # FILES
 
 **Foomuuri** reads configuration files from */etc/foomuuri/\*.conf*.
-See <https://github.com/FoobarOy/foomuuri/wiki/Host-Firewall> for example
+See <https://foomuuri.foobar.fi/latest/Host-Firewall/> for example
 configuration.
 
 
@@ -128,4 +128,4 @@ Submit bug reports <https://github.com/FoobarOy/foomuuri/issues>
 
 # SEE ALSO
 
-Full documentation <https://github.com/FoobarOy/foomuuri/wiki>
+Full documentation <https://foomuuri.foobar.fi/latest/>

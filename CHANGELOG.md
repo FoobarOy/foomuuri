@@ -2,6 +2,7 @@
 
 ## 0.33 (20xx-xx-xx)
 
+* Documentation moved to https://foomuuri.foobar.fi/latest/
 * Add `start=no` option to `iplist` section line. Foomuuri will not add IP
   addresses to such lists at startup. Entries will be added later by
   `foomuuri-iplist.timer` service. This can be used with "unsafe" external
