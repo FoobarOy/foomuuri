@@ -100,13 +100,16 @@ journalctl --follow --dmesg
 Source code tarball is available in
 [releases page](https://github.com/FoobarOy/foomuuri/releases).
 
-Foomuuri depends on `nftables` (version 1.0.0 or higher), `python`
-(version 3.9 or higher), `python3-dbus` and `python3-gobject` (called
-`python3-gi` in some distributions). Optionally Foomuuri will use
-`python3-systemd`, `python3-requests` and `python3-lxml` if they are
-available. Install those dependencies first. Older version of `nftables` will
-work if [a patch](https://github.com/FoobarOy/foomuuri/issues/27) is applied
-to Foomuuri.
+Foomuuri depends on `nftables` (version 1.0.0 or higher) and `python`
+(version 3.9 or higher). Optional but highly recommended D-Bus support
+needs `python3-dbus` and `python3-gobject` (called `python3-gi` in some
+distributions).
+
+Optionally Foomuuri will use `python3-systemd`, `python3-requests` and
+`python3-lxml` if they are available.
+
+Older version of `nftables` will work if
+[a patch](https://github.com/FoobarOy/foomuuri/issues/27) is applied.
 
 ```
 # Untar source

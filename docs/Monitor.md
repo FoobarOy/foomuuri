@@ -3,9 +3,9 @@
 Foomuuri includes simple network connectivity monitor. It can monitor your
 internet connection by pinging some external server. Command can
 be run if network link goes up or down. Example
-[script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor.event)
-to send an email to root is included in doc directory. Another examples are
-[multiple ISP](Multiple-ISP.md) configurations and scripts.
+[command](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor.event)
+to send an email notification to root is included in doc directory. Another
+examples are [multiple ISP](Multiple-ISP.md) configurations and commands.
 
 
 ## target
@@ -33,7 +33,8 @@ target my-isp-router {
 ```
 
 This pings IP 172.25.31.149 every two seconds and runs `monitor.event`
-script when link goes up or down. That script sends an email to root.
+command when link goes up or down. That command sends an email notification
+to root.
 
 See `man fping` or its [website](https://www.fping.org/) for description
 of `fping` parameters. Foomuuri supports both `interval` and `squiet` modes.
@@ -83,6 +84,22 @@ target my-isp-router {
 }
 ```
 
+Up/down command receives status information in environment variables:
+
+* `FOOMUURI_CHANGE_TYPE`: type `target` or `group`
+* `FOOMUURI_CHANGE_NAME`: name of target or group changing state
+* `FOOMUURI_CHANGE_STATE`: state `up` or `down`
+* `FOOMUURI_CHANGE_LOG`: extra logging information
+* `FOOMUURI_CHANGE_HISTORY`: list of `!` (error) or `.` (ok)
+   indicating status of last checks
+* `FOOMUURI_ALL_TARGET`: list of all configured targets
+* `FOOMUURI_ALL_GROUP`: list of all configured groups
+* `FOOMUURI_TARGET_xxx`: state `up` or `down` for target `xxx`
+* `FOOMUURI_GROUP_xxx`: state `up` or `down` for group `xxx`
+
+Only single command can be specified. If you need to run multiple commands
+use a shell wrapper script to run them.
+
 Monitor statistics are written to a file once a minute.
 
 
@@ -101,9 +118,8 @@ group my-isp-group {
 
 This creates a monitor called `my-isp-group` which includes two targets.
 Group is considered up if any of the targets is up. It is considered down
-if all of the targets are down.
+if all of the targets are down. It is usually safer to run up and down
+commands in `group {}` with multiple targets than in single `target {}`.
 
 Optional `command_down_interval` and `down_interval` can also be defined.
-See [above](Monitor.md#target) for description. It is usually safer to run
-up and down commands in `group {}` with multiple targets than in single
-`target {}`.
+See [above](Monitor.md#target) for description.

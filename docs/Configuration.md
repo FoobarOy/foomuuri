@@ -291,7 +291,7 @@ how to split them to multiple files.
 processed in following block order:
 
 1. ICMP rules in listed order
-2. Previously accepted established and related traffic is accepted again by conntrack
+2. Previously accepted established and related traffic is accepted by conntrack
 3. Incoming multicast and broadcast rules in listed order
 4. Everything else in listed order
 
@@ -308,7 +308,7 @@ Next words can be:
 * IPv4 or IPv6 address, with or without mask
 * DNS hostname
 * Filename containing IP addresses, with or without mask
-* URL for file, as above
+* URL for file containing IP addresses, with or without mask
 
 Example:
 
@@ -399,10 +399,26 @@ iplist {
 }
 ```
 
-Iplists can be manipulated from command line, for example by `fail2ban`.
-Command `foomuuri iplist add @setname ipaddress` adds IP address to
-`@setname`. Other commands are `foomuuri iplist list`, `foomuuri iplist del`
-and `foomuuri iplist flush`. See command line help for usage.
+Optional `-merge` option disables IP address auto-merge. Normally it is
+recommended to keep it enabled. For `fail2ban` alike scenarios (see below)
+it is recommended to be disabled.
+
+Iplists can be manipulated from command line, for example by `fail2ban`
+external program. Command `foomuuri iplist add @setname ipaddress` adds IP
+address to `@setname`. Other commands are `foomuuri iplist list`,
+`foomuuri iplist del` and `foomuuri iplist flush`. See command line help for
+usage. Example:
+
+```
+iplist {
+  @blacklist -merge
+}
+
+# Manipulate with command:
+#
+# foomuuri iplist add @blacklist 10.0.0.1
+# foomuuri iplist del @blacklist 10.0.0.1
+```
 
 Another example how to create a macro to allow access to Valve Steam:
 

@@ -1,4 +1,4 @@
-# Best Practices
+# Best Practices / FAQ
 
 ## Configuration files
 
@@ -79,6 +79,46 @@ This needs to be done only when changing firewall zone for connection. All
 other edits can be done with GNOME Control Center.
 
 
+## DHCP
+
+To obtain an IP address with DHCP you must allow both outgoing `dhcp-server`
+request and incoming `dhcp-client` reply. Example:
+
+```
+localhost-public {
+  # Allow localhost's DHCP client to send a request to a DHCP server running
+  # on public zone (discover/request a lease).
+  dhcp-server
+  dhcpv6-server
+}
+
+public-localhost {
+  # Allow reply packet from public's DHCP server to localhost's client
+  # (offer an IP address).
+  dhcp-client
+  dhcpv6-client
+}
+```
+
+Similar rules are required if you run DHCP server on `localhost` serving IP
+leases to your `internal` zone clients:
+
+```
+internal-localhost {
+  # Allow incoming DHCP discover/request from internal's client to
+  # DHCP server running on localhost.
+  dhcp-server
+  dhcpv6-server
+}
+
+localhost-internal {
+  # Allow localhost's DHCP server to send an offer reply to internal's client.
+  dhcp-client
+  dhcpv6-client
+}
+```
+
+
 ## Proxy ARP
 
 See [discussions](https://github.com/FoobarOy/foomuuri/discussions/2)
@@ -108,10 +148,11 @@ See [discussions](https://github.com/FoobarOy/foomuuri/discussions/31)
 how to define custom nftables chains and how to jump to them.
 
 
-## QEMU/libvirt and vnet interfaces
+## QEMU/libvirt and vnet interfaces in a bridge
 
 See [discussions](https://github.com/FoobarOy/foomuuri/discussions/15) how
-to silently drop `OUTPUT REJECT IN= OUT=vnetXX` log entries.
+to silently drop `OUTPUT REJECT IN= OUT=vnetXX` log entries. These lines
+are logged after bridge interface is added or removed.
 
 
 ## Don't route private networks to public internet
