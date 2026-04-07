@@ -291,7 +291,7 @@ case "${1}" in
         # Start rules with main-table lookup
         ip rule add prio 1000 from all table main
 
-        # Connections with specific source IP must go to correct ISP
+        # Packets with specific source IP must go to correct ISP
         ip rule add prio 1001 from 172.23.70.36 table 1001
         ip rule add prio 1002 from 172.23.12.31 table 1002
 

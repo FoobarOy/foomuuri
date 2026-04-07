@@ -54,8 +54,8 @@ Address can be
   addresses.
 * Negative IPv6 address with suffix netmask `-::10:0:0:f00/-64`
 * Multiple negative addresses `-10.0.0.1 -fd00:f00::1`
-* Resolve or iplist set name `@listname`
-* Negative resolve or iplist set name `-@listname`
+* Iplist set name `@listname`
+* Negative iplist set name `-@listname`
 
 This matcher is usually combined with `tcp port` matcher to allow traffic
 from specific source IP only, `tcp 443 saddr 10.0.0.1`, or to specific
@@ -313,6 +313,19 @@ public-localhost {
 ```
 
 
+### dscp
+
+Matches packet's differentiated services code point (DSCP) value.
+Example:
+
+```
+internal-public {
+  saddr 10.0.0.4 dscp 10
+  dscp af13
+}
+```
+
+
 ## Statements
 
 
@@ -465,7 +478,7 @@ public-localhost {
 
 ### global_rate
 
-Defines global rate limit without source / destination IP address check. For
+Defines global rate limit without source or destination IP address check. For
 example `https global_rate "10/second burst 20"` allows https traffic with
 rate:
 
@@ -476,31 +489,31 @@ rate:
 * Here "connection" means new connection, not total number of established,
   active connections (see `ct count` below).
 
-Rate specification can be:
+There are three types of rates:
 
-* `"ct count 5"`
-* `"ct count over 6"`
-* `"5/second"`
-* `"7/second burst 30"`
-* `"30/minute"`
-* `"50/minute burst 200"`
-* `"100/hour"`
-* `"100/hour burst 100"`
-
-There are two types of rates:
-
-* Conntrack rates (`ct count`) counting total number of established, active
-  connections.
-* New connection rates (`count/time burst count`), ignoring if some of
+* New connection rates (`x/time burst y`), ignoring if some of
   them have already been closed.
 
-Rate `ct count 5` matches if there are up to 5 established connections,
-including current one. So rule `ssh global_rate "ct count 2"` allows two
-SSH connections (one old + current).
+  * `"5/second"`
+  * `"7/second burst 30"`
+  * `"30/minute"`
+  * `"50/minute burst 200"`
+  * `"100/hour"`
+  * `"100/hour burst 100"`
+  * `"over 8/second burst 10"`
 
-Rate `ct count over 6` matches if there are more than 6 established
-connections. This is usually used with `drop` statement: `ssh global_rate
-"ct count over 6" drop`.
+* Bandwidth rates (`x bytes/time burst y bytes`):
+
+  * `"10 mbytes/second"`
+  * `"10 mbytes/second burst 12000 kbytes"`
+  * `"over 10 mbytes/second"`
+  * `"over 10 mbytes/second burst 12000 kbytes"`
+
+* Conntrack rates (`ct count x`) counting total number of established, active
+  connections:
+
+  * `"ct count 5"`
+  * `"ct count over 6"`
 
 New connection rate limit can be visualized as leaking water bucket.
 `burst 10` specifies the bucket size as 10 units. `3/minute` specifies how
@@ -515,7 +528,32 @@ Some examples:
 * `5/minute burst 1` allows one new connection (`burst 1`) and new connection
   every 12 second (`5/minute`).
 * `3/minute burst 5` allows up to 5 new connections and new connection every
-  20 second if those 5 connections are used.
+  20 second after those 5 connections are used.
+
+Bandwidth rate can be used as simple traffic limiter. This can be specified
+per service, or total for all. Example:
+
+```
+public-localhost {
+  # Limit all incoming traffic to 30 MiB/s, total for all traffic
+  global_rate "over 30 mbytes/second" drop -conntrack
+
+  # Limit incoming SSH traffic to 2 MiB/s, per service traffic
+  ssh global_rate "over 2 mbytes/second" drop -conntrack
+
+  # Allow incoming SSH connections
+  ssh
+  ...
+}
+```
+
+Rate `ct count 5` matches if there are up to 5 established connections,
+including current one. So rule `ssh global_rate "ct count 2"` allows two
+SSH connections (one old + current).
+
+Rate `ct count over 6` matches if there are more than 6 established
+connections. This is usually used with `drop` statement: `ssh global_rate
+"ct count over 6" drop`.
 
 
 ### saddr_rate, daddr_rate
@@ -523,11 +561,11 @@ Some examples:
 Source / destination IP address specific rate limit is similar to
 `global_rate`.
 
-`saddr_rate` allows limited amount of connections from single source IP
-address, but there is no total (global) limit.
+`saddr_rate` allows limited amount of connections or bandwidth from single
+source IP address, but there is no total (global) limit.
 
-`daddr_rate` allows limited amount of connections for single destination IP
-address, which is usually some host in `dmz` zone.
+`daddr_rate` allows limited amount of connections or bandwidth for single
+destination IP address, which is usually some host in `dmz` zone.
 
 Both `saddr_rate` and `daddr_rate` can be specified for single rule. For
 example `https saddr_rate "10/second" daddr_rate "1000/second"` specifies:
@@ -572,8 +610,10 @@ source or destination.
 
 ### template
 
-Template is similar to [macro](Configuration.md#macro) but it is used to
-define list of rules, while macro is used to define single rule. Example:
+Template is very similar to [macro](Configuration.md#macro). It's just another
+way to define list of rules. Usually macro refers to single service
+(like `domain` or `facetime`) while template refers to list of different
+services. Example:
 
 ```
 template my_own_name {  # Define template called "my_own_name"
@@ -590,7 +630,7 @@ localhost-public {
 ```
 
 See [host firewall](Host-Firewall.md#example-configuration-for-multi-zone)
-for another example.
+for real life example.
 
 
 ### szone, dzone, new_szone, new_dzone
