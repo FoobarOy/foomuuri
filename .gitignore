@@ -7,4 +7,6 @@ test/*/zone
 .ruff_cache
 htmlcov
 
+misc/webdoc/final
+
 __pycache__

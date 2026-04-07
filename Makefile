@@ -94,6 +94,8 @@ release: test clean
 	@echo "== TODO =="
 	@echo "git push && git push --tags"
 	@echo "GitHub release: https://github.com/FoobarOy/foomuuri/releases/new"
+	@echo
+	@echo "Update misc/webdoc/versions.json and Makefile. Export documentation."
 
 # Build tarball locally
 
