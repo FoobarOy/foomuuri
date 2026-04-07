@@ -1,0 +1,15 @@
+[project]
+nav = [
+    {"Home" = "index.md"},
+    {"Getting Started" = "Getting-Started.md"},
+    {"User Guide" = [
+        {"Configuration" = "Configuration.md"},
+        {"Rule" = "Rule.md"},
+        {"Best Practices / FAQ" = "Best-Practices.md"},
+    ]},
+    {"Example Configurations" = [
+        {"Host Firewall" = "Host-Firewall.md"},
+        {"Router Firewall" = "Router-Firewall.md"},
+    ]},
+    {"Changelog" = "https://github.com/FoobarOy/foomuuri/blob/main/CHANGELOG.md"},
+]
