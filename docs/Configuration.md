@@ -196,7 +196,7 @@ macro {
 }
 ```
 
-You can use macros in other sections, like in zone-zone:
+You can use above macros in other sections:
 
 ```
 localhost-public {
@@ -222,6 +222,12 @@ for single rule, like in `good_hosts`.
 All
 [known macros](https://github.com/FoobarOy/foomuuri/blob/main/etc/default.services.conf)
 can be listed with `foomuuri list macro` command.
+
+Macro expansion can be skipped by writing word in quotes. For example `"ssh"`
+is kept as `ssh` and not expanded to `tcp 22`.
+
+For safety reasons macro expansion is not done in `zone` or `foomuuri`
+sections.
 
 
 ## zone-zone
@@ -299,8 +305,8 @@ processed in following block order:
 ## iplist
 
 Instead of using static IP addresses Foomuuri can perform periodical DNS
-hostname lookups and download external IP-lists. These addresses are then
-stored to sets and are cached across reboots and single lookup failures.
+hostname lookups and download external IP-lists. These addresses are
+stored to sets and cached across reboots and single lookup failures.
 
 First word in line is set name, which must begin with `@` character.
 Next words can be:
@@ -398,6 +404,10 @@ iplist {
   @netscanner  https://internet-measurement.com/|html://div/pre/text()
 }
 ```
+
+Maximum content size for downloaded IP address list can be defined with
+`url_max_size=bytes` line. Default value is
+33554432 (32 MiB). List will be ignored if it's too large.
 
 Optional `-merge` option disables IP address auto-merge. Normally it is
 recommended to keep it enabled. For `fail2ban` alike scenarios (see below)
@@ -582,6 +592,7 @@ zonemap {
 ## snat
 
 Source NAT is used to mangle traffic by using standard [rules](Rule.md).
+
 Example:
 
 ```
@@ -592,7 +603,7 @@ snat {
 
   # Use outgoing IP 192.0.2.32 to all non-IPsec traffic coming from
   # 10.0.0.0/8 and going to eth1 interface.
-  saddr 10.0.0.0/8 oifname eth1 -dipsec snat to 192.0.2.32
+  saddr 10.0.0.0/8 oifname eth1 -dipsec snat 192.0.2.32
 
   # IPv6-to-IPv6 Network Prefix Translation (NPTv6)
   saddr fd00:f00:4444::/64 oifname eth2 snat_prefix to 2a03:1111:222:8888::/64
@@ -606,28 +617,29 @@ See [dnat](Configuration.md#dnat) below for more examples.
 ## dnat
 
 Destination NAT is used to mangle traffic by using standard [rules](Rule.md).
+
 Example:
 
 ```
 dnat {
   # http traffic to 10.0.0.1 is DNAT'ed to 10.0.0.2 port 8080
-  daddr 10.0.0.1 http dnat to 10.0.0.2:8080
+  daddr 10.0.0.1 http dnat 10.0.0.2:8080
 
   # http traffic to fd00:f00::1 is DNAT'ed to fd00:f00::2 port 8080
-  daddr fd00:f00::1 http dnat to [fd00:f00::2]:8080
+  daddr fd00:f00::1 http dnat [fd00:f00::2]:8080
 
   # http traffic to 10.0.0.6 is DNAT'ed to 10.0.0.7, port doesn't change
-  daddr 10.0.0.6 http dnat to 10.0.0.7
+  daddr 10.0.0.6 http dnat 10.0.0.7
 
   # All smtp traffic from eth2 is DNAT'ed to 10.0.0.8 or fd00:f00::8,
   # port doesn't change
-  iifname eth2 smtp dnat to 10.0.0.8 fd00:f00::8
+  iifname eth2 smtp dnat 10.0.0.8 fd00:f00::8
 
   # All traffic from eth1 inteface is DNAT'ed to 10.0.0.3
-  iifname eth1 dnat to 10.0.0.3
+  iifname eth1 dnat 10.0.0.3
 
   # http traffic to 10.0.0.4 coming from interface eth2 is DNAT'ed to 10.0.0.5
-  iifname eth2 daddr 10.0.0.4 http dnat to 10.0.0.5
+  iifname eth2 daddr 10.0.0.4 http dnat 10.0.0.5
 }
 ```
 
@@ -737,13 +749,11 @@ Multiple words can be combined to single word by writing them in quotes.
 For example `ssh accept log "accept ssh for testing"` will accept SSH
 traffic with log message `accept ssh for testing`.
 
-Macro [expansion](Configuration.md#macro) can be skipped by writing word in
-quotes. For example `"ssh"` is kept as `ssh` and not expanded to `tcp 22`.
-
 Output from external command can be used to generate rules. It can return
 single line, multiple lines or part of line. Syntax is
-`$(shell command to run)`. Command is run with shell so pipes and `;` will
-work. Be careful to run only trusted commands.
+`$(shell command to run with parameters)`. Command is run with shell so pipes
+and `;` will work. Be careful to run only trusted commands. `$(shell)` is
+processed before [macro](Configuration.md#macro) expansion.
 
 Example:
 
@@ -764,5 +774,13 @@ localhost-public {
 public-localhost {
   tcp local_port_range  # Allow TCP to ports 32768-60999 (default range)
 }
+```
 
+Command to run can not contain `)` character. For such complex commands it's
+better to create shell script and call that:
+
+```
+macro {
+  mymacro  $(shell /etc/foomuuri/mymacro.sh parameters)
+}
 ```

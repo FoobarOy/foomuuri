@@ -97,11 +97,12 @@ localhost-internal {
 ### Enable packet forwarding
 
 For public-internal and other forwarding you must enable IP packet forwarding
-on Linux kernel. That can be done by creating `/etc/sysctl.d/forwarding.conf`
-file with following lines:
+on Linux kernel. That can be done by creating
+`/etc/sysctl.d/50-ip.forwarding.conf` file with following lines:
 
 ```
-# Enable packet forwarding
+# Enable IP packet forwarding
+
 net.ipv4.conf.all.forwarding = 1
 net.ipv6.conf.all.forwarding = 1
 ```
@@ -120,7 +121,7 @@ This example is for larger corporate firewall:
 * Multiple laptops and workstations in internal network
 * Bidirectional firewalling
 
-See note about enabling packet forwarding above.
+See also note about enabling IP packet forwarding above.
 
 ```
 zone {
@@ -138,8 +139,8 @@ snat {
 dnat {
   # DNAT incoming SMTP and HTTPS traffic from public to dmz server. This
   # section is needed only if dmz server doesn't have public IP address.
-  iifname eth0 smtp http https dnat to 10.1.0.2  # public -> dmz
-  iifname eth1 daddr 192.0.2.32 smtp http https dnat to 10.1.0.2  # internal -> dmz
+  iifname eth0 smtp http https dnat 10.1.0.2  # public -> dmz
+  iifname eth1 daddr 192.0.2.32 smtp http https dnat 10.1.0.2  # internal -> dmz
 }
 
 macro {

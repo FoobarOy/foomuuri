@@ -375,10 +375,36 @@ This is a special statement to return from current nftables chain to caller
 chain. Not normally used.
 
 
-### masquerade, snat to, dnat to, snat_prefix to, dnat_prefix to
+### masquerade, snat, dnat, snat_prefix, dnat_prefix
 
 These statements are used in `snat` and `dnat` [sections](Configuration.md#snat)
-to mangle traffic source or destination IP address.
+to mangle traffic source or destination IP address. See that page for description
+and examples.
+
+
+### notrack
+
+Mark matching packet to not be added to conntrack. This
+has to be done early in `prerouting` section. For example high load DNS server
+can use this for DNS queries.
+
+Example:
+
+```
+# Incoming traffic
+prerouting filter raw {
+  domain notrack        # dport
+  tcp sport 53 notrack  # sport
+  udp sport 53 notrack
+}
+
+# Locally created traffic
+output filter raw {
+  domain notrack
+  tcp sport 53 notrack
+  udp sport 53 notrack
+}
+```
 
 
 ### queue
@@ -393,6 +419,27 @@ forward {
 
    # Forward matching packets only
    iifname eth0 oifname eth1 queue
+}
+```
+
+
+### nftrace
+
+Enable nftrace ruleset debugging for matching packets.
+This is usually done in `input`, `output` or `forward` section. Tracing events
+can be viewed with `nft monitor trace` command.
+
+Example:
+
+```
+input {
+  # Trace all incoming packets - generates lot of trace!
+  nftrace
+}
+
+forward {
+  # Trace all forwarded ssh packets
+  ssh nftrace
 }
 ```
 
@@ -472,8 +519,8 @@ additional entry per second.
 
 ### log_level
 
-This overrides global `foomuuri { log_level ... }` logging level for this
-single rule.
+This overrides global `foomuuri { log_level ... }` logging level for this.
+
 
 Possible values are:
 
@@ -533,20 +580,21 @@ There are three types of rates:
 * New connection rates (`x/time burst y`), ignoring if some of
   them have already been closed.
 
-  * `"5/second"`
   * `"7/second burst 30"`
-  * `"30/minute"`
+  * `"3/second"` (no burst specified, so `burst 5` is assumed)
+  * `"1/minute burst 1"`
   * `"50/minute burst 200"`
+  * `"30/minute"`
+  * `"100/hour burst 200"`
   * `"100/hour"`
-  * `"100/hour burst 100"`
   * `"over 8/second burst 10"`
 
 * Bandwidth rates (`x bytes/time burst y bytes`):
 
-  * `"10 mbytes/second"`
   * `"10 mbytes/second burst 12000 kbytes"`
-  * `"over 10 mbytes/second"`
+  * `"10 mbytes/second"`
   * `"over 10 mbytes/second burst 12000 kbytes"`
+  * `"over 10 mbytes/second"`
 
 * Conntrack rates (`ct count x`) counting total number of established, active
   connections:
@@ -560,7 +608,8 @@ much it leaks, 3 units per minute, or 1 unit per every 20 seconds. Every new
 connection adds one unit of water to it. If it fits, rule matches (usually:
 connection is accepted). If the bucket overflows, rule doesn't match.
 
-If burst is not specified, value 5 is assumed for it.
+If burst is not specified, Linux kernel assumes value 5 for it. Minimum value
+for burst is 1.
 
 Some examples:
 

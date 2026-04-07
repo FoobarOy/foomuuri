@@ -68,9 +68,8 @@ Hostname lookup will fail if network is down when `fping` starts. Foomuuri
 will handle this but it will cause 30 second delay and possible `fping`
 restart loop.
 
-Optional `command_down_interval` can be specified.
-Foomuuri will run it every `down_interval` seconds (default to 600, every
-10 minutes). Example:
+Optional `command_down_interval` can be specified. Foomuuri will run it every
+`down_interval` seconds (default to 600, every 10 minutes). Example:
 
 ```
 target my-isp-router {
