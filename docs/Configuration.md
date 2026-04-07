@@ -38,6 +38,7 @@ foomuuri {
   log_rpfilter yes
   log_invalid no
   log_smurfs no
+  log_prefix "$(szone)-$(dzone) $(statement)"
   log_level "level info flags skuid"
   localhost_zone localhost
   dbus_zone public
@@ -48,6 +49,7 @@ foomuuri {
   priority_offset 5
   dbus_firewalld no
   nft_bin nft
+  try-reload_timeout 15
 }
 ```
 
@@ -61,6 +63,8 @@ Value can be:
 * `yes` to log it with `log_rate`
 * `no` to not log
 * `"3/second burst 10"` to log it with specific rate
+
+`log_prefix` defines the default log prefix for [logging](Rule.md#log).
 
 `log_level` is the syslog level of logging. For possible values see
 rule specific [version](Rule.md#log_level).
@@ -109,6 +113,9 @@ to zones via D-Bus call. This option enables Foomuuri to listen to FirewallD
 D-Bus and do the same thing.
 
 `nft_bin` is the name for `nft` binary. Full path can be specified if required.
+
+`try-reload_timeout` is the timeout in seconds for `foomuuri try-reload`
+command.
 
 
 ## zone
@@ -570,6 +577,9 @@ snat {
   # Use outgoing IP 192.0.2.32 to all non-IPsec traffic coming from
   # 10.0.0.0/8 and going to eth1 interface.
   saddr 10.0.0.0/8 oifname eth1 -dipsec snat to 192.0.2.32
+
+  # IPv6-to-IPv6 Network Prefix Translation (NPTv6)
+  saddr fd00:f00:4444::/64 oifname eth2 snat_prefix to 2a03:1111:222:8888::/64
 }
 ```
 
@@ -619,15 +629,20 @@ public-internal {
 ```
 
 
-## prerouting, postrouting, output, forward
+## prerouting, postrouting, forward, input, output
 
-These sections are used to specify packet mangle rules. `prerouting` is for
-all incoming packets, `postrouting` is for all outgoing packets,
-`output` is for all locally generated packets and `forward` is for all
-forwarded packets. Mangle rules are processed before normal zone-zone
-filtering rules.
+These sections are used to specify packet mangle rules. Mangle rules are
+processed before normal zone-zone filtering rules.
 
-Normally these sections are used to [set](Rule.md#mark_set) packet mark value.
+* `prerouting` is for all incoming packets
+* `postrouting` is for all outgoing packets
+* `forward` is for all forwarded packets (for example `internal-public`)
+* `input` is for all packets targetted to `localhost` (`public-localhost`)
+* `output` is for all locally generated packets (`localhost-public`)
+
+Normally these sections are used to [set](Rule.md#mark_set) packet mark value
+or [MSS clamping](Rule.md#mss).
+
 Example:
 
 ```
@@ -690,89 +705,10 @@ hook {
 ```
 
 
-## target
+## target, group
 
-Foomuuri includes simple network connectivity monitor. It can monitor your
-internet connection by pinging some external server. Command can
-be run if network link goes up or down. Example
-[script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor.event)
-to send an email to root is included in doc directory. Another example is
-[multi-ISP](Best-Practices.md#multi-isp) configuration and script.
-
-Minimal configuration is:
-
-```
-target google {
-  command fping 8.8.4.4
-}
-```
-
-This creates monitor called `google` and runs `fping` command pinging
-IP 8.8.4.4 every second. Foomuuri parses its output and logs up and down
-events. Multiple targets can be defined.
-
-Better real life example is:
-
-```
-target my-isp-router {
-  command      fping --interval 2000 172.25.31.149
-  command_up   /etc/foomuuri/monitor.event
-  command_down /etc/foomuuri/monitor.event
-}
-```
-
-This pings IP 172.25.31.149 every two seconds and runs `monitor.event`
-script when link goes up or down. That script sends an email to root.
-See `man fping` or their [website](https://www.fping.org/) for description
-of `fping` parameters.
-
-"Up" and "down" are defined with parameters:
-
-```
-target my-isp-router {
-  history_size     100       # how many results are saved
-  history_up       80        # count of UPs => n     => UP
-  history_down     30        # count of DOWNs >= n   => DOWN
-  consecutive_up   20        # last n were UP        => UP
-  consecutive_down 10        # last n were DOWN      => DOWN
-  ...
-}
-```
-
-Target is considered up if 80 of the last 100 pings were successful (allowing
-failures in between) and last 20 pings were successful (no failures allowed).
-
-Target is considered down if 30 of the last 100 pings were failures or
-last 10 pings were failures.
-
-`curl` and other programs can also be used instead of `fping`. See example
-[shell script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor-example-command.sh)
-how to use them.
-
-It is recommended to use IP address instead of hostname as fping target.
-Hostname lookup will fail if network is down when fping starts. Foomuuri
-will handle this but it will cause 30 second delay and possible fping restart
-loop.
-
-Monitor statistics are written to a file once a minute.
-
-
-## group
-
-Multiple network connectivity monitor [targets](Configuration.md#target) can be
-grouped to single monitor. Example:
-
-```
-group my-isp-group {
-  target       my-isp-router google
-  command_up   /etc/foomuuri/monitor.event
-  command_down /etc/foomuuri/monitor.event
-}
-```
-
-This creates monitor called `my-isp-group` which includes two targets.
-Group is considered up if any of the targets is up. It is considered down
-if all of the targets are down.
+Foomuuri includes simple network [connectivity monitor](Monitor.md).
+These sections are used to [configure](Monitor.md#target) it.
 
 
 ## Miscellaneous

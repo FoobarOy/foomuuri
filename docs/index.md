@@ -32,8 +32,8 @@ install Foomuuri. Help is available via
 * DNS hostname [lookup](Configuration.md#iplist) and IP-list support with dynamic
   IP address refreshing
 * [Country database](Configuration.md#iplist) support aka geolocation
-* [Multi-ISP](Best-Practices.md#multi-isp) support with internal network
-  connectivity [monitor](Configuration.md#target)
+* [Multiple ISP](Multiple-ISP.md) support with internal network
+  [connectivity monitor](Monitor.md)
 * [IPsec](Rule.md#sipsec-dipsec) matching support
 * Ability to [map](Configuration.md#zonemap) certain traffic to separate zones
 * D-Bus API

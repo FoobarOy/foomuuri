@@ -3,10 +3,13 @@
 The easiest way to install Foomuuri is to use packages from your Linux
 distribution.
 
+See [host firewall](Host-Firewall.md) for example `/etc/foomuuri/foomuuri.conf`
+configuration file.
 
-## Fedora, RHEL9, CentOS Stream
 
-Foomuuri is included to Fedora 38 (and newer) and to EPEL9.
+## Fedora, RHEL, CentOS Stream
+
+Foomuuri is included to Fedora and to EPEL.
 
 ```
 # Install packages
@@ -34,8 +37,8 @@ journalctl --follow --dmesg
 
 ## Debian, Ubuntu
 
-Foomuuri is include to Debian 12 backports (Bookworm), Debian Unstable
-(Sid), Ubuntu 23.10 (Mantic) and Ubuntu 24.04 (Noble).
+Foomuuri is include to Debian sid, forky, trixie (13) and bookworm-backports
+(12), Ubuntu 23.10 (Mantic) and Ubuntu 24.04 (Noble).
 
 ```
 # Install packages

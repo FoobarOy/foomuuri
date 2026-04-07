@@ -326,6 +326,21 @@ internal-public {
 ```
 
 
+### tproxy
+
+Transparent proxy traffic to ipaddress:port. Example:
+
+```
+prerouting {
+  # Use lower 8 bits to mark tproxy traffic
+  mark_match -0x00/0xff  # Anti-loop protection
+
+  # All IPv4 and IPv6 TCP traffic
+  tcp tproxy 127.0.0.1:8888 [::1]:8888 mark_set 0x01/0xff
+}
+```
+
+
 ## Statements
 
 
@@ -356,7 +371,7 @@ This is a special statement to return from current nftables chain to caller
 chain. Not normally used.
 
 
-### masquerade, snat to, dnat to
+### masquerade, snat to, dnat to, snat_prefix to, dnat_prefix to
 
 These statements are used in `snat` and `dnat` [sections](Configuration.md#snat)
 to mangle traffic source or destination IP address.
@@ -413,15 +428,35 @@ counters can be listed with `foomuuri list`.
 ### log
 
 Write log entry (journal / syslog) when traffic matches this rule. Optional
-log text can be added. Default text is "zone-zone statement", for example
+log prefix can be added. Default prefix is "szone-dzone STATEMENT", for example
 "localhost-public REJECT".
+
+Following variables are supported in log prefix:
+
+* `$(szone)`
+* `$(dzone)`
+* `$(statement)`
+
+More text to default log prefix can be added with `log + "my text"`.
+
+Example:
 
 ```
 public-localhost {
-  # Drop and log incoming http with custom text
+  # Use default log prefix "public-localhost DROP"
+  ssh drop log
+
+  # Drop and log incoming http with custom prefix
   http drop log "incoming-http dropped"
-  ...
-  # Use default log text "public-localhost DROP"
+
+  # Drop and log https with custom prefix with variables. This results to
+  # prefix "public => localhost: DROP"
+  https drop log "$(szone) => $(dzone): $(statement)"
+
+  # Drop telnet with prefix "public-localhost DROP:telnet"
+  telnet drop log + ":telnet"
+
+  # Use default log prefix "public-localhost DROP"
   drop log
 }
 ```
@@ -654,14 +689,32 @@ sane, sip, snmp, tftp`
 
 ### mss
 
-Sets maximum segment size (MSS clamping) to all traffic in zone-zone
-section. Some connections, like IPsec, might require this. Example:
+Sets maximum segment size (MSS clamping) to all traffic. Some connections,
+like IPsec or PPPoE, might require this. Example:
 
 ```
 localhost-vpn {
   mss 1390
   ssh
   reject log
+}
+```
+
+Special value `mss pmtu` can be used to calculate the value in runtime
+based on what the routing cache has observed via Path MTU Discovery (PMTUD).
+Example:
+
+```
+forward {  # internal-public
+  mss pmtu
+}
+
+input {    # public-localhost
+  mss pmtu
+}
+
+output {   # localhost-public
+  mss pmtu
 }
 ```
 

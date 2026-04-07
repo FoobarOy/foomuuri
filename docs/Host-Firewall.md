@@ -30,9 +30,9 @@ localhost-public {
 }
 ```
 
-Above example is the simplest possible firewall. It is complete configuration
-file - there is nothing else to be added. It allows incoming
-(`public-localhost`) traffic:
+Above example is the simplest possible firewall. It is complete
+`/etc/foomuuri/foomuuri.conf` configuration file - there is nothing else
+to be added. It allows incoming (`public-localhost`) traffic:
 
 * DHCP reply packets to obtain a lease from external DHCP server (IPv4 and
   IPv6)
@@ -86,7 +86,7 @@ localhost-public {
 }
 ```
 
-This complete configuration file allows incoming:
+This complete `/etc/foomuuri/foomuuri.conf` configuration file allows incoming:
 
 * DHCP reply packets
 * Ping packets, except ping-flood
