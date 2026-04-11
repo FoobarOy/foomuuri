@@ -653,7 +653,7 @@ def nft_command(cmd, **kwargs):
     return run_program_rc(CONFIG.nft_bin + [cmd], **kwargs)
 
 
-def nft_json(cmd):
+def nft_json(cmd: str) -> typing.Optional[dict]:
     """Run "nft --json cmd", return its output as json, ignore errors."""
     if not cmd:
         return {}
@@ -671,6 +671,11 @@ def nft_json(cmd):
     except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode:
+        if proc.stdout.startswith('JSON support'):
+            warning(
+                f'Failed to run command "{join_args(args)}": '
+                f'{proc.stdout.strip()}'
+            )
         return None
     try:
         verbose(proc.stdout, 2)

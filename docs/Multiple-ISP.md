@@ -233,7 +233,7 @@ esac
 Example `/etc/systemd/system/foomuuri-multi-isp.service` file. Remember to
 enable it with `systemctl enable foomuuri-multi-isp.service`.
 
-```
+``` systemd
 [Unit]
 Description=Multizone bidirectional nftables firewall - Multi-ISP
 Documentation=https://foomuuri.foobar.fi/latest/
