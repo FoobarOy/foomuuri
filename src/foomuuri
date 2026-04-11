@@ -671,7 +671,7 @@ def nft_json(cmd: str) -> typing.Optional[dict]:
     except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode:
-        if proc.stdout.startswith('JSON support'):
+        if CONFIG.verbose >= 1 or proc.stdout.startswith('JSON support'):
             warning(
                 f'Failed to run command "{join_args(args)}": '
                 f'{proc.stdout.strip()}'
