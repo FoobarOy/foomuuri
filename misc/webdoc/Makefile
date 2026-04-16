@@ -21,6 +21,7 @@ version:
 	(cd ../.. && git archive $(HASH) docs/) | tar --extract
 	cat docs/nav.toml common.toml > zensical.toml
 	zensical build
+	find site -exec touch --date="$$(git show -s --format=%ci $(HASH))" {} \;
 	mv site final/$(VERSION)
 
 clean:
