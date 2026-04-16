@@ -11,7 +11,7 @@ all: distclean
 	$(MAKE) version VERSION=0.31 HASH=8a6de6c5e61f62d84cbe9b24cfb742f9c9a65616
 	$(MAKE) version VERSION=0.32 HASH=9f850bfa3d55fca9972ff4556fece079e6c10d44
 	$(MAKE) version VERSION=development HASH=HEAD
-	cp versions.json final/
+	cp versions.json robots.txt final/
 	ln -s $(shell jq -r '.[] | select(.version == "latest") | .title | ltrimstr("v")' versions.json) final/latest
 	ln -s latest/sitemap.xml final/
 	$(MAKE) clean

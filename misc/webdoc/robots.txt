@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /latest
+Disallow: /
+Sitemap: https://foomuuri.foobar.fi/sitemap.xml
