@@ -1,4 +1,5 @@
 User-agent: *
-Allow: /latest
-Disallow: /
+Allow: /
+Disallow: /0
+Disallow: /development
 Sitemap: https://foomuuri.foobar.fi/sitemap.xml
