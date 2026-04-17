@@ -21,7 +21,7 @@ version:
 	(cd ../.. && git archive $(HASH) docs/) | tar --extract
 	cat docs/nav.toml common.toml > zensical.toml
 	zensical build
-	sed -i -e "/<.loc>$$/a \\        <lastmod>$$(git show -s --format=%cd --date=short $(HASH))</lastmod>" site/sitemap.xml
+	sed -i -e "/<.loc>$$/a \\        <lastmod>$$(git show -s --format=%cI $(HASH))</lastmod>" site/sitemap.xml
 	find site -exec touch --date="$$(git show -s --format=%ci $(HASH))" {} \;
 	mv site final/$(VERSION)
 
