@@ -280,7 +280,7 @@ Matches cgroup id or cgroupv2 name. Argument can be:
 * Multiple negative numbers `-1234 -1244`, matching all but 1234 or 1244
 * cgroupv2 name `user.slice` or `system.slice/sshd.service`
 
-**Warning:** cgroupv2 must exist before starting Foomuuri. As Foomuuri starts
+**Warning**: cgroupv2 must exist before starting Foomuuri. As Foomuuri starts
 very early on boot using this feature incorrectly can break your firewall
 startup.
 
@@ -290,13 +290,17 @@ startup.
 Matches current time, date and day of the week. Argument can be:
 
 * Time `hh:mm` or `hh:mm:ss`
-* Time interval `hh:mm-hh:mm`
+* Time interval `hh:mm-hh:mm` (see warning below)
 * Date `yyyy-mm-dd`
 * Day of the week: `Monday`, `Tuesday`, `Wednesday`, `Thursday`,
  `Friday`, `Saturday`, `Sunday`
 * Compare function: `==` (equal, the default), `!=` (not equal), `<`, `>`,
   `<=`, `>=`
 * Combination of above
+
+**Warning**: Some versions of `nft` do not handle time interval crossing
+midnight UTC. If your timezone is +03:00, interval `23:00-02:00` works
+but `02:00-06:00` fails.
 
 Example:
 

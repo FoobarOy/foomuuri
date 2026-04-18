@@ -1,4 +1,4 @@
-# ChangeLog
+# Changelog
 
 ## 0.33 (20xx-xx-xx)
 
