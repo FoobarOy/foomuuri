@@ -655,6 +655,9 @@ dnat {
 
   # http traffic to 10.0.0.4 coming from interface eth2 is DNAT'ed to 10.0.0.5
   iifname eth2 daddr 10.0.0.4 http dnat 10.0.0.5
+
+  # http traffic to localhost coming from interface eth3 is DNAT'ed to 10.0.0.6
+  iifname eth3 oifname lo http dnat 10.0.0.6
 }
 ```
 

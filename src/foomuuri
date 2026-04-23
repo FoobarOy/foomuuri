@@ -2281,10 +2281,12 @@ def parse_interface_names(rule):
     """Parse iifname/oifname to nft rule.
 
     Interface "lo" is special:
-    "iifname lo" or "iif lo" doesn't work in most chains. This is also
-    visible in kernel logging: "IN=<empty>". Use "iif 0" instead. It works
-    as long as "lo" is the first interface. As far as I know, it is so on
-    all Linux distributions.
+    - "iifname lo" or "iif lo" doesn't work in most chains. This is also
+      visible in kernel logging: "IN=<empty>". Use "iif 0" instead. It works
+      on all chains.
+    - "oifname lo" never works. "oif 0" works on all but prerouting (dnat)
+      as all packets have "OUT=<empty>" there. Use "fib daddr type local"
+      which works on all chains.
     """
     ret = ''
     for key in ('iifname', 'oifname'):
@@ -2293,7 +2295,7 @@ def parse_interface_names(rule):
         if key == 'iifname' and rule[key] == 'lo':
             ret += 'iif 0 '
         elif key == 'oifname' and rule[key] == 'lo':
-            ret += 'oif 0 '
+            ret += 'fib daddr type local '
         else:
             ret += f'{key} '
             ret += single_or_set(rule[key], rule['fileline'], quote=True)

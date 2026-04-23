@@ -249,7 +249,7 @@ table inet foomuuri {
 	chain filter_prerouting_mangle {
 		type filter hook prerouting priority mangle + 5
 		iif 0 tcp dport 1000 drop
-		oif 0 tcp dport 1001 drop
+		fib daddr type local tcp dport 1001 drop
 		iifname "eth2" tcp dport 1002 drop
 		oifname "eth3" tcp dport 1003 drop
 	}

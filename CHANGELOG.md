@@ -9,6 +9,8 @@
   iplists to make sure Foomuuri start will not fail or block your access
   for first minutes after reboot.
 * Change `iplist` section option `-merge` to `merge=no`.
+* Fix: Interface `lo` is special. Matcher `oifname lo` does not work in
+  prerouting (DNAT) chain. Output is as `fib daddr type local` instead.
 
 ## 0.32 (2026-03-11)
 
