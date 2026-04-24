@@ -156,7 +156,7 @@ table inet foomuuri {
 		}
 		ip protocol igmp ip daddr 224.0.0.1 accept
 		fib daddr type { broadcast, multicast } drop
-		ip saddr @banned_4 jump lograte_1
+		ip saddr @banned_4 update @banned_4 { ip saddr } jump lograte_1
 		ip saddr @good_4 tcp dport 22 accept
 		tcp dport 22 update @_rate_set_1_4 { ip saddr limit rate 3/minute } accept
 		tcp dport 22 update @banned_4 { ip saddr } jump lograte_2
@@ -176,7 +176,7 @@ table inet foomuuri {
 			untracked : jump smurfs_6
 		}
 		fib daddr type multicast drop
-		ip6 saddr @banned_6 jump lograte_6
+		ip6 saddr @banned_6 update @banned_6 { ip6 saddr } jump lograte_6
 		ip6 saddr @good_6 tcp dport 22 accept
 		tcp dport 22 update @_rate_set_1_6 { ip6 saddr limit rate 3/minute } accept
 		tcp dport 22 update @banned_6 { ip6 saddr } jump lograte_7
