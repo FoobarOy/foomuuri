@@ -280,6 +280,7 @@ class TestIplistParseConfig(unittest.TestCase):
             # Asserting applied option values are exactly as set
             self.assertFalse(iplists['@foo'].options.start)
             self.assertFalse(iplists['@foo'].options.merge)
+            self.assertFalse(iplists['@foo'].options.dynamic)
             self.assertEqual(iplists['@foo'].options.url_max_size, 1024)
             # Alternative start/merge syntax (false)
             self.assertFalse(iplists['@bar'].options.start)
@@ -387,6 +388,27 @@ class TestIplistParseConfig(unittest.TestCase):
                     unittest.mock.call('@foo       https://foob.ar/'),
                     unittest.mock.call('@bar       https://foo.bar/'),
                 ]
+            )
+
+    def test_iplist_dynamic(self, *_):
+        """Test dynamic flag in iplist."""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @foo dynamic=yes
+            @bar dynamic=yes element_timeout=1m30s
+        """,
+        ):
+            iplists = parse_config_iplist(minimal_config())
+            self.assertTrue(iplists['@foo'].options.dynamic)
+            self.assertTrue(iplists['@bar'].options.dynamic)
+            self.assertEqual(
+                iplists['@foo'].options.element_timeout,
+                parse_duration('0s', -1),
+            )
+            self.assertEqual(
+                iplists['@bar'].options.element_timeout,
+                parse_duration('1m30s', -1),
             )
 
     def test_internal_iplist_missing_ok_init(self, _, INTERNAL, *__):

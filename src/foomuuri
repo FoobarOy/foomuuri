@@ -370,6 +370,8 @@ class Internal(TypedConfig):
 class IPListOptions(TypedConfig):
     """iplist{} options container."""
 
+    # pylint: disable=too-many-instance-attributes
+
     dns_timeout: int = dataclasses.field(
         default=86400,
         metadata={
@@ -398,6 +400,13 @@ class IPListOptions(TypedConfig):
             'validate': Validators.int_positive,
         },
     )  # 1d
+    element_timeout: int = dataclasses.field(
+        default=0,
+        metadata={
+            'convert_str': lambda d: parse_duration(d, -1),
+            'validate': Validators.int_positive_or_zero,
+        },
+    )  # disabled
     url_max_size: int = dataclasses.field(
         default=33_554_432, metadata={'validate': Validators.int_positive}
     )  # 32MiB
@@ -407,6 +416,9 @@ class IPListOptions(TypedConfig):
     merge: bool = dataclasses.field(
         default=True, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # merge
+    dynamic: bool = dataclasses.field(
+        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    )  # dynamic flag, implies merge=no and no interval
 
     def parse_option(self, option: str):
         """Parse and set iplist option value from option.
@@ -1364,6 +1376,17 @@ def verify_rule_sanity(rule, fileline):
         if ' ' in value:
             fail(f'{fileline}"{key}" must be single word: {value}')
 
+    for key in ('iplist_add', 'iplist_update', 'iplist_delete'):
+        value = rule[key]
+        if value is None:
+            continue
+        if value.count(' ') != 1 or not value.startswith(
+            ('saddr @', 'daddr @')
+        ):
+            fail(
+                f'{fileline}"{key}" must be addrtype and iplist name: {value}'
+            )
+
     for key in ('global_rate', 'saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
         if not rule[key]:
             continue
@@ -1506,6 +1529,9 @@ def parse_rule_line(fileline_line):
         'mark_match': None,
         'priority_set': None,
         'priority_match': None,
+        'iplist_add': None,
+        'iplist_update': None,
+        'iplist_delete': None,
         'dscp': None,
         'cgroup': None,
         'ct_status': None,
@@ -1639,6 +1665,9 @@ def parse_rule_line(fileline_line):
             'mark_match',
             'priority_set',
             'priority_match',
+            'iplist_add',
+            'iplist_update',
+            'iplist_delete',
             'dscp',
             'cgroup',
             'ct_status',
@@ -2397,7 +2426,14 @@ def parse_nat_to(rule, ipv):
     return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target}'
 
 
-def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
+def rule_matchers(  # noqa: PLR0914 -- Too many local variables
+    rule,
+    ipv,
+    *,
+    cast=None,
+    skip_options=True,
+    skip_icmp=True,
+):
     """Parse rule's matchers to nft rule.
 
     Return value "None" is "no match, skip rule".
@@ -2405,6 +2441,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-statements
     if cast is not None and rule['cast'] != cast:
         return None  # multi/broadcast doesn't match
     if ipv == 6 and rule['cast'] == 'broadcast':
@@ -2460,6 +2497,16 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
     if rule['priority_set']:
         meta_set += f'meta priority set "{rule["priority_set"]}" '
 
+    iplist_mangle = ''
+    for operation in ('add', 'update', 'delete'):
+        value = rule[f'iplist_{operation}']
+        if value and ' ' in value:
+            addr, iplist_name = value.split(' ', 1)
+            iplist_mangle += (
+                f'{operation} {iplist_name}_{ipv} '
+                f'{{ {"ip" if ipv == 4 else "ip6"} {addr} }} '
+            )
+
     tproxy = ''
     if rule['tproxy']:
         tproxy_to = parse_iplist_to_single_ip(
@@ -2496,6 +2543,7 @@ def rule_matchers(rule, ipv, *, cast=None, skip_options=True, skip_icmp=True):
         f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
         f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
         f'{priority_match}{dscp}{uid}{gid}{tproxy}{meta_set}'
+        f'{iplist_mangle}'
     )
 
 
@@ -3011,9 +3059,15 @@ def output_iplist_sets(iplists: IPLists) -> None:
         for ipv in (4, 6):
             out(f'set {name[1:]}_{ipv} {{')
             out(f'type ipv{ipv}_addr')
-            out('flags interval,timeout')
-            if iplists[name].options.merge:
-                out('auto-merge')
+            if iplists[name].options.dynamic:
+                out(f'size {CONFIG.set_size}')
+                out('flags dynamic,timeout')
+            else:
+                out('flags interval,timeout')
+                if iplists[name].options.merge:
+                    out('auto-merge')
+            if iplists[name].options.element_timeout:
+                out(f'timeout {iplists[name].options.element_timeout}s')
             out('}')
 
 
