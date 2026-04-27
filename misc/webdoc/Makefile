@@ -1,6 +1,6 @@
 # Generate web documentation for https://foomuuri.foobar.fi/
 
-.PHONY: all version clean distclean
+.PHONY: all version worktree clean distclean
 
 all: distclean
 	mkdir final
@@ -17,13 +17,19 @@ all: distclean
 	$(MAKE) clean
 
 version:
-	rm -rf docs
+	rm -rf docs site
 	(cd ../.. && git archive $(HASH) docs/) | tar --extract
 	cat docs/nav.toml common.toml > zensical.toml
 	zensical build
 	sed -i -e "/<.loc>$$/a \\        <lastmod>$$(git show -s --format=%cI $(HASH))</lastmod>" site/sitemap.xml
 	find site -exec touch --date="$$(git show -s --format=%ci $(HASH))" {} \;
 	mv site final/$(VERSION)
+
+worktree:
+	rm -rf docs site
+	cp -a ../../docs docs
+	cat docs/nav.toml common.toml > zensical.toml
+	zensical build
 
 clean:
 	rm -rf .cache zensical.toml docs site
