@@ -7,6 +7,9 @@ test/*/zone
 .ruff_cache
 htmlcov
 
+misc/webdoc/docs
 misc/webdoc/final
+misc/webdoc/site
+misc/webdoc/zensical.toml
 
 __pycache__
