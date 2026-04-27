@@ -10,8 +10,8 @@ nav = [
     {"Example Configurations" = [
         {"Host Firewall" = "Host-Firewall.md"},
         {"Router Firewall" = "Router-Firewall.md"},
-        {"Multiple ISP" = "Multiple-ISP.md"},
         {"Advanced Filtering" = "Advanced-Filtering.md"},
+        {"Multiple ISP" = "Multiple-ISP.md"},
     ]},
     {"Tools" = [
         {"Connectivity Monitor" =  "Monitor.md"},
