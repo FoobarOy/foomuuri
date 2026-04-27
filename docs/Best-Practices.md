@@ -138,8 +138,13 @@ public IP addresses.
 
 ## fail2ban
 
-See [issues](https://github.com/FoobarOy/foomuuri/issues/9) how to integrate
-with `fail2ban`.
+Foomuuri supports automatic IP address
+[banning](Advanced-Filtering.md#automatic-ip-address-banning) without any
+external programs. This is usually enough, no `fail2ban` is needed. Banning
+happens fully on packet path, native on nftables level.
+
+Alternatively, see [issues](https://github.com/FoobarOy/foomuuri/issues/9)
+how to integrate Foomuuri with `fail2ban` program.
 
 
 ## Custom nftables chains

@@ -418,9 +418,18 @@ Maximum content size for downloaded IP address list can be defined with
 `url_max_size=bytes` line. Default value is 33554432 (32 MiB). List will
 be ignored if it's too large.
 
+Optional `dynamic=yes` option enables dynamic flag on generated ruleset.
+This flag is needed when updating iplist content on packet path with
+[`iplist_update`](Rule.md#iplist_update) matcher, for example in automatic
+IP address [banning](Advanced-Filtering.md#automatic-ip-address-banning).
+For normal usage this option should not be used.
+
+Optional `element_timeout=time` option sets default element expire timeout.
+This is needed in automatic IP address banning and port knocking.
+
 Optional `merge=no` option disables IP address auto-merge. Normally it is
-recommended to keep it enabled. For `fail2ban` alike scenarios (see below)
-it is recommended to be disabled.
+recommended to keep it enabled. When using external `fail2ban` program
+(see below) it is recommended to be disabled.
 
 Foomuuri startup will not add IP addresses to lists marked with optional
 `start=no` option. Entries will be added later by `foomuuri-iplist.timer`
@@ -436,7 +445,8 @@ usage. Example:
 
 ```
 iplist {
-  @blacklist merge=no
+  @banned    dynamic=yes element_timeout=5m  # automatic IP address banning
+  @blacklist merge=no                        # fail2ban
 }
 
 # Manipulate with command:

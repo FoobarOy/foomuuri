@@ -3,6 +3,15 @@
 ## 0.33 (20xx-xx-xx)
 
 * Documentation moved to https://foomuuri.foobar.fi/latest/
+* Add port knocking and automatic IP address banning (fail2ban) support.
+  These happen fully on packet path, native on nftables level. No external
+  programs are needed.
+* Add `iplist_add`, `iplist_update` and `iplist_delete` matchers to
+  add/update/delete IP address to iplist on packet path.
+* Add `dynamic=yes` option to `iplist` section line. This option enables
+  dynamic flag, needed for packet path updates.
+* Add `element_timeout=time` option to `iplist` section line. This option
+  sets default expire timeout for iplist elements.
 * Add `start=no` option to `iplist` section line. Foomuuri will not add IP
   addresses to such lists at startup. Entries will be added later by
   `foomuuri-iplist.timer` service. This can be used with "unsafe" external

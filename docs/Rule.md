@@ -261,6 +261,38 @@ forward {
 ```
 
 
+### iplist_add
+
+Add packet source or destination IP address to
+[iplist](Configuration.md#iplist), using default `element_timeout`.
+Timeout is not updated if IP address is already in iplist.
+Two arguments are needed: `saddr` or `daddr`, and iplist `@name`.
+
+Normally `iplist_update` is a better choice as it updates timeout.
+
+
+### iplist_update
+
+Add/update packet source or destination IP address to
+[iplist](Configuration.md#iplist), using default `element_timeout`.
+Timeout will be updated if IP address is already in iplist.
+Two arguments are needed: `saddr` or `daddr`, and iplist `@name`.
+
+See [port knocking](Advanced-Filtering.md#port-knocking)
+and automatic IP address
+[banning](Advanced-Filtering.md#automatic-ip-address-banning)
+for examples.
+
+
+### iplist_delete
+
+Delete packet source or destination IP address from
+[iplist](Configuration.md#iplist).
+Two arguments are needed: `saddr` or `daddr`, and iplist `@name`.
+
+See [port knocking](Advanced-Filtering.md#port-knocking) for example.
+
+
 ### ct_status
 
 Matches packet's conntrack status, mostly used with

@@ -37,6 +37,8 @@ IRC channel `#foomuuri` on Libera.Chat.
   [connectivity monitor](Monitor.md)
 * [IPsec](Rule.md#sipsec-dipsec) matching support
 * Ability to [map](Configuration.md#zonemap) certain traffic to separate zones
+* [Port knocking](Advanced-Filtering.md#port-knocking) and automatic IP address
+  [banning](Advanced-Filtering.md#automatic-ip-address-banning) support
 * D-Bus API
 * Firewalld emulation for NetworkManager's zone support
 * Raw nftables [rules](Rule.md#nft) can be used
