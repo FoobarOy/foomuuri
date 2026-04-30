@@ -486,21 +486,22 @@ Example:
 
 ```
 localhost-any {
-  # Allow ping and SSH for all traffic from localhost, no matter where
-  # it is going. Normally reject/drop statement is added to specific
-  # localhost-zone section, not to localhost-any.
+  # Allow ping and SSH from localhost, no matter where it is going.
   ping
   ssh
+
+  # Final drop/reject rule is usually added to specific localhost-zone
+  # section, not in localhost-any.
 }
 
 localhost-public {
-  # Accept HTTPS to public, in addition to localhost-any rules.
+  # Accept all localhost-any rules (ping, SSH), plus HTTPS.
   https
   reject log
 }
 
 localhost-internal {
-  # Accept DNS queries to internal, in addition to localhost-any rules.
+  # Accept all localhost-any rules (ping, SSH), plus DNS queries.
   domain
   reject log
 }
@@ -728,6 +729,13 @@ postrouting nat srcnat + 20 {
   ...
 }
 ```
+
+These sections are special. Rule `drop` or `reject` will drop/reject packet
+immediately. Default rule is `accept`, which will continue processing to
+other special sections, zone-zone section and again to other special
+sections. All of them have to accept the packet. See
+[packet flow in Netfilter](https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg)
+for detailed section processing order.
 
 
 ## invalid, rpfilter, smurfs
