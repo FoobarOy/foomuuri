@@ -511,8 +511,8 @@ counters can be listed with `foomuuri list`.
 ### log
 
 Write log entry (journal / syslog) when traffic matches this rule. Optional
-log prefix can be added. Default prefix is "szone-dzone STATEMENT", for example
-"localhost-public REJECT".
+log prefix can be added. Default prefix is `szone-dzone STATEMENT`, for example
+`localhost-public REJECT`.
 
 Following variables are supported in log prefix:
 
@@ -520,26 +520,30 @@ Following variables are supported in log prefix:
 * `$(dzone)`
 * `$(statement)`
 
-More text to default log prefix can be added with `log + "my text"`.
+Additional text to default log prefix can be added with `log + " my text"`,
+resulting `localhost-public REJECT my text`.
 
 Example:
 
 ```
 public-localhost {
-  # Use default log prefix "public-localhost DROP"
+  # Drop and log ssh with default prefix "public-localhost DROP"
   ssh drop log
 
-  # Drop and log incoming http with custom prefix
+  # Drop and log http with custom prefix "incoming-http dropped"
   http drop log "incoming-http dropped"
 
   # Drop and log https with custom prefix with variables. This results to
   # prefix "public => localhost: DROP"
   https drop log "$(szone) => $(dzone): $(statement)"
 
-  # Drop telnet with prefix "public-localhost DROP:telnet"
-  telnet drop log + ":telnet"
+  # Drop and log telnet with custom prefix "public-localhost DROP:telnet"
+  telnet drop log + ":telnet"         # no space included to get "DROP:telnet"
 
-  # Use default log prefix "public-localhost DROP"
+  # Drop and log ftp with custom prefix "public-localhost DROP ftp-is-disabled"
+  ftp drop log + " ftp-is-disabled"   # space is included here
+
+  # Use default prefix "public-localhost DROP"
   drop log
 }
 ```
