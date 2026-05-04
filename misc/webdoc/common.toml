@@ -1,4 +1,6 @@
-# [project] (in nav.toml)
+# This file is needed for build documentation for versions 0.27 - 0.32.
+
+# [project] (in docs/nav.toml)
 site_name = "Foomuuri"
 site_url = "https://foomuuri.foobar.fi/latest"
 repo_url = "https://github.com/FoobarOy/foomuuri"
@@ -12,18 +14,14 @@ alias = true
 custom_dir = "overrides"
 
 features = [
-    @@FEATURES@@
     "content.code.copy",
     "content.code.select",
-    "navigation.indexes",
+    "navigation.expand",
     "navigation.path",
     "navigation.top",
     "navigation.tracking",
     "search.highlight",
 ]
-
-[project.markdown_extensions.toc]
-toc_depth = 2
 
 # Palette toggle for automatic mode
 [[project.theme.palette]]

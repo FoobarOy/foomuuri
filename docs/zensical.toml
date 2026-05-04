@@ -41,3 +41,59 @@ nav = [
     ]},
     {"FAQ" = "faq.md"},
 ]
+
+site_name = "Foomuuri"
+site_url = "https://foomuuri.foobar.fi/latest"
+repo_url = "https://github.com/FoobarOy/foomuuri"
+copyright = "Copyright 2023-2026, Kim B. Heino, Foobar Oy and contributors."
+
+[project.extra.version]
+provider = "mike"
+alias = true
+
+[project.theme]
+custom_dir = "overrides"
+
+features = [
+    "content.code.copy",
+    "content.code.select",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.path",
+    "navigation.tabs",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+    "toc.integrate",
+]
+
+[project.markdown_extensions.toc]
+toc_depth = 2
+
+# Palette toggle for automatic mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+# Palette toggle for light mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+# Palette toggle for dark mode
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.snippets]
+[project.markdown_extensions.pymdownx.superfences]
