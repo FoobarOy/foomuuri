@@ -1,20 +1,43 @@
 [project]
 nav = [
     {"Home" = "index.md"},
-    {"Getting Started" = "Getting-Started.md"},
-    {"User Guide" = [
-        {"Configuration" = "Configuration.md"},
-        {"Rule" = "Rule.md"},
-        {"Best Practices / FAQ" = "Best-Practices.md"},
+    {"Installation" = "install.md"},
+    {"Configuration" = [
+        {"Basics" = "config/basic.md"},
+        {"Sections" = [
+	      "config/section/index.md",
+              {"foomuuri" = "config/section/foomuuri.md"},
+              {"zone" = "config/section/zone.md"},
+              {"zone-zone" = "config/section/zonezone.md"},
+              {"zone-any, any-zone, any-any" = "config/section/any.md"},
+              {"macro" = "config/section/macro.md"},
+              {"iplist" = "config/section/iplist.md"},
+              {"snat" = "config/section/snat.md"},
+              {"dnat" = "config/section/dnat.md"},
+              {"template" = "config/section/template.md"},
+              {"hook" = "config/section/hook.md"},
+              {"zonemap" = "config/section/zonemap.md"},
+              {"prerouting, postrouting, forward, input, output" = "config/section/special.md"},
+              {"invalid, rpfilter, smurfs" = "config/section/invalid.md"},
+              {"target, group" = "config/section/targetgroup.md"},
+        ]},
+        {"Rule" = [
+	      "config/rule/index.md",
+              {"Matchers" = "config/rule/matcher.md"},
+              {"Statements" = "config/rule/statement.md"},
+              {"Logging" = "config/rule/logging.md"},
+              {"Rate Limit" = "config/rule/ratelimit.md"},
+              {"Miscellaneous" = "config/rule/misc.md"},
+        ]},
     ]},
-    {"Example Configurations" = [
-        {"Host Firewall" = "Host-Firewall.md"},
-        {"Router Firewall" = "Router-Firewall.md"},
-        {"Advanced Filtering" = "Advanced-Filtering.md"},
-        {"Multiple ISP" = "Multiple-ISP.md"},
+    {"Examples" = [
+        {"Host Firewall" = "example/host-firewall.md"},
+        {"Router Firewall" = "example/router-firewall.md"},
+        {"Advanced Filtering" = "example/advanced.md"},
+        {"Multiple ISP" = "example/multiple-isp.md"},
     ]},
     {"Tools" = [
-        {"Connectivity Monitor" =  "Monitor.md"},
+        {"Connectivity Monitor" =  "tool/monitor.md"},
     ]},
-    {"Changelog" = "https://github.com/FoobarOy/foomuuri/blob/main/CHANGELOG.md"},
+    {"FAQ" = "faq.md"},
 ]

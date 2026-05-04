@@ -4,12 +4,12 @@ Following examples apply for:
 
 * Your personal laptop
 * Your personal workstation
-* Corporate server behind [router firewall](Router-Firewall.md)
+* Corporate server behind [router firewall](router-firewall.md)
 * Corporate server on cloud
 * Any other system with only one network connection
 
 
-## Example configuration for incoming only
+## Incoming only
 
 ```
 zone {
@@ -55,7 +55,7 @@ zone {
 ```
 
 
-## Example configuration for bidirectional
+## Bidirectional
 
 ```
 zone {
@@ -106,7 +106,7 @@ Following outgoing traffic is allowed:
 * Everything else is rejected and logged
 
 
-## Example configuration for multi-zone
+## Multi-zone
 
 ```
 zone {

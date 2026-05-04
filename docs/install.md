@@ -1,9 +1,9 @@
-# Getting Started
+# Installation
 
 The easiest way to install Foomuuri is to use packages from your Linux
 distribution.
 
-See [host firewall](Host-Firewall.md) for example `/etc/foomuuri/foomuuri.conf`
+See [host firewall](example/host-firewall.md) for example `/etc/foomuuri/foomuuri.conf`
 configuration file.
 
 
@@ -107,9 +107,6 @@ recommended D-Bus support needs `python3-dbus` and `python3-gobject`
 
 Optionally Foomuuri will use `python3-systemd`, `python3-urllib3` and
 `python3-lxml` if they are available.
-
-Older version of `nftables` will work if
-[a patch](https://github.com/FoobarOy/foomuuri/issues/27) is applied.
 
 ```
 # Untar source

@@ -5,7 +5,7 @@ internet connection by pinging some external server. Command can
 be run if network link goes up or down. Example
 [command](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor.event)
 to send an email notification to root is included in doc directory. Another
-examples are [multiple ISP](Multiple-ISP.md) configurations and commands.
+examples are [multiple ISP](../example/multiple-isp.md) configurations and commands.
 
 
 ## target
@@ -104,7 +104,7 @@ Monitor statistics are written to a file once a minute.
 
 ## group
 
-Multiple monitor [targets](Monitor.md#target) can be grouped to single
+Multiple monitor [targets](monitor.md#target) can be grouped to single
 monitor. Example:
 
 ```
@@ -121,4 +121,4 @@ if all of the targets are down. It is usually safer to run up and down
 commands in `group {}` with multiple targets than in single `target {}`.
 
 Optional `command_down_interval` and `down_interval` can also be defined.
-See [above](Monitor.md#target) for description.
+See [above](monitor.md#target) for description.

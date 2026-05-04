@@ -1,7 +1,7 @@
 # Router Firewall
 
 
-## Example configuration for localhost - public - internal
+## localhost - public - internal
 
 This example is for small corporate firewall:
 
@@ -108,7 +108,7 @@ net.ipv6.conf.all.forwarding = 1
 ```
 
 
-## Example configuration for localhost - public - dmz - internal
+## localhost - public - dmz - internal
 
 This example is for larger corporate firewall:
 
