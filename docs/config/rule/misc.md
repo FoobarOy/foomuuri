@@ -85,20 +85,22 @@ localhost-public {
 
 ## nft
 
-Raw nftables rule can written with `nft "raw rule here"`. This works in
-`zone-zone`, `zonemap`, `snat` and `dnat` sections. For example, `https`
-macro can be written as:
+Raw nftables rule can be written with `nft "raw rule here"`. For example,
+`https` rule can be written as:
 
 ```
+public-localhost {
   nft "tcp dport 443 accept"
   nft "udp dport 443 accept"
+  ...
+}
 ```
 
-`nft` can also be used as part of rule:
+`nft` can also be combined with matchers:
 
 ```
   # Jump to my-custom-chain for UDP traffic to ports 1000-2000
-  udp dport 1000-2000 nft "jump my-custom-chain"
+  udp 1000-2000 nft "jump my-custom-chain"
 ```
 
 See [nftables web page](https://wiki.nftables.org/) for more information
