@@ -57,14 +57,10 @@ class TestParseConfigFoomuuri(unittest.TestCase):
         ) as config_file:
             _ = minimal_config()
             self.assertEqual(CONFIG.try_reload_timeout, 69)
-            warning.assert_has_calls(
-                [
-                    unittest.mock.call(
-                        f'File {config_file} line 3: foomuuri{{}} option '
-                        f'"try-reload_timeout" is obsolete, use '
-                        f'"try_reload_timeout" instead',
-                    ),
-                ]
+            warning.assert_called_once_with(
+                f'File {config_file} line 3: foomuuri{{}} option '
+                f'"try-reload_timeout" is obsolete, use '
+                f'"try_reload_timeout" instead'
             )
 
     def test_append_value(self, CONFIG, *_):
