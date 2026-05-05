@@ -2872,6 +2872,8 @@ def output_static_chain_logging(chain, statement):
 
 def output_header(chain_rules):
     """Output generic nft header."""
+    # pylint: disable=too-many-statements
+
     # Delete current foomuuri table and add new
     out('table inet foomuuri')
     out('delete table inet foomuuri')
