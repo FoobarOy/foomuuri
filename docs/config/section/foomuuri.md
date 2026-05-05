@@ -28,13 +28,14 @@ foomuuri {
   localhost_zone localhost
   dbus_zone public
   rpfilter yes
+  flowtable no
   counter no
   set_size 65535
   recursion_limit 10000
   priority_offset 5
   dbus_firewalld no
   nft_bin nft
-  try-reload_timeout 15
+  try_reload_timeout 15
 }
 ```
 
@@ -68,6 +69,11 @@ D-Bus support.
 * `eth0 eth1 eth2` to enable it to specified interfaces `eth0 eth1 eth2`
 * `-eth1 -eth2` to enable it to all other interfaces than `eth1 eth2`
 
+`flowtable` is to enable Netfilter flowtable infrastructure for specified
+interfaces. It improves network forward performance for high speed interfaces.
+Optional `hw_offload=yes` keyword enables hardware offloading (make sure your
+hardware supports `hw-tc-offload`).
+
 `counter` is to add anonymous byte and packet [counter](../rule/logging.md#counter) to
 all rules. Value can be:
 
@@ -99,5 +105,5 @@ D-Bus and do the same thing.
 
 `nft_bin` is the name for `nft` binary. Full path can be specified if required.
 
-`try-reload_timeout` is the timeout in seconds for `foomuuri try-reload`
+`try_reload_timeout` is the timeout in seconds for `foomuuri try-reload`
 command.

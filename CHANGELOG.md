@@ -15,9 +15,12 @@
 * Add `start=no` option to `iplist` section line. Foomuuri will not add IP
   addresses to such lists at startup. Entries will be added later by
   `foomuuri-iplist.timer` service. This can be used with "unsafe" external
-  iplists to make sure Foomuuri start will not fail or block your access
+  iplist to make sure Foomuuri start will not fail or block your access
   for first minutes after reboot.
 * Change `iplist` section option `-merge` to `merge=no`.
+* Add `flowtable list-of-interfaces` to `foomuuri` section. It enables
+  Netfilter flowtable infrastructure. It improves network forward performance
+  for high speed interfaces.
 * Fix: Interface `lo` is special. Matcher `oifname lo` does not work in
   prerouting (DNAT) chain. Output is as `fib daddr type local` instead.
 

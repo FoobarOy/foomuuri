@@ -273,6 +273,7 @@ class Config(TypedConfig):
         default_factory=lambda: {'yes'},
         metadata={'validate': Validators.has_elements},
     )
+    flowtable: set = dataclasses.field(default_factory=set)
     counter: set = dataclasses.field(
         default_factory=lambda: {'no'},
         metadata={'validate': Validators.has_elements},
@@ -2922,8 +2923,21 @@ def output_header(chain_rules):
     out('reject with icmpx admin-prohibited')
     out('}')
 
+    flowtable = {item for item in CONFIG.flowtable if '=' not in item}
+    if len(flowtable) > 1:
+        out('flowtable fastpath {')
+        out(f'hook ingress priority filter{INTERNAL.priority_offset}')
+        out(f'devices = {single_or_set(flowtable, quote=True)}')
+        if 'hw_offload=yes' in CONFIG.flowtable:
+            out('flags offload')
+        if 'counter=yes' in CONFIG.flowtable:
+            out('counter')
+        out('}')
+
     out('chain forward {')
     out(f'type filter hook forward priority filter{INTERNAL.priority_offset}')
+    if len(flowtable) > 1:
+        out('ct state established flow add @fastpath')
     out('iifname . oifname vmap @forward_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
