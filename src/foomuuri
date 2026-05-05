@@ -1723,6 +1723,20 @@ def parse_config_rules(config):
                 f'{config["_section_line"][section]}Unknown section: {section}'
             )
         rules[szone, dzone] = [parse_rule_line(line) for line in lines]
+
+        # Allow multicast + broadcast if last rule is "accept".
+        # These can be added to the end as they are processed in
+        # correct order in output_zone().
+        if rules[szone, dzone] and rules[szone, dzone][-1]['line'] == [
+            'accept'
+        ]:
+            rules[szone, dzone].extend(
+                [
+                    parse_rule_line(('', ['multicast'])),
+                    parse_rule_line(('', ['broadcast'])),
+                ]
+            )
+
     return rules
 
 
