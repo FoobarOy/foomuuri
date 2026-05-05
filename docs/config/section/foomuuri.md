@@ -70,9 +70,10 @@ D-Bus support.
 * `-eth1 -eth2` to enable it to all other interfaces than `eth1 eth2`
 
 `flowtable` is to enable Netfilter flowtable infrastructure for specified
-interfaces. It improves network forward performance for high speed interfaces.
-Optional `hw_offload=yes` keyword enables hardware offloading (make sure your
-hardware supports `hw-tc-offload`).
+interfaces, for example `flowtable eth0 eth1`. It improves network forward
+performance for high speed interfaces. Optional `hw_offload=yes` keyword
+enables hardware offloading (make sure your interface supports
+`hw-tc-offload`). Value `yes` or negative notation does not work here.
 
 `counter` is to add anonymous byte and packet [counter](../rule/logging.md#counter) to
 all rules. Value can be:
