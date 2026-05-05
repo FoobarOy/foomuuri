@@ -160,8 +160,9 @@ table inet foomuuri {
 		ip saddr @good_4 tcp dport 22 accept
 		tcp dport 22 update @_rate_set_1_4 { ip saddr limit rate 5/minute burst 5 packets } accept
 		tcp dport 22 update @banned_4 { ip saddr } jump lograte_2
-		update @_rate_set_2_4 { ip saddr limit rate 2/minute burst 10 packets } jump lograte_3
-		update @banned_4 { ip saddr } jump lograte_4
+		ip saddr @good_4 jump lograte_3
+		update @_rate_set_2_4 { ip saddr limit rate 2/minute burst 10 packets } jump lograte_4
+		update @banned_4 { ip saddr } jump lograte_5
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
@@ -176,12 +177,13 @@ table inet foomuuri {
 			untracked : jump smurfs_6
 		}
 		fib daddr type multicast drop
-		ip6 saddr @banned_6 update @banned_6 { ip6 saddr } jump lograte_6
+		ip6 saddr @banned_6 update @banned_6 { ip6 saddr } jump lograte_7
 		ip6 saddr @good_6 tcp dport 22 accept
 		tcp dport 22 update @_rate_set_1_6 { ip6 saddr limit rate 5/minute burst 5 packets } accept
-		tcp dport 22 update @banned_6 { ip6 saddr } jump lograte_7
-		update @_rate_set_2_6 { ip6 saddr limit rate 2/minute burst 10 packets } jump lograte_8
-		update @banned_6 { ip6 saddr } jump lograte_9
+		tcp dport 22 update @banned_6 { ip6 saddr } jump lograte_8
+		ip6 saddr @good_6 jump lograte_9
+		update @_rate_set_2_6 { ip6 saddr limit rate 2/minute burst 10 packets } jump lograte_10
+		update @banned_6 { ip6 saddr } jump lograte_11
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
@@ -302,26 +304,36 @@ table inet foomuuri {
 	}
 
 	chain lograte_4 {
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain lograte_5 {
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP:ban-portscan " level info flags skuid
 		drop
 	}
 
-	chain lograte_6 {
+	chain lograte_7 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP:banned " level info flags skuid
 		drop
 	}
 
-	chain lograte_7 {
+	chain lograte_8 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP:ban-ssh " level info flags skuid
 		drop
 	}
 
-	chain lograte_8 {
+	chain lograte_9 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
 
-	chain lograte_9 {
+	chain lograte_10 {
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain lograte_11 {
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP:ban-portscan " level info flags skuid
 		drop
 	}
