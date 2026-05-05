@@ -1100,6 +1100,10 @@ def parse_config_foomuuri(config):
         value = ' '.join(line[1:])
         if name == 'try-reload_timeout':  # backward compatibility
             name = 'try_reload_timeout'
+            warning(
+                f'{fileline}foomuuri{{}} option "{line[0]}" is obsolete, '
+                f'use "{name}" instead'
+            )
         if name not in CONFIG:
             fail(f'{fileline}Unknown foomuuri{{}} option: {" ".join(line)}')
         try:

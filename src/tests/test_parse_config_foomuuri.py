@@ -48,11 +48,24 @@ class TestParseConfigFoomuuri(unittest.TestCase):
         ):
             yield config_file
 
-    def test_try_reload_timeout(self, CONFIG, *_):
+    @unittest.mock.patch('foomuuri.warning')
+    def test_try_reload_timeout(self, warning, CONFIG, *_):
         """Test try-reload_timeout backwards compatible option."""
-        with self.mock_config_foomuuri('try-reload_timeout', 69):
+        with self.mock_config_foomuuri(
+            'try-reload_timeout',
+            69,
+        ) as config_file:
             _ = minimal_config()
             self.assertEqual(CONFIG.try_reload_timeout, 69)
+            warning.assert_has_calls(
+                [
+                    unittest.mock.call(
+                        f'File {config_file} line 3: foomuuri{{}} option '
+                        f'"try-reload_timeout" is obsolete, use '
+                        f'"try_reload_timeout" instead',
+                    ),
+                ]
+            )
 
     def test_append_value(self, CONFIG, *_):
         """Test appending of option value."""
