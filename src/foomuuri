@@ -4231,6 +4231,7 @@ def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
     known = parse_config_iplist(config)
+    table = [('Set', 'Element')]
     for setname in INTERNAL.parameters[1:] or sorted(known):
         setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
@@ -4243,10 +4244,11 @@ def command_iplist_list():
         elem6 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data6)]
         elems = sorted(elem4) + sorted(elem6)
         if not elems:
-            print(f'@{setname}')
+            table.append((f'@{setname}', ''))
         else:
-            for elem in elems:
-                print(f'@{setname:20s}  {elem}')
+            table.extend((f'@{setname}', elem) for elem in elems)
+
+    print_table(data=table, header=True)
     return 0
 
 
