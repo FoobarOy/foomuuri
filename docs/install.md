@@ -27,8 +27,7 @@ systemctl disable shorewall-init.service
 nft flush ruleset
 
 # Enable and start Foomuuri
-systemctl enable foomuuri.service
-systemctl start foomuuri.service
+systemctl enable --now foomuuri.service
 
 # Check journal log for Foomuuri logging
 journalctl --follow --dmesg
@@ -56,8 +55,7 @@ systemctl disable shorewall-init.service
 nft flush ruleset
 
 # Enable and start Foomuuri
-systemctl enable foomuuri.service
-systemctl start foomuuri.service
+systemctl enable --now foomuuri.service
 
 # Check journal log for Foomuuri logging
 journalctl --follow --dmesg
@@ -87,8 +85,7 @@ systemctl disable shorewall-init.service
 nft flush ruleset
 
 # Enable and start Foomuuri
-systemctl enable foomuuri.service
-systemctl start foomuuri.service
+systemctl enable --now foomuuri.service
 
 # Check journal log for Foomuuri logging
 journalctl --follow --dmesg
@@ -129,8 +126,7 @@ systemctl disable shorewall-init.service
 nft flush ruleset
 
 # Enable and start Foomuuri
-systemctl enable foomuuri.service
-systemctl start foomuuri.service
+systemctl enable --now foomuuri.service
 
 # Check journal log for Foomuuri logging
 journalctl --follow --dmesg
