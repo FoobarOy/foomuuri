@@ -4888,13 +4888,18 @@ def command_list() -> int:
     if list_type == 'macro':
         macros = parse_config_macros(read_config(require_etc_config=False))
         print('macro {')
-        for macro in sorted(macros):
-            if not macro.startswith('_template_') and (
+        table = [
+            ('', macro, f'{" ".join(macros[macro])}')
+            for macro in sorted(macros)
+            if not macro.startswith('_template_')
+            and (
                 not list_params
                 or macro in list_params
                 or any(item in list_params for item in macros[macro])
-            ):
-                print(f'  {macro:15s} {" ".join(macros[macro])}')
+            )
+        ]
+
+        print_table(data=table, header=False)
         print('}')
         return 0
 
