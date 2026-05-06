@@ -12,6 +12,14 @@ This example is for small corporate firewall:
 * Multiple laptops and workstations in internal network
 * Bidirectional firewalling
 
+``` mermaid
+flowchart LR
+    public@{shape: cloud} --- localhost@{shape: stadium}
+    subgraph Local Network
+        localhost --- internal
+    end
+```
+
 ```
 zone {
   localhost
@@ -122,6 +130,15 @@ This example is for larger corporate firewall:
 * Bidirectional firewalling
 
 See also note about enabling IP packet forwarding above.
+
+``` mermaid
+flowchart LR
+    public@{shape: cloud} --- localhost@{shape: stadium}
+    subgraph Local Network
+        localhost --- internal
+        localhost --- dmz
+    end
+```
 
 ```
 zone {
