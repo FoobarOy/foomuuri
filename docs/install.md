@@ -114,8 +114,8 @@ tar xf foomuuri-0.??.tar.gz
 cd foomuuri-0.??
 
 # Install it to root filesystem
-sudo make install DESTDIR=/
-sudo systemctl daemon-reload
+make install DESTDIR=/
+systemctl daemon-reload
 
 # Configure Foomuuri and verify it
 $EDITOR /etc/foomuuri/foomuuri.conf
