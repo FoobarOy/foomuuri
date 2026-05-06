@@ -4854,6 +4854,8 @@ def list_named_counter(command):
     if not data:
         return 1
 
+    table = [('Counter', 'Packets', 'Bytes')]
+
     for toplevel in data.get('nftables', []):
         counter = toplevel.get('counter')
         name = (counter or {}).get('name')
@@ -4861,7 +4863,9 @@ def list_named_counter(command):
             continue
         packet_value = counter.get('packets', 0)
         byte_value = counter.get('bytes', 0)
-        print(f'{name:21s}  {packet_value} packets, {byte_value} bytes')
+        table.append((name, f'{packet_value}', f'{byte_value}'))
+
+    print_table(data=table, align='<>>', header=True)
     return 0
 
 
