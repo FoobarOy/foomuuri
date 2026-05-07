@@ -26,12 +26,14 @@ systemctl disable shorewall6.service
 systemctl disable shorewall-init.service
 nft flush ruleset
 
-# Enable and start Foomuuri
-systemctl enable foomuuri.service
+# Start Foomuuri
 systemctl start foomuuri.service
 
-# Check journal log for Foomuuri logging
+# Check journal log for firewall logging
 journalctl --follow --dmesg
+
+# If everything works, make Foomuuri persistent across reboots
+systemctl enable foomuuri.service
 ```
 
 
@@ -55,12 +57,14 @@ systemctl disable shorewall6.service
 systemctl disable shorewall-init.service
 nft flush ruleset
 
-# Enable and start Foomuuri
-systemctl enable foomuuri.service
+# Start Foomuuri
 systemctl start foomuuri.service
 
-# Check journal log for Foomuuri logging
+# Check journal log for firewall logging
 journalctl --follow --dmesg
+
+# If everything works, make Foomuuri persistent across reboots
+systemctl enable foomuuri.service
 ```
 
 
@@ -86,12 +90,14 @@ systemctl disable shorewall6.service
 systemctl disable shorewall-init.service
 nft flush ruleset
 
-# Enable and start Foomuuri
-systemctl enable foomuuri.service
+# Start Foomuuri
 systemctl start foomuuri.service
 
-# Check journal log for Foomuuri logging
+# Check journal log for firewall logging
 journalctl --follow --dmesg
+
+# If everything works, make Foomuuri persistent across reboots
+systemctl enable foomuuri.service
 ```
 
 
@@ -128,10 +134,12 @@ systemctl disable shorewall6.service
 systemctl disable shorewall-init.service
 nft flush ruleset
 
-# Enable and start Foomuuri
-systemctl enable foomuuri.service
+# Start Foomuuri
 systemctl start foomuuri.service
 
-# Check journal log for Foomuuri logging
+# Check journal log for firewall logging
 journalctl --follow --dmesg
+
+# If everything works, make Foomuuri persistent across reboots
+systemctl enable foomuuri.service
 ```
