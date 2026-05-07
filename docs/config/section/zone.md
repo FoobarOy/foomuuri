@@ -10,9 +10,9 @@ zone {
 ```
 
 Above example defines two zones, `localhost` and `public`. All configurations
-must have zone `localhost`, which is the computer running Foomuuri,
-similar to "localhost" in hostnames. See
-[zone names](../basic.md#zone-names) for recommended zone naming.
+must have zone `localhost`, which is the computer running Foomuuri, similar to
+"localhost" in hostnames. See [zone names](../basic.md#zone-names) for
+recommended zone naming.
 
 Above example assumes that you are using firewalld D-Bus (`dbus_firewalld`
 config option) emulation where interfaces are attached and detached to zones
@@ -43,5 +43,17 @@ zone {
   localhost
   public     eth0
   wireguard  wg*  # Matches wg0, wg1, wgfoo, and so on
+}
+```
+
+There is also catch all interface `*`. It will match all unassigned
+interfaces. Interfaces assigned to a zone in config or by NetworkManager
+will use that zone.
+
+```
+zone {
+  localhost
+  public     *     # All other than eth0 are assigned to public
+  internal   eth0
 }
 ```
