@@ -14,9 +14,9 @@ This example is for small corporate firewall:
 
 ``` mermaid
 flowchart LR
-    public@{shape: cloud} --- localhost@{shape: stadium}
+    public@{shape: cloud} <--> localhost@{shape: stadium}
     subgraph Local Network
-        localhost --- internal
+        localhost <--> internal
     end
 ```
 
@@ -133,10 +133,10 @@ See also note about enabling IP packet forwarding above.
 
 ``` mermaid
 flowchart LR
-    public@{shape: cloud} --- localhost@{shape: stadium}
+    public@{shape: cloud} <--> localhost@{shape: stadium}
     subgraph Local Network
-        localhost --- internal
-        localhost --- dmz
+        localhost <--> internal
+        localhost <--> dmz
     end
 ```
 

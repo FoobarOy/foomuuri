@@ -14,6 +14,11 @@ Following examples apply for:
 This is the simplest possible firewall. All outgoing traffic is accepted
 and few listed incoming services are accepted.
 
+``` mermaid
+flowchart LR
+    public@{shape: cloud} --> localhost@{shape: stadium}
+```
+
 ```
 zone {
   localhost
@@ -50,6 +55,11 @@ but more specific bidirectional firewall is safer.
 ## Bidirectional
 
 This example accepts listed incoming services and listed outgoing services.
+
+``` mermaid
+flowchart LR
+    public@{shape: cloud} <--> localhost@{shape: stadium}
+```
 
 ```
 zone {
@@ -113,6 +123,17 @@ zones:
 
 This example also shows you how to use `template` to avoid listing
 same basic services in `localhost-public` and in `localhost-home`.
+
+``` mermaid
+flowchart LR
+    subgraph WAN
+        direction TB
+        public@{shape: cloud}
+        home@{shape: cloud}
+    end
+    public <--> localhost@{shape: stadium}
+    home <--> localhost
+```
 
 ```
 zone {
