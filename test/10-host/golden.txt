@@ -66,6 +66,7 @@ table inet foomuuri {
 	chain input {
 		type filter hook input priority filter + 5
 		iifname vmap @input_zones
+		jump public-localhost
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "INPUT DROP " level info flags skuid
 		drop
@@ -74,6 +75,7 @@ table inet foomuuri {
 	chain output {
 		type filter hook output priority filter + 5
 		oifname vmap @output_zones
+		jump localhost-public
 		ip protocol igmp ip daddr 224.0.0.22 accept
 		ip6 saddr :: icmpv6 type mld2-listener-report accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "OUTPUT REJECT " level info flags skuid
@@ -84,6 +86,7 @@ table inet foomuuri {
 	chain forward {
 		type filter hook forward priority filter + 5
 		iifname . oifname vmap @forward_zones
+		jump public-public
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
 		drop

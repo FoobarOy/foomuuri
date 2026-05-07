@@ -11,13 +11,16 @@ Following examples apply for:
 
 ## Incoming only
 
+This is the simplest possible firewall. All outgoing traffic is accepted
+and few listed incoming services are accepted.
+
 ```
 zone {
   localhost
-  public
+  public  *  # All network interfaces belong to zone "public"
 }
 
-public-localhost {
+public-localhost {  # Allow specified incoming traffic
   dhcp-client
   dhcpv6-client
   ping
@@ -25,14 +28,14 @@ public-localhost {
   drop log
 }
 
-localhost-public {
+localhost-public {  # Allow all outgoing traffic
   accept
 }
 ```
 
-Above example is the simplest possible firewall. It is complete
-`/etc/foomuuri/foomuuri.conf` configuration file - there is nothing else
-to be added. It allows incoming (`public-localhost`) traffic:
+Above example is complete `/etc/foomuuri/foomuuri.conf` configuration
+file - there is nothing else to be added. It allows incoming
+(`public-localhost`) traffic:
 
 * DHCP reply packets to obtain a lease from external DHCP server (IPv4 and
   IPv6)
@@ -43,24 +46,15 @@ to be added. It allows incoming (`public-localhost`) traffic:
 All outgoing (`localhost-public`) traffic is accepted. This is usually safe
 but more specific bidirectional firewall is safer.
 
-Normally NetworkManager assigns network interfaces to zones via D-Bus and
-Foomuuri's firewalld emulation. Alternative is to specify network interface(s)
-in `zone` section:
-
-```
-zone {
-  localhost
-  public eth0 wlan0
-}
-```
-
 
 ## Bidirectional
 
+This example accepts listed incoming services and listed outgoing services.
+
 ```
 zone {
   localhost
-  public
+  public  *
 }
 
 public-localhost {
@@ -108,6 +102,18 @@ Following outgoing traffic is allowed:
 
 ## Multi-zone
 
+This is similar to bidirectional example, except there are two outgoing
+zones:
+
+* `public` is the default untrusted connection. There is no network interface
+  listed. Use NetworkManager to assign network interface to `public` zone when
+  you're connecting to untrusted Wi-Fi network, for example in a cafe.
+* `home` is trusted connection. Again use NetworkManager to select `home`
+  zone when you're in a safe place, like at your home or office.
+
+This example also shows you how to use `template` to avoid listing
+same basic services in `localhost-public` and in `localhost-home`.
+
 ```
 zone {
   localhost
@@ -115,7 +121,7 @@ zone {
   home
 }
 
-public-localhost {
+public-localhost {  # Incoming traffic in a cafe
   dhcp-client
   dhcpv6-client
   ping saddr_rate "5/second burst 20"
@@ -123,7 +129,7 @@ public-localhost {
   drop log
 }
 
-home-localhost {
+home-localhost {  # Incoming traffic in safe location
   dhcp-client
   dhcpv6-client
   lsdp
@@ -134,7 +140,7 @@ home-localhost {
   drop log
 }
 
-template outgoing_services {
+template outgoing_services {  # Common outgoing traffic
   dhcp-server
   dhcpv6-server
   domain
@@ -147,12 +153,12 @@ template outgoing_services {
   ssh
 }
 
-localhost-public {
+localhost-public {  # Outgoing traffic in a cafe
   template outgoing_services
   reject log
 }
 
-localhost-home {
+localhost-home {  # Outgoing traffic in safe location
   template outgoing_services
   googlemeet
   ipp
@@ -161,15 +167,3 @@ localhost-home {
   reject log
 }
 ```
-
-This is similar to bidirectional example, except there are two outgoing
-zones:
-
-* `public` is the default untrusted connection. Use NetworkManager to
-  assign network interface to `public` zone when you're connecting to
-  untrusted Wi-Fi network, for example in a cafe.
-* `home` is trusted connection. Again use NetworkManager to select `home`
-  zone when you're in a safe place, like at your home or office.
-
-This example also shows you how to use `template` to avoid listing
-same basic services in `localhost-public` and in `localhost-home`.
