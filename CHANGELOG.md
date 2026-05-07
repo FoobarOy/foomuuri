@@ -6,6 +6,10 @@
 * Add port knocking and automatic IP address banning (fail2ban) support.
   These happen fully on packet path, native on nftables level. No external
   programs are needed.
+* Add support for catch all interface `*` in `zone` section, for example
+  `public *`. It will match all unassigned interfaces. Interfaces assigned
+  to a zone in configuration file or by NetworkManager / D-Bus will use
+  assigned zone.
 * Add `iplist_add`, `iplist_update` and `iplist_delete` matchers to
   add/update/delete IP address to iplist on packet path.
 * Add `dynamic=yes` option to `iplist` section line. This option enables

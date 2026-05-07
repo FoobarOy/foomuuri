@@ -349,6 +349,7 @@ class Internal(TypedConfig):
     pre_start: list = dataclasses.field(init=False)
     pre_stop: list = dataclasses.field(init=False)
     priority_offset: str = dataclasses.field(init=False)
+    catch_all_interface_zone: str = dataclasses.field(init=False)
     root_power: bool = dataclasses.field(init=False)  # Running as "root"?
 
     # Url loader
@@ -1143,12 +1144,22 @@ def parse_config_foomuuri(config):
 def parse_config_zones(config):
     """Parse zone{} from config."""
     zones = {}
+    INTERNAL.catch_all_interface_zone = ''
     for fileline, line in config.pop('zone', []):
         if not Validators.str_zone_name(line[0]):
             fail(f'{fileline}Invalid zone name: {" ".join(line)}')
         if line[0] in zones:
             fail(f'{fileline}Zone is already defined: {line[0]}')
-        zones[line[0]] = {'interface': line[1:]}
+        interface = [item for item in line[1:] if item != '*']
+        zones[line[0]] = {'interface': interface}
+        if '*' in line[1:]:
+            if INTERNAL.catch_all_interface_zone:
+                fail(
+                    f'{fileline}Catch all interface "*" is already assigned '
+                    f'to zone "{INTERNAL.catch_all_interface_zone}": '
+                    f'{" ".join(line)}'
+                )
+            INTERNAL.catch_all_interface_zone = line[0]
     return zones
 
 
@@ -2890,6 +2901,7 @@ def output_static_chain_logging(chain, statement):
 
 def output_header(chain_rules):
     """Output generic nft header."""
+    # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
 
     # Delete current foomuuri table and add new
@@ -2928,6 +2940,10 @@ def output_header(chain_rules):
     out('chain input {')
     out(f'type filter hook input priority filter{INTERNAL.priority_offset}')
     out('iifname vmap @input_zones')
+    if INTERNAL.catch_all_interface_zone:
+        out(
+            f'jump {INTERNAL.catch_all_interface_zone}-{CONFIG.localhost_zone}'
+        )
     output_static_chain_logging('input', 'drop')
     out('drop')
     out('}')
@@ -2935,6 +2951,10 @@ def output_header(chain_rules):
     out('chain output {')
     out(f'type filter hook output priority filter{INTERNAL.priority_offset}')
     out('oifname vmap @output_zones')
+    if INTERNAL.catch_all_interface_zone:
+        out(
+            f'jump {CONFIG.localhost_zone}-{INTERNAL.catch_all_interface_zone}'
+        )
     # IGMP membership report and IPv6 equivalent must be allowed here too as
     # D-Bus interface change event might not be processed yet.
     out('ip protocol igmp ip daddr 224.0.0.22 accept')
@@ -2959,6 +2979,11 @@ def output_header(chain_rules):
     if len(flowtable) > 1:
         out('ct state established flow add @fastpath')
     out('iifname . oifname vmap @forward_zones')
+    if INTERNAL.catch_all_interface_zone:
+        out(
+            f'jump {INTERNAL.catch_all_interface_zone}-'
+            f'{INTERNAL.catch_all_interface_zone}'
+        )
     output_static_chain_logging('forward', 'drop')
     out('drop')
     out('}')
@@ -3444,6 +3469,8 @@ def command_status():
     config = minimal_config()
     zones = parse_config_zones(config)
     zone_interface = parse_active_interface_zone()
+    if INTERNAL.catch_all_interface_zone:
+        zone_interface['*'] = INTERNAL.catch_all_interface_zone
 
     # Running
     ruleset = nft_json('list table inet foomuuri')
