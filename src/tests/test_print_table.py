@@ -1,6 +1,5 @@
 """Basic unit tests of print_table()."""
 # pylint: disable=invalid-name,import-error
-# ruff: noqa: W291
 
 import io
 import unittest
