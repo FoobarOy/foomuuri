@@ -2977,7 +2977,7 @@ def output_header(chain_rules):
     out('chain forward {')
     out(f'type filter hook forward priority filter{INTERNAL.priority_offset}')
     if len(flowtable) > 1:
-        out('ct state established flow add @fastpath')
+        out('flow add @fastpath')
     out('iifname . oifname vmap @forward_zones')
     if INTERNAL.catch_all_interface_zone:
         out(
