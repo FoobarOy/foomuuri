@@ -539,6 +539,45 @@ def verbose(line: str, level: int = 1) -> None:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
+def print_table(
+    data: list[tuple],
+    align: str = '<',
+    header: bool = False,
+    sep: str = '   ',
+) -> None:
+    """Simplistic formatted table printer."""
+    if not data or (header and len(data) == 1):
+        return
+
+    if not set(align).issubset(set('^<>')):
+        raise ValueError('Supported alignment: left <, right >, center ^')
+
+    columns = len(data[0])
+    width = [
+        max(len(str(row[column])) for row in data) for column in range(columns)
+    ]
+
+    if len(align) == 1:
+        align *= columns
+    elif len(align) != columns:
+        raise ValueError('Align value does not match column count')
+
+    for r, row in enumerate(data):
+        print(
+            sep.join(
+                [
+                    f'{column:{align[c]}{width[c]}}'
+                    for c, column in enumerate(row)
+                ]
+            ),
+        )
+
+        if header and not r:
+            print(
+                sep.join([f'{"-" * width[c]}' for c in range(columns)]),
+            )
+
+
 def out(line: str) -> None:
     """Add single line to ruleset."""
     OUT.append(line)
@@ -3500,13 +3539,15 @@ def command_status():
 
     print()
     print('zone {')
+    table = []
     for zone in zones:
         interfaces = [
             interface
             for interface, int_zones in zone_interface.items()
             if zone == int_zones
         ]
-        print(f'  {zone:15s} {" ".join(interfaces)}')
+        table.append(('', zone, f'{" ".join(interfaces)}'))
+    print_table(data=table, header=False)
     print('}')
     return 0
 
@@ -4219,6 +4260,7 @@ def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
     known = parse_config_iplist(config)
+    table = [('Set', 'Element')]
     for setname in INTERNAL.parameters[1:] or sorted(known):
         setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
@@ -4231,10 +4273,11 @@ def command_iplist_list():
         elem6 = [ipaddr for ipaddr, _dummy in iterate_set_elements(data6)]
         elems = sorted(elem4) + sorted(elem6)
         if not elems:
-            print(f'@{setname}')
+            table.append((f'@{setname}', ''))
         else:
-            for elem in elems:
-                print(f'@{setname:20s}  {elem}')
+            table.extend((f'@{setname}', elem) for elem in elems)
+
+    print_table(data=table, header=True)
     return 0
 
 
@@ -4842,6 +4885,8 @@ def list_named_counter(command):
     if not data:
         return 1
 
+    table = [('Counter', 'Packets', 'Bytes')]
+
     for toplevel in data.get('nftables', []):
         counter = toplevel.get('counter')
         name = (counter or {}).get('name')
@@ -4849,7 +4894,9 @@ def list_named_counter(command):
             continue
         packet_value = counter.get('packets', 0)
         byte_value = counter.get('bytes', 0)
-        print(f'{name:21s}  {packet_value} packets, {byte_value} bytes')
+        table.append((name, f'{packet_value}', f'{byte_value}'))
+
+    print_table(data=table, align='<>>', header=True)
     return 0
 
 
@@ -4870,13 +4917,18 @@ def command_list() -> int:
     if list_type == 'macro':
         macros = parse_config_macros(read_config(require_etc_config=False))
         print('macro {')
-        for macro in sorted(macros):
-            if not macro.startswith('_template_') and (
+        table = [
+            ('', macro, f'{" ".join(macros[macro])}')
+            for macro in sorted(macros)
+            if not macro.startswith('_template_')
+            and (
                 not list_params
                 or macro in list_params
                 or any(item in list_params for item in macros[macro])
-            ):
-                print(f'  {macro:15s} {" ".join(macros[macro])}')
+            )
+        ]
+
+        print_table(data=table, header=False)
         print('}')
         return 0
 
