@@ -1,9 +1,10 @@
-"""Basic unit tests of parse_duration()."""
+"""Basic unit tests of parse_duration() and seconds_to_duration()."""
 # pylint: disable=import-error
 
 import unittest
 
 from foomuuri import parse_duration
+from foomuuri import seconds_to_duration
 
 
 class TestParseDuration(unittest.TestCase):
@@ -23,3 +24,17 @@ class TestParseDuration(unittest.TestCase):
         self.assertIsNone(parse_duration('1y', fallback=None))
         self.assertIsNone(parse_duration('s', fallback=None))
         self.assertIsNone(parse_duration('1s1h', fallback=None))
+
+class TestSecondsToDuration(unittest.TestCase):
+    """Test seconds_to_duration()."""
+
+    def test_valid_seconds(self):
+        """Test valid outcomes."""
+        self.assertEqual(seconds_to_duration(0), '0s')
+        self.assertEqual(seconds_to_duration(1), '1s')
+        self.assertEqual(seconds_to_duration(42), '42s')
+        self.assertEqual(seconds_to_duration(61), '1m01s')
+        self.assertEqual(seconds_to_duration(3600), '1h00m00s')
+        self.assertEqual(seconds_to_duration(99999), '1d03h46m39s')
+        self.assertEqual(seconds_to_duration(999999), '11d13h46m39s')
+        self.assertEqual(seconds_to_duration(9999999), '115d17h46m39s')
