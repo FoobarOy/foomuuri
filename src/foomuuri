@@ -569,7 +569,7 @@ def print_table(
                     f'{column:{align[c]}{width[c]}}'
                     for c, column in enumerate(row)
                 ]
-            ),
+            ).rstrip(),
         )
 
         if header and not r:
