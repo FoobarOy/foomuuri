@@ -65,9 +65,9 @@ class TestPrintTable(unittest.TestCase):
 
         self.assertEqual(
             stdout.getvalue(),
-            """Header            Long Elaborate Header    Medium Header 
+            """Header            Long Elaborate Header    Medium Header
 --------------    ---------------------    --------------
-row 1 column 1            row 1 colum 2     row 1 colu 3 
+row 1 column 1            row 1 colum 2     row 1 colu 3
 row 2 colu 1              row 2 colum 2    row 2 column 3
 """,
         )
@@ -78,7 +78,7 @@ row 2 colu 1              row 2 colum 2    row 2 column 3
 
         self.assertEqual(
             stdout.getvalue(),
-            """row 1 column 1   row 1 colum 2   row 1 colu 3  
+            """row 1 column 1   row 1 colum 2   row 1 colu 3
 row 2 colu 1     row 2 colum 2   row 2 column 3
 """,
         )
@@ -106,9 +106,9 @@ row 2 colu 1     row 2 colum 2   row 2 column 3
 
         self.assertEqual(
             stdout.getvalue(),
-            """Header           Long Elaborate Header   Medium Header 
+            """Header           Long Elaborate Header   Medium Header
 --------------   ---------------------   --------------
-row 1 column 1   row 1 colum 2           row 1 colu 3  
+row 1 column 1   row 1 colum 2           row 1 colu 3
 row 2 colu 1     row 2 colum 2           row 2 column 3
 """,
         )
