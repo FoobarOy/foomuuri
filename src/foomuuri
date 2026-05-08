@@ -4260,7 +4260,7 @@ def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
     known = parse_config_iplist(config)
-    table = [('Set', 'Element')]
+    table = [('Iplist', 'Element')]
     for setname in INTERNAL.parameters[1:] or sorted(known):
         setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
