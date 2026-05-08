@@ -3512,13 +3512,15 @@ def command_status():
 
     print()
     print('zone {')
+    table = []
     for zone in zones:
         interfaces = [
             interface
             for interface, int_zones in zone_interface.items()
             if zone == int_zones
         ]
-        print(f'  {zone:15s} {" ".join(interfaces)}')
+        table.append(('', zone, f'{" ".join(interfaces)}'))
+    print_table(data=table, header=False)
     print('}')
     return 0
 
