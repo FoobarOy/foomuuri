@@ -3,8 +3,7 @@
 
 import unittest
 
-from foomuuri import parse_duration
-from foomuuri import seconds_to_duration
+from foomuuri import parse_duration, seconds_to_duration
 
 
 class TestParseDuration(unittest.TestCase):
@@ -24,6 +23,7 @@ class TestParseDuration(unittest.TestCase):
         self.assertIsNone(parse_duration('1y', fallback=None))
         self.assertIsNone(parse_duration('s', fallback=None))
         self.assertIsNone(parse_duration('1s1h', fallback=None))
+
 
 class TestSecondsToDuration(unittest.TestCase):
     """Test seconds_to_duration()."""
