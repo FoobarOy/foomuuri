@@ -4220,7 +4220,7 @@ def parse_duration(timespec, fallback):
         ('s', 'seconds'),
     )
     delta = collections.defaultdict(int)
-    timespec = timespec.replace(' ', '')
+    timespec = timespec.replace(' ', '').replace('_', '')
 
     for unit in units:
         pattern = rf'^(\d+){unit[0]}'

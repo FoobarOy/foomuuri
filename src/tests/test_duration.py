@@ -15,6 +15,7 @@ class TestParseDuration(unittest.TestCase):
         self.assertEqual(parse_duration(' 1s ', fallback=0), 1)
         self.assertEqual(parse_duration(' 1h 1m ', fallback=0), 3660)
         self.assertEqual(parse_duration(' 1w1d1h1m1s ', fallback=0), 694861)
+        self.assertEqual(parse_duration(' 1w_1d_1h_1m_1s', fallback=0), 694861)
 
     def test_invalid_duration(self):
         """Test invalid outcomes."""
