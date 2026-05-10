@@ -4270,6 +4270,35 @@ def iterate_set_elements(data):
                 )
 
 
+def command_iplist_status():
+    """List iplist(s) name and entries count."""
+    config = minimal_config()
+    known = parse_config_iplist(config)
+    table = [('Iplist', 'Entries')]
+    for setname in INTERNAL.parameters[1:] or sorted(known):
+        setname = setname.removeprefix('@')
+        if setname.endswith(('_4', '_6')):
+            data4 = nft_json(f'list set inet foomuuri {setname}')
+            data6 = {}
+        else:
+            data4 = nft_json(f'list set inet foomuuri {setname}_4')
+            data6 = nft_json(f'list set inet foomuuri {setname}_6')
+        if data4 is None and data6 is None:
+            warning(f'iplist {setname} not found')
+            continue
+        count = len(
+            list(
+                itertools.chain(
+                    iterate_set_elements(data4), iterate_set_elements(data6)
+                )
+            )
+        )
+        table.append((f'@{setname}', str(count)))
+
+    print_table(data=table, align='<>', header=True)
+    return 0
+
+
 def command_iplist_list():
     """List iplist entries."""
     config = minimal_config()
@@ -4885,6 +4914,7 @@ def command_iplist():
     """Parse "foomuuri iplist" subcommand."""
     if INTERNAL.parameters:
         handler, min_args = {
+            'status': (command_iplist_status, 1),
             'list': (command_iplist_list, 1),
             'add': (command_iplist_add, 3),
             'del': (command_iplist_del, 3),
@@ -5618,6 +5648,8 @@ Available COMMANDs:
                List all macros or macros with specified NAME(s) or VALUE(s)
   list counter [COUNTER]...
                List all or specified named COUNTER(s)
+  iplist status [IPLIST]...
+               List number of entries of all or specified IPLIST(s)
   iplist list [IPLIST]...
                List entries of all or specified IPLIST(s)
   iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...
