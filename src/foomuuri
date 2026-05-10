@@ -4298,7 +4298,7 @@ def command_iplist_status():
                 )
             )
         )
-        table.append((f'@{setname}', str(count)))
+        table.append((f'@{setname}', int_to_human(count)))
 
     print_table(data=table, align='<>', header=True)
     return 0
