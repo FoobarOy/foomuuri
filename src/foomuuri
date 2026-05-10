@@ -539,6 +539,11 @@ def verbose(line: str, level: int = 1) -> None:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
+def int_to_human(number: int) -> str:
+    """Format int in human readable way."""
+    return f'{number:,}'
+
+
 def print_table(
     data: list[tuple],
     align: str = '<',
