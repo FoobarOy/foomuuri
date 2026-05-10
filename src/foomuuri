@@ -539,6 +539,11 @@ def verbose(line: str, level: int = 1) -> None:
             syslog.syslog(syslog.LOG_NOTICE, line)
 
 
+def int_to_human(number: int) -> str:
+    """Format int in human readable way."""
+    return f'{number:,}'
+
+
 def print_table(
     data: list[tuple],
     align: str = '<',
@@ -4295,7 +4300,7 @@ def command_iplist_status():
                 )
             )
         )
-        table.append((f'@{setname}', str(count)))
+        table.append((f'@{setname}', int_to_human(count)))
 
     print_table(data=table, align='<>', header=True)
     return error
@@ -4946,8 +4951,8 @@ def list_named_counter(command):
         name = (counter or {}).get('name')
         if not name:
             continue
-        packet_value = counter.get('packets', 0)
-        byte_value = counter.get('bytes', 0)
+        packet_value = int_to_human(counter.get('packets', 0))
+        byte_value = int_to_human(counter.get('bytes', 0))
         table.append((name, f'{packet_value}', f'{byte_value}'))
 
     print_table(data=table, align='<>>', header=True)
