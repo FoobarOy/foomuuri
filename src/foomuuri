@@ -4944,8 +4944,8 @@ def list_named_counter(command):
         name = (counter or {}).get('name')
         if not name:
             continue
-        packet_value = counter.get('packets', 0)
-        byte_value = counter.get('bytes', 0)
+        packet_value = int_to_human(counter.get('packets', 0))
+        byte_value = int_to_human(counter.get('bytes', 0))
         table.append((name, f'{packet_value}', f'{byte_value}'))
 
     print_table(data=table, align='<>>', header=True)
