@@ -4275,6 +4275,7 @@ def command_iplist_status():
     config = minimal_config()
     known = parse_config_iplist(config)
     table = [('Iplist', 'Entries')]
+    error = 0
     for setname in INTERNAL.parameters[1:] or sorted(known):
         setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
@@ -4284,7 +4285,8 @@ def command_iplist_status():
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
         if data4 is None and data6 is None:
-            warning(f'iplist {setname} not found')
+            warning(f'Iplist "@{setname}" not found')
+            error = 1
             continue
         count = len(
             list(
@@ -4296,7 +4298,7 @@ def command_iplist_status():
         table.append((f'@{setname}', str(count)))
 
     print_table(data=table, align='<>', header=True)
-    return 0
+    return error
 
 
 def command_iplist_list():
@@ -4304,6 +4306,7 @@ def command_iplist_list():
     config = minimal_config()
     known = parse_config_iplist(config)
     table = [('Iplist', 'IPAddress', 'Timeout')]
+    error = 0
     for setname in INTERNAL.parameters[1:] or sorted(known):
         setname = setname.removeprefix('@')
         if setname.endswith(('_4', '_6')):
@@ -4312,6 +4315,10 @@ def command_iplist_list():
         else:
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
+        if data4 is None and data6 is None:
+            warning(f'Iplist "@{setname}" not found')
+            error = 1
+            continue
         elems = sorted(iterate_set_elements(data4)) + sorted(
             iterate_set_elements(data6)
         )
@@ -4324,7 +4331,7 @@ def command_iplist_list():
             )
 
     print_table(data=table, align='<<>', header=True)
-    return 0
+    return error
 
 
 def command_iplist_add():
