@@ -4290,7 +4290,7 @@ def command_iplist_status():
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
         if data4 is None and data6 is None:
-            warning(f'Iplist "@{setname}" not found')
+            warning(f'Unknown iplist: @{setname}')
             error = 1
             continue
         count = len(
@@ -4321,7 +4321,7 @@ def command_iplist_list():
             data4 = nft_json(f'list set inet foomuuri {setname}_4')
             data6 = nft_json(f'list set inet foomuuri {setname}_6')
         if data4 is None and data6 is None:
-            warning(f'Iplist "@{setname}" not found')
+            warning(f'Unknown iplist: @{setname}')
             error = 1
             continue
         elems = sorted(iterate_set_elements(data4)) + sorted(
@@ -4938,14 +4938,14 @@ def command_iplist():
     return command_help()
 
 
-def list_named_counter(command):
-    """Parse and print named counter values."""
-    data = nft_json(command)
+def command_list_counter(names: list[str]) -> int:
+    """List named counters."""
+    # Parse counter data from kernel
+    data = nft_json('list counters table inet foomuuri')
     if not data:
+        fail("Can't read counter data from kernel")
         return 1
-
-    table = [('Counter', 'Packets', 'Bytes')]
-
+    counters = {}
     for toplevel in data.get('nftables', []):
         counter = toplevel.get('counter')
         name = (counter or {}).get('name')
@@ -4953,10 +4953,22 @@ def list_named_counter(command):
             continue
         packet_value = int_to_human(counter.get('packets', 0))
         byte_value = int_to_human(counter.get('bytes', 0))
-        table.append((name, f'{packet_value}', f'{byte_value}'))
+        counters[name] = (packet_value, byte_value)
+    if not counters:
+        fail('No named counters defined in currently active firewall')
 
+    # Print counter data
+    table = [('Counter', 'Packets', 'Bytes')]
+    error = 0
+    for name in names or counters:
+        values = counters.get(name)
+        if not values:
+            warning(f'Unknown counter: {name}')
+            error = 1
+            continue
+        table.append((name, values[0], values[1]))
     print_table(data=table, align='<>>', header=True)
-    return 0
+    return error
 
 
 def command_list() -> int:
@@ -4991,30 +5003,25 @@ def command_list() -> int:
         print('}')
         return 0
 
-    # Counter/zone-zone list requires config
+    # Read config for correct nft_bin value and zone-zone names
     config = minimal_config()
-    ret = 0
 
     # List named counters
     if list_type == 'counter':
-        if not list_params:
-            ret |= list_named_counter('list counters table inet foomuuri')
-        else:
-            for counter in list_params:
-                ret |= list_named_counter(
-                    f'list counter inet foomuuri {counter}'
-                )
-        return ret
+        return command_list_counter(list_params)
 
     # List zone-zone rules
     zones = parse_config_zones(config)
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
+    error = 0
     for zone in INTERNAL.parameters:
         if zone not in zonepairs:
-            fail(f'Unknown zone-zone: {zone}')
+            warning(f'Unknown zone-zone: {zone}')
+            error = 1
+            continue
         for ipv in (4, 6):
-            ret += nft_command(f'list chain inet foomuuri {zone}_{ipv}')
-    return ret
+            error |= nft_command(f'list chain inet foomuuri {zone}_{ipv}')
+    return error
 
 
 def command_reload():
