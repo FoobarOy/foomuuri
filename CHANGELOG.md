@@ -10,6 +10,7 @@
   `public *`. It will match all unassigned interfaces. Interfaces assigned
   to a zone in configuration file or by NetworkManager / D-Bus will use
   assigned zone.
+* Add `iplist status [IPLIST]...` command to list number of entries in iplist.
 * Add `iplist_add`, `iplist_update` and `iplist_delete` matchers to
   add/update/delete IP address to iplist on packet path.
 * Add `dynamic=yes` option to `iplist` section line. This option enables
