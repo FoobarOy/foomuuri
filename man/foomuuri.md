@@ -89,6 +89,9 @@ ruleset or only specified **ZONE-ZONE**.
 **list counter [COUNTER]...**
 : List all or specified named COUNTER(s).
 
+**iplist status [IPLIST]...**
+: List number of entries of all or specified IPLIST(s).
+
 **iplist list [IPLIST]...**
 : List entries of all or specified IPLIST(s).
 
