@@ -3517,8 +3517,10 @@ def command_status():
         zone_interface['*'] = INTERNAL.catch_all_interface_zone
 
     # Running
-    ruleset = nft_json('list table inet foomuuri')
-    if not ruleset:
+    tables = run_program_pipe(
+        CONFIG.nft_bin + ['list', 'tables', 'inet'], None
+    )
+    if not tables or 'table inet foomuuri' not in tables:
         fail('Foomuuri is not running')
     print('Foomuuri is running')
 
