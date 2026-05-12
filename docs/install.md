@@ -122,6 +122,7 @@ cd foomuuri-0.??
 # Install it to root filesystem
 make install DESTDIR=/
 systemctl daemon-reload
+sysctl --system
 
 # Configure Foomuuri and verify it
 $EDITOR /etc/foomuuri/foomuuri.conf
