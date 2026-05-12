@@ -3522,6 +3522,7 @@ def command_status():
     )
     if not tables or 'table inet foomuuri' not in tables:
         fail('Foomuuri is not running')
+        return 1
     print('Foomuuri is running')
 
     # D-Bus, Monitor
@@ -3541,7 +3542,7 @@ def command_status():
 
     # Check for multiple firewalls
     if 'table inet firewalld' in tables:
-        print('')
+        print()
         warning('Firewalld is running')
 
     # Zones
