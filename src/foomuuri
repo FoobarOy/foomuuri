@@ -3539,6 +3539,11 @@ def command_status():
         ):
             print(f'Foomuuri-{child} is not running')
 
+    # Check for multiple firewalls
+    if 'table inet firewalld' in tables:
+        print('')
+        warning('Firewalld is running')
+
     # Zones
     if not zone_interface:
         print()
