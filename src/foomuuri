@@ -3516,11 +3516,16 @@ def command_status():
     if INTERNAL.catch_all_interface_zone:
         zone_interface['*'] = INTERNAL.catch_all_interface_zone
 
+    nft_tables = nft_json('list tables') or {}
+
+    tables = {
+        t['table'].get('name')
+        for t in nft_tables.get('nftables', {})
+        if t.get('table')
+    }
+
     # Running
-    tables = run_program_pipe(
-        CONFIG.nft_bin + ['list', 'tables', 'inet'], None
-    )
-    if not tables or 'table inet foomuuri' not in tables:
+    if 'foomuuri' not in tables:
         fail('Foomuuri is not running')
         return 1
     print('Foomuuri is running')
@@ -3541,7 +3546,7 @@ def command_status():
             print(f'Foomuuri-{child} is not running')
 
     # Check for multiple firewalls
-    if 'table inet firewalld' in tables:
+    if 'firewalld' in tables:
         print()
         warning('Firewalld is running')
 
