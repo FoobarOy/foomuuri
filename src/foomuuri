@@ -42,14 +42,6 @@ try:
 except ImportError:
     HAVE_DBUS = False
 
-# urllib3 is optional, used by iplist http download
-try:
-    import urllib3
-
-    HAVE_URLLIB3 = True
-except ImportError:
-    HAVE_URLLIB3 = False
-
 # lxml is optional, used by iplist xml and html filters
 try:
     import lxml.etree
@@ -4163,45 +4155,56 @@ def active_sets():
 
 def get_url(url: str, max_size: int) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
-    if HAVE_URLLIB3:
-        try:
-            http = urllib3.PoolManager()
-            with http.request(
-                method='GET',
-                url=remove_filters(url),
-                decode_content=False,
-                preload_content=False,
-                retries=urllib3.Retry(**INTERNAL.url_get_retries),
-                timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
-            ) as response:
-                if response.status != 200:
-                    raise urllib3.exceptions.ProtocolError(
-                        f'status code: {response.status}'
-                    )
-                content_length = int(response.headers.get('content-length', 0))
-                if content_length > max_size:
-                    raise ValueError(
-                        f'content length {content_length} exceeds {max_size}'
-                    )
-                content = io.BytesIO()
-                for chunk in response.stream(INTERNAL.url_chunk_size):
-                    content.write(chunk)
-                    if content.tell() > max_size:
-                        raise ValueError(f'content length exceeds {max_size}')
-                return content.getvalue().decode('utf-8', errors='ignore')
-        except (ValueError, urllib3.exceptions.HTTPError) as error:
-            err = f'error: {error}'
-        finally:
-            with contextlib.suppress(NameError):
-                response.drain_conn()
-                response.release_conn()
-    else:
-        err = 'No python-urllib3 installed'
-    if '|missing-ok' in url:
-        INTERNAL.iplist_missing_ok.add(url)
-    else:
-        warning(f'Can\'t download iplist URL "{remove_filters(url)}": {err}')
-    return None
+    # urllib3 is optional, needed to download iplist with HTTP GET.
+    # Import it here as it is heavy module to load.
+    try:
+        # ruff: noqa: PLC0415 (`import` should be at the top-level of a file)
+        # pylint: disable=import-outside-toplevel
+        import urllib3
+    except ImportError:
+        warning(
+            f'Can\'t download iplist URL "{remove_filters(url)}": '
+            f'No python-urllib3 installed'
+        )
+        return None
+
+    try:
+        http = urllib3.PoolManager()
+        with http.request(
+            method='GET',
+            url=remove_filters(url),
+            decode_content=False,
+            preload_content=False,
+            retries=urllib3.Retry(**INTERNAL.url_get_retries),
+            timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
+        ) as response:
+            if response.status != 200:
+                raise urllib3.exceptions.ProtocolError(
+                    f'status code: {response.status}'
+                )
+            content_length = int(response.headers.get('content-length', 0))
+            if content_length > max_size:
+                raise ValueError(
+                    f'content length {content_length} exceeds {max_size}'
+                )
+            content = io.BytesIO()
+            for chunk in response.stream(INTERNAL.url_chunk_size):
+                content.write(chunk)
+                if content.tell() > max_size:
+                    raise ValueError(f'content length exceeds {max_size}')
+            return content.getvalue().decode('utf-8', errors='ignore')
+    except (ValueError, urllib3.exceptions.HTTPError) as error:
+        if '|missing-ok' in url:
+            INTERNAL.iplist_missing_ok.add(url)
+        else:
+            warning(
+                f'Can\'t download iplist URL "{remove_filters(url)}": {error}'
+            )
+        return None
+    finally:
+        with contextlib.suppress(NameError):
+            response.drain_conn()
+            response.release_conn()
 
 
 def get_file(wildcard):
