@@ -3964,7 +3964,7 @@ if HAVE_DBUS:
         try:
             # ruff: noqa: PLC0415 (`import` should be at the top-level)
             # pylint: disable=import-outside-toplevel
-            from gi.repository import GLib
+            import gi.repository.GLib
         except ImportError:
             fail('No python-gobject / python-gi installed')
 
@@ -4007,7 +4007,7 @@ if HAVE_DBUS:
                 )
 
             # Define reload/stop signal handler
-            mainloop = GLib.MainLoop()
+            mainloop = gi.repository.GLib.MainLoop()
 
             def signal_handler(sig, _dummy_frame, mainloop=mainloop):
                 if sig == signal.SIGINT:
