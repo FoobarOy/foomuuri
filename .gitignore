@@ -3,6 +3,7 @@ foomuuri-*.tar.gz
 test/*/*.fw
 test/*/iplist-cache.json
 test/*/zone
+.pre-commit-config.yaml
 .coverage
 .ruff_cache
 htmlcov
