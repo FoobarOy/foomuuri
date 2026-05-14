@@ -68,4 +68,3 @@ processed in following block order:
 2. Previously accepted established and related traffic is accepted by conntrack
 3. Incoming multicast and broadcast rules in listed order
 4. Everything else in listed order
-

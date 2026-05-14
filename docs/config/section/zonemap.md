@@ -51,4 +51,3 @@ zonemap {
   dipsec new_dzone vpn
 }
 ```
-

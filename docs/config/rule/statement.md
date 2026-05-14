@@ -95,5 +95,3 @@ forward {
   ssh nftrace
 }
 ```
-
-

@@ -59,4 +59,3 @@ is kept as `ssh` and not expanded to `tcp 22`.
 
 For safety reasons macro expansion is not done in `zone` or `foomuuri`
 sections.
-

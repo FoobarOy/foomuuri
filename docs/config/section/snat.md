@@ -21,4 +21,3 @@ snat {
 
 Remember to accept SNAT'ed traffic in zone-zone section.
 See [dnat](dnat.md) for more examples.
-

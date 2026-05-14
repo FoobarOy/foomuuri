@@ -130,4 +130,3 @@ This is special form of `saddr_rate + daddr_rate`, usable when you have
 multiple destination IPs per service (DNS round-robin). In this rule
 both source and destination address are counted as check key, instead of only
 source or destination.
-
