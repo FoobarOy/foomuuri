@@ -36,7 +36,6 @@ try:
     import dbus
     import dbus.mainloop.glib
     import dbus.service
-    from gi.repository import GLib
 
     HAVE_DBUS = True
 except ImportError:
@@ -3961,6 +3960,14 @@ if HAVE_DBUS:
 
     def command_dbus():
         """Start D-Bus daemon."""
+        # Import gi here as it is heavy module to load.
+        try:
+            # ruff: noqa: PLC0415 (`import` should be at the top-level)
+            # pylint: disable=import-outside-toplevel
+            from gi.repository import GLib
+        except ImportError:
+            fail('No python-gobject / python-gi installed')
+
         INTERNAL.keep_going = 1
         while INTERNAL.keep_going:
             # Read minimal config
