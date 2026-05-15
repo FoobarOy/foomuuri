@@ -3258,8 +3258,10 @@ def save_file(filename, lines):
         tmpfile.rename(filename)
     except PermissionError as error:
         fail(f"File {filename}: Can't write: {error}")
-    except FileNotFoundError:  # Simultaneos saves and chmod gives error
-        pass
+    except FileNotFoundError as error:
+        # Two simultaneos saves: chmod + rename running at same time
+        warning(f"File {filename}: Can't update, race condition: {error}")
+        tmpfile.unlink(missing_ok=True)
 
 
 def env_cleanup(text):
