@@ -26,6 +26,7 @@
 * Add `flowtable list-of-interfaces` to `foomuuri` section. It enables
   Netfilter flowtable infrastructure. It improves network forward performance
   for high speed interfaces.
+* Add `matter` macro to default services.
 * Fix: Interface `lo` is special. Matcher `oifname lo` does not work in
   prerouting (DNAT) chain. Output is as `fib daddr type local` instead.
 
