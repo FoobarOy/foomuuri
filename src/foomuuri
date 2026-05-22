@@ -2419,8 +2419,13 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
         # Protocol is empty for rules like "drop log" and "dnat"
         # icmp is handled in output_icmp()
         return ''
-    if ipv == 6 and protocol == 'igmp':
-        return None  # IPv6 uses Multicast Listener Discovery ICMP
+
+    # ICMP is for IPv4, ICMPv6 is for IPv6.
+    # IPv6 uses Multicast Listener Discovery ICMP instead of IGMP.
+    if (ipv == 4 and protocol == 'icmpv6') or (
+        ipv == 6 and protocol in {'icmp', 'igmp'}
+    ):
+        return None
 
     ports = ''
     for key in ('sport', 'dport'):
