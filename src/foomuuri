@@ -3255,15 +3255,14 @@ def save_file(filename, lines):
     """Write lines to file. Use temporary file to make this atomic."""
     if str(filename) == '/dev/null':
         return
+    if isinstance(lines, dict):
+        text = json.dumps(lines, indent=2, sort_keys=True) + '\n'
+    else:
+        text = '\n'.join(lines) + '\n'
     tmpfile = filename.with_suffix(f'{filename.suffix}.{os.getpid()}')
     try:
         tmpfile.unlink(missing_ok=True)
-        if isinstance(lines, dict):
-            tmpfile.write_text(
-                json.dumps(lines, indent=2, sort_keys=True) + '\n', 'utf-8'
-            )
-        else:
-            tmpfile.write_text('\n'.join(lines) + '\n', 'utf-8')
+        tmpfile.write_text(text, 'utf-8')
         tmpfile.chmod(0o600)
         tmpfile.rename(filename)
     except PermissionError as error:
@@ -4059,12 +4058,15 @@ if HAVE_DBUS:
         try:
             bus = dbus.SystemBus()
             obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
+        except dbus.exceptions.DBusException as error:
+            fail(f"Can't connect to Foomuuri D-Bus: {error}")
+        try:
             if zone in {'', '-'}:
                 obj.removeInterface('', interface)
             else:
                 obj.changeZoneOfInterface(zone, interface)
         except dbus.exceptions.DBusException as error:
-            fail(str(error))
+            fail(f"Can't modify interface: {error}")
 
 else:  # HAVE_DBUS is false
 
