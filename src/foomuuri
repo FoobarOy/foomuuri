@@ -2292,20 +2292,28 @@ def output_icmp(szone, dzone, rules, ipv):
         if match is None:
             continue
         statement = rule_statement(szone, dzone, rule, ipv)
+        out(f'{match}{statement}')
 
-        proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=False)
-        out(f'{proto_ports}{match}{statement}')
+        # Continue to next rule if this wasn't type echo-request (ping) or all
         if (
             rule['dport']
             and ping not in rule['dport'].split()
             and 'echo-request' not in rule['dport'].split()
         ):
-            continue  # Continue to next rule if this wasn't ping or match all
+            continue
 
         # This rule was for ping, usually accepting non-flood pings. Add
         # explicit rule to drop overflow and all other pings.
+        # Skip adding drop rule if this rule is "match all" as then drop is
+        # never reached. This simple check doesn't catch all types of
+        # "match all".
         has_ping_rule = True
-        if (match + statement).startswith(
+        if match in {
+            'ip protocol icmp ',
+            'ip6 nexthdr icmpv6 ',
+            f'{icmp} type {ping} ',
+            f'{icmp} type echo-request ',
+        } and statement.startswith(
             ('accept', 'drop', 'reject', 'jump', 'queue')
         ):
             has_match_all = True
@@ -2599,7 +2607,7 @@ def rule_matchers(  # noqa: PLR0914 -- Too many local variables
     except ValueError:
         return None
 
-    proto_ports = parse_protocol_ports(rule, ipv)
+    proto_ports = parse_protocol_ports(rule, ipv, skip_icmp=skip_icmp)
     if proto_ports is None:
         return None
 
@@ -2664,7 +2672,7 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         if new_szone == szone and new_dzone == dzone:
             continue
 
-        match = rule_matchers(rule, ipv)
+        match = rule_matchers(rule, ipv, skip_icmp=False)
         if match is None:
             continue
         out(f'{match}jump {new_szone}-{new_dzone}_{ipv}')
@@ -2833,7 +2841,9 @@ def output_rule_section_no_header(rules, section):
             to_rule = parse_nat_to(rule, ipv)
             if to_rule is None:  # ipv == 6 and "nat to IPv4" mismatch
                 continue
-            match = rule_matchers(rule, ipv, skip_options=False)
+            match = rule_matchers(
+                rule, ipv, skip_options=False, skip_icmp=False
+            )
             if match is None:
                 continue
             statement = rule_statement(
