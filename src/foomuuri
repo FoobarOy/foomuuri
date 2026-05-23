@@ -911,6 +911,7 @@ def read_config(require_etc_config: bool):
 
             # "foo" inside section
             else:
+                # ty: ignore[unused-ignore-comment, unresolved-attribute]
                 config[section].append((fileline, tokens))
 
         # End of file checks
