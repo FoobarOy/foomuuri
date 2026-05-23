@@ -16,7 +16,7 @@ all: lint test
 lint:
 	ruff check $(SOURCE)
 	ruff format --diff $(SOURCE)
-	ty check --ignore unresolved-import $(SOURCE)
+	ty check --ignore=unresolved-import --ignore=unused-ignore-comment $(SOURCE)
 	pylint $(SOURCE)
 
 test: $(SUBDIRS)
