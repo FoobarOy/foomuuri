@@ -4177,6 +4177,21 @@ def active_sets():
     return ret
 
 
+def get_url_download_response(response, max_size):
+    """Helper function to download URL."""
+    if response.status != 200:
+        raise ValueError(f'status code: {response.status}')
+    content_length = int(response.headers.get('content-length', 0))
+    if content_length > max_size:
+        raise ValueError(f'content length {content_length} exceeds {max_size}')
+    content = io.BytesIO()
+    for chunk in response.stream(INTERNAL.url_chunk_size):
+        content.write(chunk)
+        if content.tell() > max_size:
+            raise ValueError(f'content length exceeds {max_size}')
+    return content.getvalue().decode('utf-8', errors='ignore')
+
+
 def get_url(url: str, max_size: int) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
     # urllib3 is optional, needed to download iplist with HTTP GET.
@@ -4202,21 +4217,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             retries=urllib3.Retry(**INTERNAL.url_get_retries),
             timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
         ) as response:
-            if response.status != 200:
-                raise urllib3.exceptions.ProtocolError(
-                    f'status code: {response.status}'
-                )
-            content_length = int(response.headers.get('content-length', 0))
-            if content_length > max_size:
-                raise ValueError(
-                    f'content length {content_length} exceeds {max_size}'
-                )
-            content = io.BytesIO()
-            for chunk in response.stream(INTERNAL.url_chunk_size):
-                content.write(chunk)
-                if content.tell() > max_size:
-                    raise ValueError(f'content length exceeds {max_size}')
-            return content.getvalue().decode('utf-8', errors='ignore')
+            return get_url_download_response(response, max_size)
     except (ValueError, urllib3.exceptions.HTTPError) as error:
         if '|missing-ok' in url:
             INTERNAL.iplist_missing_ok.add(url)
