@@ -4968,25 +4968,12 @@ def command_iplist_refresh(
     return ret
 
 
-def command_iplist() -> int:
-    """Parse "foomuuri iplist" subcommand."""
-    if not INTERNAL.parameters:
-        INTERNAL.parameters = ['status']
-    handler, min_args = {
-        'status': (command_iplist_status, 1),
-        'list': (command_iplist_list, 1),
-        'add': (command_iplist_add, 3),
-        'del': (command_iplist_del, 3),
-        'flush': (command_iplist_flush, 1),
-        'refresh': (command_iplist_refresh, 1),
-    }.get(INTERNAL.parameters[0], (None, 0))
-    if handler and len(INTERNAL.parameters) >= min_args:
-        return handler()
-    return command_help()
-
-
-def command_list_counter(names: list[str]) -> int:
+def command_counter_list() -> int:
     """List named counters."""
+    # Read config if available for nft binary path.
+    minimal_config(require_etc_config=False)
+    list_params = INTERNAL.parameters[1:]
+
     # Parse counter data from kernel
     data = nft_json('list counters table inet foomuuri')
     if not data:
@@ -5007,7 +4994,7 @@ def command_list_counter(names: list[str]) -> int:
     # Print counter data
     table = [('Counter', 'Packets', 'Bytes')]
     error = 0
-    for name in names or counters:
+    for name in list_params or counters:
         values = counters.get(name)
         if not values:
             warning(f'Unknown counter: {name}')
@@ -5018,50 +5005,47 @@ def command_list_counter(names: list[str]) -> int:
     return error
 
 
-def command_list() -> int:
-    """List currently active ruleset or other things."""
-    # List ruleset if no parameters. Read config if available for nft
-    # binary path.
-    if not INTERNAL.parameters:
+def command_macro_list() -> int:
+    """List default system macros and user defined macros.
+
+    Don't require config files so that this can be run before initial
+    configuration.
+    """
+    macros = parse_config_macros(read_config(require_etc_config=False))
+    list_params = INTERNAL.parameters[1:]
+    print('macro {')
+    table = [
+        ('', macro, f'{" ".join(macros[macro])}')
+        for macro in sorted(macros)
+        if not macro.startswith('_template_')
+        and (
+            not list_params
+            or macro in list_params
+            or any(item in list_params for item in macros[macro])
+        )
+    ]
+    print_table(data=table, header=False)
+    print('}')
+    return 0
+
+
+def command_ruleset_list() -> int:
+    """List currently active ruleset."""
+    # List full ruleset if no zone-zone specified. Read config if available
+    # for nft binary path.
+    list_params = INTERNAL.parameters[1:]
+    if not list_params:
         minimal_config(require_etc_config=False)
         return nft_command('list ruleset')
 
-    # Parse parameters
-    list_type = INTERNAL.parameters[0]
-    list_params = INTERNAL.parameters[1:]
-
-    # List default system macros and user defined macros. Don't require
-    # config files so that this can be run before initial configuration.
-    if list_type == 'macro':
-        macros = parse_config_macros(read_config(require_etc_config=False))
-        print('macro {')
-        table = [
-            ('', macro, f'{" ".join(macros[macro])}')
-            for macro in sorted(macros)
-            if not macro.startswith('_template_')
-            and (
-                not list_params
-                or macro in list_params
-                or any(item in list_params for item in macros[macro])
-            )
-        ]
-
-        print_table(data=table, header=False)
-        print('}')
-        return 0
-
     # Read config for correct nft_bin value and zone-zone names
     config = minimal_config()
-
-    # List named counters
-    if list_type == 'counter':
-        return command_list_counter(list_params)
-
-    # List zone-zone rules
     zones = parse_config_zones(config)
     zonepairs = [f'{szone}-{dzone}' for szone in zones for dzone in zones]
+
+    # List zone-zone rules
     error = 0
-    for zone in INTERNAL.parameters:
+    for zone in list_params:
         if zone not in zonepairs:
             warning(f'Unknown zone-zone: {zone}')
             error = 1
@@ -5069,6 +5053,64 @@ def command_list() -> int:
         for ipv in (4, 6):
             error |= nft_command(f'list chain inet foomuuri {zone}_{ipv}')
     return error
+
+
+def command_subcommand() -> int:
+    """Parse "foomuuri ruleset|iplist|..." subcommand."""
+    # Use default subcommand if not specified in command line
+    if not INTERNAL.parameters:
+        INTERNAL.parameters = [
+            {
+                'counter': 'list',
+                'iplist': 'status',
+                'macro': 'list',
+                'ruleset': 'list',
+            }.get(INTERNAL.command)
+        ]
+
+    # Find correct handler. min_args includes "list" argument.
+    handler, min_args = {
+        ('counter', 'list'): (command_counter_list, 1),
+        ('iplist', 'add'): (command_iplist_add, 3),
+        ('iplist', 'del'): (command_iplist_del, 3),
+        ('iplist', 'flush'): (command_iplist_flush, 1),
+        ('iplist', 'list'): (command_iplist_list, 1),
+        ('iplist', 'refresh'): (command_iplist_refresh, 1),
+        ('iplist', 'status'): (command_iplist_status, 1),
+        ('macro', 'list'): (command_macro_list, 1),
+        ('ruleset', 'list'): (command_ruleset_list, 1),
+    }.get((INTERNAL.command, INTERNAL.parameters[0]), (None, 0))
+    if handler and len(INTERNAL.parameters) >= min_args:
+        return handler()
+    return command_help()
+
+
+def command_list() -> int:
+    """Backward compability command handler."""
+    if not INTERNAL.parameters:
+        warning(
+            'Command "foomuuri list" is obsolete, use '
+            '"foomuuri ruleset list" instead'
+        )
+        return command_ruleset_list()
+    if INTERNAL.parameters[0] == 'macro':
+        warning(
+            'Command "foomuuri list macro" is obsolete, use '
+            '"foomuuri macro list" instead'
+        )
+        return command_macro_list()
+    if INTERNAL.parameters[0] == 'counter':
+        warning(
+            'Command "foomuuri list counter" is obsolete, use '
+            '"foomuuri counter list" instead'
+        )
+        return command_counter_list()
+    warning(
+        'Command "foomuuri list" is obsolete, use '
+        '"foomuuri ruleset list" instead'
+    )
+    INTERNAL.parameters = ['list'] + INTERNAL.parameters
+    return command_ruleset_list()
 
 
 def command_reload():
@@ -5708,11 +5750,11 @@ Available COMMANDs:
   status       Show current status: running, zone-interface mapping
   check        Verify configuration files
   block        Load "block all traffic" ruleset
-  list [ZONE-ZONE]...
+  ruleset list [ZONE-ZONE]...
                List whole active ruleset or for ZONE-ZONE only
-  list macro [NAME | VALUE]...
+  macro list [NAME | VALUE]...
                List all macros or macros with specified NAME(s) or VALUE(s)
-  list counter [COUNTER]...
+  counter list [COUNTER]...
                List all or specified named COUNTER(s)
   iplist status [IPLIST]...
                List number of entries of all or specified IPLIST(s)
@@ -5792,16 +5834,8 @@ def parse_command_line():
             INTERNAL.parameters.append(arg)
 
 
-def run_command():
+def run_command() -> int:
     """Run CONFIG[_command]."""
-    # Only some commands can take arguments
-    if INTERNAL.parameters and INTERNAL.command not in {
-        'list',
-        'iplist',
-        'set',
-    }:
-        return command_help()
-
     # Help/version doesn't need root
     if not INTERNAL.command or INTERNAL.command == 'help':
         return command_help(error=False)
@@ -5819,22 +5853,27 @@ def run_command():
         warning('Foomuuri should be run as "root"')
 
     # Run command
-    handler = {
-        'start': command_start,
-        'stop': command_stop,
-        'reload': command_reload,
-        'try-reload': command_try_reload,
-        'status': command_status,
-        'check': command_start,
-        'block': command_block,
-        'list': command_list,
-        'iplist': command_iplist,
-        'set': command_set,
-        'dbus': command_dbus,
-        'monitor': command_monitor,
-    }.get(INTERNAL.command)
+    handler, allow_parameters = {
+        'start': (command_start, False),
+        'stop': (command_stop, False),
+        'reload': (command_reload, False),
+        'try-reload': (command_try_reload, False),
+        'status': (command_status, False),
+        'check': (command_start, False),
+        'block': (command_block, False),
+        'ruleset': (command_subcommand, True),
+        'macro': (command_subcommand, True),
+        'counter': (command_subcommand, True),
+        'iplist': (command_subcommand, True),
+        'list': (command_list, True),
+        'set': (command_set, True),
+        'dbus': (command_dbus, False),
+        'monitor': (command_monitor, False),
+    }.get(INTERNAL.command, (None, False))
     if not handler:
         return fail(f'Unknown command: {INTERNAL.command}')
+    if INTERNAL.parameters and not allow_parameters:
+        return command_help()
     return handler()
 
 
