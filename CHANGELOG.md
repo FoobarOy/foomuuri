@@ -3,6 +3,10 @@
 ## 0.33 (20xx-xx-xx)
 
 * Documentation moved to https://foomuuri.foobar.fi/latest/
+* Unify command line syntax:
+  * `foomuuri list` is renamed to `foomuuri ruleset list`.
+  * `foomuuri list macro` is renamed to `foomuuri macro list`.
+  * `foomuuri list counter` is renamed to `foomuuri counter list`.
 * Add port knocking and automatic IP address banning (fail2ban) support.
   These happen fully on packet path, native on nftables level. No external
   programs are needed.

@@ -87,7 +87,7 @@ all rules. Value can be:
 hosts. For company firewall larger value is required, like 262143 (=2^18 - 1).
 This is the maximum amount of rate limit entries in kernel. If set is full,
 new entry can't be added and the traffic is accepted without rate limit. See
-`foomuuri list` for content of your active sets.
+`foomuuri ruleset list` for content of your active sets.
 
 `recursion_limit` is the internal limit to avoid macro and template expansion
 loop. Increase this value if you get false "Possible macro or template loop"

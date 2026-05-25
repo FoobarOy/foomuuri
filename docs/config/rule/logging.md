@@ -26,8 +26,8 @@ localhost-public {
 }
 ```
 
-Named counter values can be listed with `foomuuri list counter`. Anonymous
-counters can be listed with `foomuuri list`.
+Named counter values can be listed with `foomuuri counter list`. Anonymous
+counters can be listed with `foomuuri ruleset list`.
 
 
 ## log

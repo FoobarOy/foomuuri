@@ -52,7 +52,7 @@ for single rule, like in `good_hosts`.
 
 All
 [known macros](https://github.com/FoobarOy/foomuuri/blob/main/etc/default.services.conf)
-can be listed with `foomuuri list macro` command.
+can be listed with `foomuuri macro list` command.
 
 Macro expansion can be skipped by writing word in quotes. For example `"ssh"`
 is kept as `ssh` and not expanded to `tcp 22`.

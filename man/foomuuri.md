@@ -79,14 +79,14 @@ old config if no reply.
 **block**
 : Load "block all traffic" ruleset to kernel.
 
-**list [ZONE-ZONE]...**
+**ruleset list [ZONE-ZONE]...**
 : List active ruleset currently loaded to kernel. Include whole
 ruleset or only specified **ZONE-ZONE**.
 
-**list macro [NAME | VALUE]...**
+**macro list [NAME | VALUE]...**
 : List all macros or macros with specified NAME(s) or VALUE(s).
 
-**list counter [COUNTER]...**
+**counter list [COUNTER]...**
 : List all or specified named COUNTER(s).
 
 **iplist status [IPLIST]...**

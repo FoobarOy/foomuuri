@@ -11,7 +11,7 @@ how to match other protocols.
 Instead of using `tcp 443` it is recommended to use pre-defined `https`
 macro. All
 [known macros](https://github.com/FoobarOy/foomuuri/blob/main/etc/default.services.conf)
-can be listed with `foomuuri list macro` command.
+can be listed with `foomuuri macro list` command.
 
 
 ## sport, dport
