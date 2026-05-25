@@ -4968,19 +4968,20 @@ def command_iplist_refresh(
     return ret
 
 
-def command_iplist():
+def command_iplist() -> int:
     """Parse "foomuuri iplist" subcommand."""
-    if INTERNAL.parameters:
-        handler, min_args = {
-            'status': (command_iplist_status, 1),
-            'list': (command_iplist_list, 1),
-            'add': (command_iplist_add, 3),
-            'del': (command_iplist_del, 3),
-            'flush': (command_iplist_flush, 1),
-            'refresh': (command_iplist_refresh, 1),
-        }.get(INTERNAL.parameters[0], (None, 0))
-        if handler and len(INTERNAL.parameters) >= min_args:
-            return handler()
+    if not INTERNAL.parameters:
+        INTERNAL.parameters = ['status']
+    handler, min_args = {
+        'status': (command_iplist_status, 1),
+        'list': (command_iplist_list, 1),
+        'add': (command_iplist_add, 3),
+        'del': (command_iplist_del, 3),
+        'flush': (command_iplist_flush, 1),
+        'refresh': (command_iplist_refresh, 1),
+    }.get(INTERNAL.parameters[0], (None, 0))
+    if handler and len(INTERNAL.parameters) >= min_args:
+        return handler()
     return command_help()
 
 
