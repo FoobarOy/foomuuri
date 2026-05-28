@@ -41,7 +41,8 @@ foomuuri {
 
 `log_rate` is the default logging rate per source IP. Default value is to
 log first three entries per source IP and then one additional entry per second.
-Rate [specification](../rule/ratelimit.md#global_rate) is the same as in rate limit rule.
+Rate [specification](../rule/ratelimit.md#global_rate) is the same as in rate
+limit rule.
 
 `log_input` ... `log_smurfs` defines default value for specific logging.
 Value can be:
@@ -50,7 +51,8 @@ Value can be:
 * `no` to not log
 * `"3/second burst 10"` to log it with specific rate
 
-`log_prefix` defines the default log prefix for [logging](../rule/logging.md#log).
+`log_prefix` defines the default log prefix for
+[logging](../rule/logging.md#log).
 
 `log_level` is the syslog level of logging. For possible values see
 rule specific [version](../rule/logging.md#log_level).
@@ -75,19 +77,24 @@ performance for high speed interfaces. Optional `hw_offload=yes` keyword
 enables hardware offloading (make sure your interface supports
 `hw-tc-offload`). Value `yes` or negative notation does not work here.
 
-`counter` is to add anonymous byte and packet [counter](../rule/logging.md#counter) to
-all rules. Value can be:
+`counter` is to add anonymous byte and packet
+[counter](../rule/logging.md#counter) to all rules. Value can be:
 
 * `yes` to add it to all rules
 * `no` to not add it
 * `localhost-public public-localhost` to add it to all rules in
   `localhost-public` and `public-localhost` sections
 
-`set_size` is the size for rate limit sets. Value 65535 is fine for normal
-hosts. For company firewall larger value is required, like 262143 (=2^18 - 1).
-This is the maximum amount of rate limit entries in kernel. If set is full,
-new entry can't be added and the traffic is accepted without rate limit. See
-`foomuuri ruleset list` for content of your active sets.
+`set_size` is the size of [rate limit](../rule/ratelimit.md) set,
+[log rate limit](../rule/logging.md) set and
+[dynamic iplist](../rule/matcher.md#iplist_update) set. This is the maximum
+amount of entries in the set in kernel. Default value 65535 is fine for normal
+host. For company firewall larger value is required, for example 262143
+(equals to 2^18 - 1). Setting this value too high doesn't harm.  If set is
+full, new entry can't be added. This doesn't matter for log rate limits, but
+for rate limits and dynamic iplists this means that the statement (usually
+accept for rate limit, drop for iplist) is skipped. See `foomuuri ruleset list`
+for content of your currently active sets.
 
 `recursion_limit` is the internal limit to avoid macro and template expansion
 loop. Increase this value if you get false "Possible macro or template loop"
