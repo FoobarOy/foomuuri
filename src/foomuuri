@@ -1927,7 +1927,7 @@ def output_rate_names(rules):
                 already_added.add(setname)
 
                 # Output empty sets for IPv4 and IPv6. These will have
-                # one minute timeout.
+                # one minute timeout, unless rate is specified per hour.
                 for ipv in (4, 6):
                     out(f'set {setname}_{ipv} {{')
                     if rate == 'saddr_daddr_rate':
@@ -1937,10 +1937,13 @@ def output_rate_names(rules):
                     out(f'size {CONFIG.set_size}')
                     if rule[rate].startswith('ct '):
                         out('flags dynamic')
-                    else:
-                        timeout = '1h' if 'hour' in rule[rate] else '1m'
+                    elif 'hour' in rule[rate]:
                         out('flags dynamic,timeout')
-                        out(f'timeout {timeout}')
+                        out('timeout 1h')
+                        out('gc-interval 5m')  # Default is timeout/4
+                    else:
+                        out('flags dynamic,timeout')
+                        out('timeout 1m')
                     out('}')
 
 

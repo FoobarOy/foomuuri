@@ -89,6 +89,36 @@ table inet foomuuri {
 		drop
 	}
 
+	set _rate_set_1_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_1_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1m
+	}
+
+	set _rate_set_2_4 {
+		type ipv4_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1h
+		gc-interval 5m
+	}
+
+	set _rate_set_2_6 {
+		type ipv6_addr
+		size 65535
+		flags dynamic,timeout
+		timeout 1h
+		gc-interval 5m
+	}
+
 	map input_zones {
 		type ifname : verdict
 		elements = {
@@ -138,6 +168,8 @@ table inet foomuuri {
 		limit rate over 6 kbytes/second burst 1 mbytes accept
 		ct count 4 accept
 		ct count over 5 accept
+		tcp dport 80 update @_rate_set_1_4 { ip saddr limit rate 5/minute burst 5 packets } accept
+		tcp dport 22 update @_rate_set_2_4 { ip saddr limit rate 20/hour burst 5 packets } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
@@ -162,6 +194,8 @@ table inet foomuuri {
 		limit rate over 6 kbytes/second burst 1 mbytes accept
 		ct count 4 accept
 		ct count over 5 accept
+		tcp dport 80 update @_rate_set_1_6 { ip6 saddr limit rate 5/minute burst 5 packets } accept
+		tcp dport 22 update @_rate_set_2_6 { ip6 saddr limit rate 20/hour burst 5 packets } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-localhost DROP " level info flags skuid
 		drop
 	}
