@@ -3180,6 +3180,8 @@ def output_iplist_sets(iplists: IPLists) -> None:
                     out('auto-merge')
             if iplists[name].options.element_timeout:
                 out(f'timeout {iplists[name].options.element_timeout}s')
+                if iplists[name].options.element_timeout > 20 * 60:
+                    out('gc-interval 5m')
             out('}')
 
 
