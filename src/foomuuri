@@ -644,7 +644,9 @@ def run_program_rc(
 
 
 def run_program_pipe(
-    args: list, text_input: typing.Optional[str]
+    args: list[str],
+    text_input: typing.Optional[str],
+    check_error: bool = True,
 ) -> typing.Optional[str]:
     """Run external program with stdin, return its output."""
     if not args:
@@ -661,7 +663,7 @@ def run_program_pipe(
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         fail(f'Failed to run command "{join_args(args)}": {error}')
-    if proc.returncode:
+    if proc.returncode and check_error:
         warning(
             f'Failed to run command "{join_args(args)}": '
             f'return code {proc.returncode}'
@@ -5171,10 +5173,16 @@ def command_try_reload():
     # Get copy of currently active ruleset
     minimal_config()
     old_rules = run_program_pipe(
-        CONFIG.nft_bin + ['list', 'table', 'inet', 'foomuuri'], None
+        CONFIG.nft_bin + ['list', 'table', 'inet', 'foomuuri'],
+        None,
+        check_error=False,
     )
-    if not old_rules or not old_rules.startswith('table inet foomuuri {'):
-        fail('Foomuuri is not running, use "foomuuri start" instead')
+    if not old_rules or 'netlink: Error' in old_rules:
+        # Not running as root or similar error
+        if old_rules:
+            print(old_rules.strip())
+        fail('Failed to read old ruleset')
+        return 1
 
     # Load new ruleset
     error = command_reload()
@@ -5190,9 +5198,13 @@ def command_try_reload():
     if answer.lower().startswith('y'):
         return 0
 
-    # Revert to old ruleset and return errorcode 2
-    warning('Revert to old config')
-
+    # Revert to old ruleset and return errorcode 2. Revert to empty
+    # ruleset if Foomuuri was not running.
+    if not old_rules.startswith('table inet foomuuri {'):
+        old_rules = ''
+        warning('Revert to empty ruleset. Foomuuri was not running.')
+    else:
+        warning('Revert to old config')
     save_file(
         state_file('good_file'),
         ['table inet foomuuri', 'delete table inet foomuuri', '', old_rules],
