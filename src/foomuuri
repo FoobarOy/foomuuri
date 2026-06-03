@@ -4111,7 +4111,7 @@ def iplist_verify_filters(name, values, fileline):
 
 def normalize_expire(now: int, timeout: int) -> int:
     """Add timeout to now. If it is too large return "forever"."""
-    if timeout > 20 * 365 * 86400:  # More than 20 year
+    if timeout > 2 * 365 * 86400:  # More than 2 year
         return 4000000000  # Year 2096 is forever
     return now + timeout
 
