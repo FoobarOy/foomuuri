@@ -1,6 +1,7 @@
 [
     { "version": "development", "title": "development", "aliases": [] },
-    { "version": "latest", "title": "v0.32", "aliases": ["latest"] },
+    { "version": "latest", "title": "v0.33", "aliases": ["latest"] },
+    { "version": "0.32", "title": "v0.32", "aliases": [] },
     { "version": "0.31", "title": "v0.31", "aliases": [] },
     { "version": "0.30", "title": "v0.30", "aliases": [] },
     { "version": "0.29", "title": "v0.29", "aliases": [] },
