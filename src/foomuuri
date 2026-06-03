@@ -4109,6 +4109,13 @@ def iplist_verify_filters(name, values, fileline):
                 )
 
 
+def normalize_expire(now: int, timeout: int) -> int:
+    """Add timeout to now. If it is too large return "forever"."""
+    if timeout > 20 * 365 * 86400:  # More than 20 year
+        return 4000000000  # Year 2096 is forever
+    return now + timeout
+
+
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
     ret = set()
@@ -4156,7 +4163,7 @@ def resolve_all_hostnames(resolve, cache):
                 iplist_cache_init(cache, hostname)
                 cache[hostname]['dirty'] = True
                 cache[hostname]['refresh'] = now
-                expire = now + resolve[hostname].timeout
+                expire = normalize_expire(now, resolve[hostname].timeout)
                 for addr in addrlist:
                     cache[hostname]['ip'][addr] = expire
                 verbose(
@@ -4407,7 +4414,7 @@ def command_iplist_add():
         iplists[setname].options.dns_timeout,
     )
     now = int(time.time())
-    expire = now + timeout
+    expire = normalize_expire(now, timeout)
 
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
@@ -4420,9 +4427,7 @@ def command_iplist_add():
             timeout = parse_duration(address, 0)
             if not timeout:
                 fail(f'Invalid IP address {address}')
-            expire = now + timeout
-            if timeout > 630720000:  # More than 20 years is "forever"
-                expire = 4000000000  # year 2096
+            expire = normalize_expire(now, timeout)
 
     return iplist_output_values(iplists, cache, {setname}, {setname})
 
@@ -4551,7 +4556,7 @@ def get_url_or_file(
     if value is not None:
         # Replace list, don't append. These lists are always complete
         # address lists.
-        expire = now + options.timeout
+        expire = normalize_expire(now, options.timeout)
         cache[url] = {
             'ip': dict.fromkeys(iplist_cleanup_file(url, value), expire),
             'dirty': True,
