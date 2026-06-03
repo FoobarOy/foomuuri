@@ -3,12 +3,12 @@
 Foomuuri is a multizone bidirectional nftables firewall.
 
 Full documentation is available [here](https://foomuuri.foobar.fi/latest/).
-See [host firewall](https://foomuuri.foobar.fi/latest/Host-Firewall/)
-or [router firewall](https://foomuuri.foobar.fi/latest/Router-Firewall/)
+See [host firewall](https://foomuuri.foobar.fi/latest/example/host-firewall/)
+or [router firewall](https://foomuuri.foobar.fi/latest/example/router-firewall/)
 for example configuration files.
 
-[Getting started](https://foomuuri.foobar.fi/latest/Getting-Started/)
-page contains quick instructions how to install Foomuuri. Help is available
+[Installation](https://foomuuri.foobar.fi/latest/install/)
+page contains instructions how to install Foomuuri. Help is available
 via [GitHub discussions](https://github.com/FoobarOy/foomuuri/discussions)
 and IRC channel `#foomuuri` on Libera.Chat.
 
@@ -30,7 +30,8 @@ and IRC channel `#foomuuri` on Libera.Chat.
 * Multiple ISP support with internal network connectivity monitor
 * IPsec matching support
 * Ability to map certain traffic to separate zones
-* Port knocking and automatic IP address banning support
+* Automatic IP address banning support
+* Port knocking support
 * D-Bus API
 * Firewalld emulation for NetworkManager's zone support
 * Raw nftables rules can be used

@@ -806,7 +806,7 @@ def read_config(require_etc_config: bool):
         fail(
             f'No configuration files "{CONFIG.etc_dir}/*.conf" found\n'
             '\n'
-            'See https://foomuuri.foobar.fi/latest/Host-Firewall/ '
+            'See https://foomuuri.foobar.fi/latest/example/host-firewall/ '
             'for example\n'
             'configuration.'
         )
