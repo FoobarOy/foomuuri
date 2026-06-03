@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.33 (20xx-xx-xx)
+## 0.33 (2026-06-03)
 
 * Documentation moved to https://foomuuri.foobar.fi/latest/
 * Unify command line syntax:

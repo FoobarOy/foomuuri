@@ -2,8 +2,8 @@
 title: PROMETHEUS-FOOMUURI-EXPORTER
 section: 1
 header: User Manual
-footer: prometheus-foomuuri-exporter 0.32
-date: Mar 11, 2026
+footer: prometheus-foomuuri-exporter 0.33
+date: Jun 03, 2026
 ---
 
 # NAME
