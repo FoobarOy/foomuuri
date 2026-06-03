@@ -81,6 +81,7 @@ release: test clean
 	fi
 	git diff --exit-code
 	git diff --cached --exit-code
+	grep --quiet VERSION=$(VERSION) misc/webdoc/Makefile || false "Update misc/webdoc/versions.json and Makefile"
 	sed -i -e "s@^\(## ${VERSION} .\)20..-xx-xx.@\1$(shell date +'%Y-%m-%d')\)@" CHANGELOG.md
 	sed -i -e "s@^\(VERSION = '\).*@\1$(VERSION)'@" src/foomuuri
 	sed -i -e "s@^\(footer: .* \).*@\1$(VERSION)@" man/foomuuri.md man/prometheus-foomuuri-exporter.md
@@ -94,8 +95,6 @@ release: test clean
 	@echo "== TODO =="
 	@echo "git push && git push --tags"
 	@echo "GitHub release: https://github.com/FoobarOy/foomuuri/releases/new"
-	@echo
-	@echo "Update misc/webdoc/versions.json and Makefile. Export documentation."
 
 # Build tarball locally
 
