@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.34 (20xx-xx-xx)
+
 ## 0.33 (2026-06-03)
 
 * Documentation moved to https://foomuuri.foobar.fi/latest/
@@ -32,7 +34,7 @@
   for high speed interfaces.
 * Add `matter` macro to default services.
 * Fix: Interface `lo` is special. Matcher `oifname lo` does not work in
-  prerouting (DNAT) chain. Output is as `fib daddr type local` instead.
+  prerouting (DNAT) chain. Output it as `fib daddr type local` instead.
 
 ## 0.32 (2026-03-11)
 
