@@ -163,7 +163,6 @@ table inet foomuuri {
 		}
 		fib daddr type multicast accept
 		fib daddr type broadcast accept
-		fib daddr type { broadcast, multicast } drop
 		accept
 	}
 
@@ -200,7 +199,6 @@ table inet foomuuri {
 		fib daddr type multicast drop
 		fib daddr type multicast accept
 		fib daddr type broadcast accept
-		fib daddr type { broadcast, multicast } drop
 		accept
 	}
 

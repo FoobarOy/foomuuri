@@ -2630,10 +2630,23 @@ def rule_matchers(  # noqa: PLR0914 -- Too many local variables
     )
 
 
-def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
-    """Output all uni/multi/broadcast rules for single zone-zone."""
+def output_cast(
+    cast: typing.Optional[str],
+    szone: str,
+    dzone: str,
+    rules: list,
+    ipv: int,
+    *,
+    after_conntrack: bool = True,
+    includes_this_rule: typing.Optional[str] = None,
+) -> bool:
+    """Output all uni/multi/broadcast rules for single zone-zone.
+
+    Return True if "includes_this_rule" was added to ruleset.
+    """
     # pylint: disable=too-many-arguments
     has_mark_restore = False
+    has_needle_rule = False
     for rule in rules:
         if rule['after_conntrack'] != after_conntrack:
             continue
@@ -2657,7 +2670,10 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             has_mark_restore = True
             out('meta mark set ct mark')
 
-        out(f'{match}{statement}')
+        final = f'{match}{statement}'
+        out(final)
+        if final == includes_this_rule:
+            has_needle_rule = True
 
         # Does this rule need kernel helper?
         if rule['helper']:
@@ -2668,6 +2684,7 @@ def output_cast(cast, szone, dzone, rules, ipv, *, after_conntrack=True):
             HELPERS.append((rule['helper'], rule['protocol'], rule['dport']))
             kernelname = rule['helper'].split('-')[0].replace('_', '-')
             out(f'ct helper "{kernelname}" {rule["statement"]}')
+    return has_needle_rule
 
 
 def output_zonemap(zonemap, szone, dzone, ipv):
@@ -2743,11 +2760,33 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     # as it is local to ip/netmask. Proxying is ok, where software listens one
     # interface and writes it to another.
     if not output_chain:
-        output_cast('multicast', szone, dzone, rules, ipv)
-        output_cast('broadcast', szone, dzone, rules, ipv)
+        has_multicast_accept = output_cast(
+            'multicast',
+            szone,
+            dzone,
+            rules,
+            ipv,
+            includes_this_rule='fib daddr type multicast accept',
+        )
+        has_broadcast_accept = output_cast(
+            'broadcast',
+            szone,
+            dzone,
+            rules,
+            ipv,
+            includes_this_rule='fib daddr type broadcast accept',
+        )
+
+        # Add multicast/broadcast drop if there was no "accept" for it.
         if ipv == 4:
-            out('fib daddr type { broadcast, multicast } drop')
-        else:
+            if not has_multicast_accept and not has_broadcast_accept:
+                out('fib daddr type { broadcast, multicast } drop')
+            elif has_multicast_accept and not has_broadcast_accept:
+                out('fib daddr type broadcast drop')
+            elif not has_multicast_accept and has_broadcast_accept:
+                out('fib daddr type multicast drop')
+            # else has both, don't output anything
+        elif not has_broadcast_accept:  # IPv6 doesn't have broadcast
             out('fib daddr type multicast drop')
 
     # Unicast.
