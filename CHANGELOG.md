@@ -2,6 +2,11 @@
 
 ## 0.34 (20xx-xx-xx)
 
+* Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
+  to another macro which has `something; something`. (#209)
+* Fix: Don't add `fib daddr type multicast drop` after rule `multicast accept`.
+  It is unneeded and confuses `nft --optimize`. (#207)
+
 ## 0.33 (2026-06-03)
 
 * Documentation moved to https://foomuuri.foobar.fi/latest/
