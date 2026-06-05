@@ -948,6 +948,7 @@ def parse_config_templates(config, macros, macroline):
 
 def parse_config_macros(config):
     """Parse macro{} from config. Recursively expand macro in macro{}."""
+    # pylint: disable=too-many-branches
     # Parse macro{} to dict
     macros = {}
     macroline = {}
@@ -969,23 +970,53 @@ def parse_config_macros(config):
             macros[key] = value  # overwrite
 
     # Expand macro in macro{}. Keep going as long as there was some expansion
-    # done.
+    # done. This can happen if macro group contains multiple macros.
+    # pylint: disable=too-many-nested-blocks
+    # ruff: noqa: PLR1702 (Too many nested blocks)
     while True:
         found = False
-        for check, cvalue in macros.items():
-            for macro, mvalue in macros.items():
-                try:
-                    pos = mvalue.index(check)  # Full word expansion only
-                except ValueError:
+
+        # Expand each macro
+        for macro, value in macros.items():
+            new_value = []
+
+            # Macro value can have ";". Check each group separately as it can
+            # have prefix and suffix which must be copied to each expansion.
+            for is_split, group in itertools.groupby(
+                value, lambda spl: spl == ';'
+            ):
+                if is_split:
+                    new_value.append(';')
                     continue
-                if check == macro:  # Macro "foo" expands to "foo bar"
-                    fail(
-                        f'{macroline[macro]}Macro "{macro}" expands to '
-                        f'itself: {" ".join(mvalue)}'
-                    )
-                # Expand macro
-                macros[macro] = mvalue[:pos] + cvalue + mvalue[pos + 1 :]
-                found = True
+
+                # Check each item in group
+                group = list(group)
+                for index, word in enumerate(group):
+                    if word in macros:
+                        # Macro expansion is found! Expansion can have
+                        # ";", so add each part separately.
+                        for is_split2, group2 in itertools.groupby(
+                            macros[word], lambda spl: spl == ';'
+                        ):
+                            if is_split2:
+                                new_value.append(';')
+                            else:
+                                new_value.extend(
+                                    group[:index]  # prefix in original
+                                    + list(group2)  # expansion
+                                    + group[index + 1 :]  # suffix in original
+                                )
+                        found = True
+                        break
+                else:
+                    # No expansion in this group, add it as is
+                    new_value.extend(group)
+            macros[macro] = new_value
+            if macro in new_value:
+                fail(
+                    f'{macroline[macro]}Macro "{macro}" expands to '
+                    f'itself: {" ".join(value)} => {" ".join(new_value)}'
+                )
         if not found:  # No new expansion was done
             return macros
 

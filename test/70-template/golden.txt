@@ -159,6 +159,8 @@ table inet foomuuri {
 		ip saddr 10.0.0.1 tcp sport 7 reject with icmpx admin-prohibited
 		ip saddr 10.0.0.1 udp dport 6 reject with icmpx admin-prohibited
 		ip saddr 10.0.0.1 udp sport 7 reject with icmpx admin-prohibited
+		ip daddr 192.0.2.0 tcp dport 443 meta skuid "root" accept
+		ip daddr 192.0.2.0 udp dport 443 meta skuid "root" accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
