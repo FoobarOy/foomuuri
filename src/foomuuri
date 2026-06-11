@@ -166,7 +166,7 @@ class TypedConfig:
     def __iter__(self):
         """Return attributes list terator."""
         # pylint: disable=no-member
-        return iter(list(self.__dataclass_fields__))
+        return iter(self.__dataclass_fields__)
 
     def _check_set_append_args(self, name: str, value: str) -> None:
         """Verify attribute name and value sanity."""
