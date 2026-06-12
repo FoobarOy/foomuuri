@@ -9,56 +9,75 @@ from foomuuri import Validators
 class TestValidators(unittest.TestCase):
     """Test assert helpers."""
 
-    def test_assert_str_word(self):
-        """Test invalid and valid outcomes."""
-        self.assertFalse(Validators.str_zone_name(''))
-        self.assertFalse(Validators.str_zone_name('word word'))
-        self.assertFalse(Validators.str_zone_name('3word'))
-        self.assertFalse(Validators.str_zone_name('w#ord'))
-        self.assertFalse(Validators.str_zone_name('_./_'))
-        self.assertTrue(Validators.str_zone_name('wo_123_rd'))
-        self.assertTrue(Validators.str_zone_name('w./_'))
+    def assert_valid_invalid(self, test, valid_cases, invalid_cases):
+        """Helper function to reduce repetition."""
+        for case in valid_cases:
+            with self.subTest(case):
+                self.assertTrue(test(case), f'Expected {case!r} to be valid')
+        for case in invalid_cases:
+            with self.subTest(case):
+                self.assertFalse(
+                    test(case), f'Expected {case!r} to be invalid'
+                )
 
-        self.assertFalse(Validators.str_iplist_name(''))
-        self.assertFalse(Validators.str_iplist_name('@'))
-        self.assertFalse(Validators.str_iplist_name('@w w'))
-        self.assertFalse(Validators.str_iplist_name('@kääk'))
-        self.assertFalse(Validators.str_iplist_name('@3word'))
-        self.assertTrue(Validators.str_iplist_name('@word'))
-        self.assertTrue(Validators.str_iplist_name('@_'))
-        self.assertTrue(Validators.str_iplist_name('@_./-'))
+    def test_str_zone_name(self):
+        """Test for str is zone name."""
+        invalid = ['', 'word word', '3word', 'w#ord', '_./_']
+        valid = ['wo_123_rd', 'w./_']
+        self.assert_valid_invalid(Validators.str_zone_name, valid, invalid)
 
-        self.assertFalse(Validators.str_interface_name(''))
-        self.assertFalse(Validators.str_interface_name('word word'))
-        self.assertFalse(Validators.str_interface_name('word\nword'))
-        self.assertFalse(Validators.str_interface_name('word/word'))
-        self.assertFalse(Validators.str_interface_name('word"word'))
-        self.assertFalse(Validators.str_interface_name('word\\word'))
-        self.assertTrue(Validators.str_interface_name('eth0'))
-        self.assertTrue(Validators.str_interface_name(':'))
-        self.assertTrue(Validators.str_interface_name('@'))
-        self.assertTrue(Validators.str_interface_name('kääk'))
+    def test_str_iplist_name(self):
+        """Test for str is iplist name."""
+        invalid = ['', '@', '@w w', '@kääk', '@3word']
+        valid = ['@word', '@_', '@_./-']
+        self.assert_valid_invalid(Validators.str_iplist_name, valid, invalid)
 
-        self.assertFalse(Validators.str_words(''))
-        self.assertTrue(Validators.str_words('word'))
-        self.assertTrue(Validators.str_words('word word'))
+    def test_str_interface_name(self):
+        """Test for str is linux interface name."""
+        invalid = [
+            '',
+            'word word',
+            'word\nword',
+            'word/word',
+            'word"word',
+            'word\\word',
+            'wordwordwordword',
+        ]
+        valid = ['eth0', ':', '@', 'kääk']
+        self.assert_valid_invalid(
+            Validators.str_interface_name, valid, invalid
+        )
 
-        self.assertFalse(Validators.has_elements([]))
-        self.assertTrue(Validators.has_elements(['a']))
-        self.assertTrue(Validators.has_elements(['a', 'b']))
-        self.assertFalse(Validators.has_elements({}))
-        self.assertTrue(Validators.has_elements({'a'}))
-        self.assertTrue(Validators.has_elements({'a', 'b'}))
+    def test_str_words(self):
+        """Test for str is one or more words."""
+        invalid = ['']
+        valid = ['word', 'word word']
 
-        self.assertFalse(Validators.int_positive_or_zero(-1))
-        self.assertTrue(Validators.int_positive_or_zero(0))
-        self.assertTrue(Validators.int_positive_or_zero(1))
+        self.assert_valid_invalid(Validators.str_words, valid, invalid)
 
-        self.assertFalse(Validators.int_positive(-1))
-        self.assertTrue(Validators.int_positive(1))
+    def test_has_elements(self):
+        """Test for list or set is not empty."""
+        invalid = [[], {}]
+        valid = [['a'], ['a', 'b'], {'a'}, {'a', 'b'}]
 
-        self.assertFalse(Validators.str_yes_no(''))
-        self.assertFalse(Validators.str_yes_no('maybe'))
-        self.assertFalse(Validators.str_yes_no('YES'))
-        self.assertTrue(Validators.str_yes_no('yes'))
-        self.assertTrue(Validators.str_yes_no('no'))
+        self.assert_valid_invalid(Validators.has_elements, valid, invalid)
+
+    def test_int_positive_or_zero(self):
+        """Test for int is not negative."""
+        invalid = [-1]
+        valid = [0, 1]
+        self.assert_valid_invalid(
+            Validators.int_positive_or_zero, valid, invalid
+        )
+
+    def test_int_positive(self):
+        """Test for int is positive."""
+        invalid = [-1, 0]
+        valid = [1]
+        self.assert_valid_invalid(Validators.int_positive, valid, invalid)
+
+    def test_str_yes_no(self):
+        """Test for str is 'yes' or 'no'."""
+        invalid = ['', 'maybe', 'YES']
+        valid = ['yes', 'no']
+        self.assert_valid_invalid(Validators.str_yes_no, valid, invalid)
