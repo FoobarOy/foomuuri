@@ -4906,7 +4906,7 @@ def iplist_output_add_element(cache, setname, now):
         for address in sorted(updates[ipv]):
             timeout = cache[setname]['ip'][address]
             seconds = max(1, timeout - now)
-            if seconds > 630720000:  # 20 years, add without timeout
+            if seconds > 2 * 365 * 86400:  # More than 2 years is forever
                 out(f'{address},')
             else:
                 out(f'{address} timeout {seconds}s,')
