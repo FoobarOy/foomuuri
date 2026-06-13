@@ -3673,12 +3673,6 @@ if HAVE_DBUS:
             self.zones = zones
 
         @staticmethod
-        def clean_out():
-            """Remove all entries from current OUT[] variable."""
-            while OUT:
-                del OUT[0]
-
-        @staticmethod
         def apply_out():
             """Apply current OUT commands."""
             lines = '\n'.join(save_final(None))
@@ -3820,8 +3814,8 @@ if HAVE_DBUS:
                         f'Can\'t change interface "lo" to zone "{new_zone}"'
                     )
                 return '', ''
+            OUT.clear()
             interface_zone = parse_active_interface_zone()
-            self.clean_out()
             old_zone = self.remove_interface(interface_zone, interface)
             if new_zone:
                 self.add_interface(interface_zone, interface, new_zone)
