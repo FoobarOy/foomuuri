@@ -1322,87 +1322,52 @@ def minimal_config(require_etc_config=True):
     return config
 
 
-def is_ipv4_address(value, allow_network=True):
-    """Is value IPv4 address, network or interval."""
-    if value.count('-') == 1:  # Interval "IP-IP"
-        try:
-            addr_from, addr_to = value.split('-')
-            return ipaddress.IPv4Address(addr_from) <= ipaddress.IPv4Address(
-                addr_to
-            )
-        except ValueError:
-            return False
-
-    try:  # Address "IP"
-        return isinstance(ipaddress.ip_address(value), ipaddress.IPv4Address)
-    except ValueError:
-        try:  # Network "IP/mask"
-            return (
-                isinstance(
-                    ipaddress.ip_network(value, strict=False),
-                    ipaddress.IPv4Network,
-                )
-                and allow_network
-            )
-        except ValueError:
-            return False
-
-
-def is_ipv6_address(value, allow_network=True):
-    """Is value IPv6 address, network or interval."""
-    # pylint: disable=too-many-return-statements
-    if value.count('/-') == 1:  # Suffix mask "IP/-mask"
-        addr, maskstr = value.split('/-')
-        try:
-            mask = int(maskstr)
-            return 0 <= mask <= 128 and ipaddress.IPv6Address(addr)
-        except ValueError:
-            return False
-
-    if value.count('-') == 1:  # Interval "IP-IP"
-        try:
-            addr_from, addr_to = value.split('-')
-            return ipaddress.IPv6Address(addr_from) <= ipaddress.IPv6Address(
-                addr_to
-            )
-        except ValueError:
-            return False
-
-    # Python's ipaddress library doesn't handle "[ipv6]" notation.
-    # Strip [] before validating the address. nft handles [] fine, it will
-    # strip them.
-    if value.startswith('['):
-        if value.endswith(']'):  # "[ipv6]"
-            value = value[1:-1]
-        elif ']/' in value:  # "[ipv6]/56"
-            value = value[1:].replace(']/', '/')
-
-    try:  # Address "IP"
-        return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
-    except ValueError:
-        try:  # Network "IP/mask"
-            return (
-                isinstance(
-                    ipaddress.ip_network(value, strict=False),
-                    ipaddress.IPv6Network,
-                )
-                and allow_network
-            )
-        except ValueError:
-            return False
-
-
-def is_ip_address(value, *, allow_negative=True):
-    """Check if value is IPv4 or IPv6 address, network or interval.
+def get_ip_family(value: str, *, allow_negative=True) -> int:
+    """Detect if value is an IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
     """
-    if value.startswith('-') and allow_negative:
+    # -IP
+    if allow_negative and value.startswith('-'):
         value = value[1:]  # Negative is handled in single_or_set()
-    if is_ipv4_address(value):
-        return 4
-    if is_ipv6_address(value):
-        return 6
+
+    # IPv6/-mask
+    if value.count('/-') == 1:
+        addr, maskstr = value.split('/-')
+        with contextlib.suppress(ValueError):
+            mask = int(maskstr)
+            if 0 <= mask <= 128 and ipaddress.IPv6Address(addr):
+                return 6
+        return 0
+
+    # Python's ipaddress library doesn't handle [IPv6] notation.
+    # Strip [] before validating the address. nft handles [] fine, it will
+    # strip them.
+    if value.startswith('[') and ':' in value:
+        if value.endswith(']'):  # [IPv6]
+            value = value[1:-1]
+        elif ']/' in value:  # [IPv6]/56
+            value = value[1:].replace(']/', '/')
+
+    # IP/mask (network), IP (address)
+    with contextlib.suppress(ValueError):
+        net = ipaddress.ip_network(value, strict=False)
+        return 4 if isinstance(net, ipaddress.IPv4Network) else 6
+
+    # IP-IP (interval)
+    if value.count('-') == 1:
+        addr_from, addr_to = value.split('-')
+        with contextlib.suppress(ValueError):
+            if ipaddress.IPv4Address(addr_from) <= ipaddress.IPv4Address(
+                addr_to
+            ):
+                return 4
+        with contextlib.suppress(ValueError):
+            if ipaddress.IPv6Address(addr_from) <= ipaddress.IPv6Address(
+                addr_to
+            ):
+                return 6
+
     return 0
 
 
@@ -2375,7 +2340,7 @@ def parse_iplist(rule, direction, ipv):
         if item.startswith(('@', '-@')):  # "@foo" to "@foo_4"
             ips.append(f'{item}_{ipv}')
         else:
-            ipv_addr = is_ip_address(item)
+            ipv_addr = get_ip_family(item)
             if ipv_addr == ipv:  # Address for this ipv - add to list
                 ips.append(item)
             elif not ipv_addr:  # Invalid IP address
@@ -2497,16 +2462,16 @@ def parse_iplist_to_single_ip(rule, key, value, ipv):
     """Parse rule's iplist to single ipaddress, or None."""
     target = []
     for check in value.split():
-        if check.count(':') == 1 and is_ip_address(check.split(':')[0]) == 4:
+        if check.count(':') == 1 and get_ip_family(check.split(':')[0]) == 4:
             check_ipv = 4  # IPv4 address with port
         elif (
             check.startswith('[')
             and ']:' in check
-            and is_ip_address(check[1:].split(']:')[0]) == 6
+            and get_ip_family(check[1:].split(']:')[0]) == 6
         ):
             check_ipv = 6  # IPv6 address with port
         else:
-            check_ipv = is_ip_address(check)
+            check_ipv = get_ip_family(check)
         if check_ipv == 0:
             fail(
                 f'{rule["fileline"]}Invalid IP address in '
@@ -4013,7 +3978,7 @@ if HAVE_DBUS:
             in Foomuuri.
             """
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
-            if not is_ip_address(source):
+            if not get_ip_family(source):
                 raise FoomuuriDbusException('Invalid source address')
             return ''  # It's not in any zone
 
@@ -4483,7 +4448,7 @@ def command_iplist_add():
     # Add entries to cache and apply it
     iplist_cache_init(cache, f'manual.{setname}')
     for address in INTERNAL.parameters[2:]:
-        ipv = is_ip_address(address, allow_negative=False)
+        ipv = get_ip_family(address, allow_negative=False)
         if ipv:
             cache[f'manual.{setname}']['ip'][address] = expire
             cache[f'manual.{setname}']['dirty'] = True
@@ -4589,7 +4554,7 @@ def iplist_cleanup_file(url: str, text: str) -> list[str]:
         for value in line.split():
             if value.startswith(('#', ';')):  # Remove comments
                 break
-            if is_ip_address(value, allow_negative=False):
+            if get_ip_family(value, allow_negative=False):
                 addresses.append(value)
             else:
                 warning(f'Unknown entry in iplist "{url}": {value}')
@@ -4661,7 +4626,7 @@ def read_old_iplist_format(cache):
             if (
                 not line.startswith('add element inet')
                 or len(items) not in {10, 12}
-                or not is_ip_address(items[6])
+                or not get_ip_family(items[6])
             ):
                 continue
             setname = f'manual.@{items[4][:-2]}'
@@ -4844,7 +4809,7 @@ def iplist_collect_resolve_list(iplists: IPLists) -> tuple:
                     urls[source].update_if_less(
                         option, iplist.options[f'url_{option}']
                     )
-            elif not is_ip_address(source, allow_negative=False):
+            elif not get_ip_family(source, allow_negative=False):
                 for option in ('timeout', 'refresh'):
                     hostnames[source].update_if_less(
                         option, iplist.options[f'dns_{option}']
@@ -4932,7 +4897,7 @@ def iplist_output_values(
         }
         for value in setvalues:
             # Static IP address doesn't need refresh, so timeout is forever
-            if is_ip_address(value, allow_negative=False):
+            if get_ip_family(value, allow_negative=False):
                 cache[setname]['ip'][value] = 4000000000  # forever
                 cache[setname]['dirty'] = True
                 continue
