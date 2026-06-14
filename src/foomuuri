@@ -1322,87 +1322,52 @@ def minimal_config(require_etc_config=True):
     return config
 
 
-def is_ipv4_address(value, allow_network=True):
-    """Is value IPv4 address, network or interval."""
-    if value.count('-') == 1:  # Interval "IP-IP"
-        try:
-            addr_from, addr_to = value.split('-')
-            return ipaddress.IPv4Address(addr_from) <= ipaddress.IPv4Address(
-                addr_to
-            )
-        except ValueError:
-            return False
-
-    try:  # Address "IP"
-        return isinstance(ipaddress.ip_address(value), ipaddress.IPv4Address)
-    except ValueError:
-        try:  # Network "IP/mask"
-            return (
-                isinstance(
-                    ipaddress.ip_network(value, strict=False),
-                    ipaddress.IPv4Network,
-                )
-                and allow_network
-            )
-        except ValueError:
-            return False
-
-
-def is_ipv6_address(value, allow_network=True):
-    """Is value IPv6 address, network or interval."""
-    # pylint: disable=too-many-return-statements
-    if value.count('/-') == 1:  # Suffix mask "IP/-mask"
-        addr, maskstr = value.split('/-')
-        try:
-            mask = int(maskstr)
-            return 0 <= mask <= 128 and ipaddress.IPv6Address(addr)
-        except ValueError:
-            return False
-
-    if value.count('-') == 1:  # Interval "IP-IP"
-        try:
-            addr_from, addr_to = value.split('-')
-            return ipaddress.IPv6Address(addr_from) <= ipaddress.IPv6Address(
-                addr_to
-            )
-        except ValueError:
-            return False
-
-    # Python's ipaddress library doesn't handle "[ipv6]" notation.
-    # Strip [] before validating the address. nft handles [] fine, it will
-    # strip them.
-    if value.startswith('['):
-        if value.endswith(']'):  # "[ipv6]"
-            value = value[1:-1]
-        elif ']/' in value:  # "[ipv6]/56"
-            value = value[1:].replace(']/', '/')
-
-    try:  # Address "IP"
-        return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
-    except ValueError:
-        try:  # Network "IP/mask"
-            return (
-                isinstance(
-                    ipaddress.ip_network(value, strict=False),
-                    ipaddress.IPv6Network,
-                )
-                and allow_network
-            )
-        except ValueError:
-            return False
-
-
-def is_ip_address(value, *, allow_negative=True):
-    """Check if value is IPv4 or IPv6 address, network or interval.
+def is_ip_address(value: str, *, allow_negative=True) -> int:
+    """Detect if value is an IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
     """
-    if value.startswith('-') and allow_negative:
+    # -IP
+    if allow_negative and value.startswith('-'):
         value = value[1:]  # Negative is handled in single_or_set()
-    if is_ipv4_address(value):
-        return 4
-    if is_ipv6_address(value):
-        return 6
+
+    # IPv6/-mask
+    if value.count('/-') == 1:
+        addr, maskstr = value.split('/-')
+        with contextlib.suppress(ValueError):
+            mask = int(maskstr)
+            if 0 <= mask <= 128 and ipaddress.IPv6Address(addr):
+                return 6
+        return 0
+
+    # Python's ipaddress library doesn't handle [IPv6] notation.
+    # Strip [] before validating the address. nft handles [] fine, it will
+    # strip them.
+    if value.startswith('[') and ':' in value:
+        if value.endswith(']'):  # [IPv6]
+            value = value[1:-1]
+        elif ']/' in value:  # [IPv6]/56
+            value = value[1:].replace(']/', '/')
+
+    # IP/mask (network), IP (address)
+    with contextlib.suppress(ValueError):
+        net = ipaddress.ip_network(value, strict=False)
+        return 4 if isinstance(net, ipaddress.IPv4Network) else 6
+
+    # IP-IP (interval)
+    if value.count('-') == 1:
+        addr_from, addr_to = value.split('-')
+        with contextlib.suppress(ValueError):
+            if ipaddress.IPv4Address(addr_from) <= ipaddress.IPv4Address(
+                addr_to
+            ):
+                return 4
+        with contextlib.suppress(ValueError):
+            if ipaddress.IPv6Address(addr_from) <= ipaddress.IPv6Address(
+                addr_to
+            ):
+                return 6
+
     return 0
 
 
