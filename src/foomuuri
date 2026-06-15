@@ -1993,6 +1993,10 @@ def suffix_mask(value, compare):
     return f'& :{splitted} {compare}{addr}'
 
 
+# Quote value in single_or_set() if this regexp matches.
+QUOTE_VALUE = re.compile(r'[a-zA-Z ]')
+
+
 def single_or_set(
     data: typing.Union[str, list, set],
     fileline: str = '',
@@ -2021,11 +2025,13 @@ def single_or_set(
         elif neg:
             fail(f'{fileline}Can\'t mix "+" and "-" items: {" ".join(values)}')
 
-    # Quote interface names and similar items. "inet" is a reserved word
-    # but can also be an interface name. It must be quoted.
+    # Quote interface names and similar items to avoid conflict with reserved
+    # words. "inet" is a reserved word but can also be an interface name.
+    # Do not quote numbers, numeric ranges or similar non-alpha values.
     if quote:
         values = [
-            value if value.isnumeric() else f'"{value}"' for value in values
+            f'"{value}"' if QUOTE_VALUE.search(value) else value
+            for value in values
         ]
 
     # Single item

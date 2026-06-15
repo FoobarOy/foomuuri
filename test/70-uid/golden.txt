@@ -130,6 +130,8 @@ table inet foomuuri {
 		tcp dport 1000 meta skuid 123 accept
 		tcp dport 1001 meta skgid 234 accept
 		tcp dport 1010 meta skuid 111 meta skgid 222 accept
+		tcp dport 443 meta skuid { "root", 100-200, 300 } accept
+		udp dport 443 meta skuid { "root", 100-200, 300 } accept
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
@@ -146,6 +148,8 @@ table inet foomuuri {
 		tcp dport 1000 meta skuid 123 accept
 		tcp dport 1001 meta skgid 234 accept
 		tcp dport 1010 meta skuid 111 meta skgid 222 accept
+		tcp dport 443 meta skuid { "root", 100-200, 300 } accept
+		udp dport 443 meta skuid { "root", 100-200, 300 } accept
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-public REJECT " level info flags skuid
 		reject with icmpx admin-prohibited
 	}
