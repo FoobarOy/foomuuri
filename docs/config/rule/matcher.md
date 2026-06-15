@@ -195,6 +195,8 @@ section allows outgoing TCP 2703 traffic from user `amavis`.
 Multiple uid / gid names or numbers can be specified. Negative value(s)
 works too, meaning all but specified value(s).
 
+Only effective gid is matched. Matching for supplementary group does not work.
+
 
 ## mark_match
 
