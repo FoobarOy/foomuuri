@@ -2,6 +2,8 @@
 
 ## 0.34 (20xx-xx-xx)
 
+* Add support for `==`, `!=`, `<`, `>`, `<=` and `>=` compare operators
+  when matching numeric values. For example `tcp < 1024`.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
 * Fix: Support numeric ranges in `uid` and `gid` matchers. (#214)
