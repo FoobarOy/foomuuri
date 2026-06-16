@@ -120,6 +120,11 @@ class Validators:
         """Assert value is either 'yes' or 'no'."""
         return value in {'yes', 'no'}
 
+    @staticmethod
+    def str_comparison_operator(value: str):
+        """Assert value is comparison operator."""
+        return value in {'==', '!=', '<', '>', '<=', '>='}
+
 
 class Converters:  # pylint: disable=too-few-public-methods
     """Type converters collection."""
@@ -501,8 +506,6 @@ INTERNAL = Internal()
 OUT = []  # Generated nftables ruleset / commands
 LOGRATES = {}  # Lograte names and limits
 HELPERS = []  # List of helpers: (helper-object, protocol, ports)
-
-COMPARE_OPS = {'==', '!=', '<', '>', '<=', '>='}
 
 
 def fail(error: str, fatal: bool = True) -> int:
@@ -1608,7 +1611,10 @@ def parse_rule_line(fileline_line):
         if (
             not keyword
             and ret['protocol']
-            and (item in COMPARE_OPS or is_port(item, ret['protocol']))
+            and (
+                Validators.str_comparison_operator(item)
+                or is_port(item, ret['protocol'])
+            )
         ):
             keyword = 'dport'
             ret['plain'] = False
@@ -1981,10 +1987,10 @@ def single_or_set(
     else:
         values = list(data)
 
-    # Handle equal / not equal / greater than / etc compare operator
+    # Handle equal / not equal / greater than / etc comparison operator
     compare = ''
-    if len(values) > 1 and values[0] in COMPARE_OPS:
-        # Compare operation as first item in list
+    if len(values) > 1 and Validators.str_comparison_operator(values[0]):
+        # Comparison operator as first item in list
         compare = '' if values[0] == '==' else f'{values[0]} '
         values = values[1:]
     elif any(value.startswith('-') for value in values):
@@ -2176,7 +2182,7 @@ def time_match(rule):
     value = []
     ret = ''
     for item in rule['time'].split():
-        if item in COMPARE_OPS:
+        if Validators.str_comparison_operator(item):
             ret += time_match_single(rule, compare, value)
             compare = '' if item == '==' else f'{item} '
             value = []
