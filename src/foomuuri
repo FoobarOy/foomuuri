@@ -4454,10 +4454,12 @@ def command_iplist_add():
         setname = f'@{setname}'
     if setname not in iplists:
         fail(f'Unknown iplist name: {setname}')
-    timeout = max(
-        iplists[setname].options.url_timeout,
-        iplists[setname].options.dns_timeout,
-    )
+    timeout = iplists[setname].options.element_timeout
+    if not timeout:
+        timeout = max(
+            iplists[setname].options.url_timeout,
+            iplists[setname].options.dns_timeout,
+        )
     now = int(time.time())
     expire = normalize_expire(now, timeout)
 
