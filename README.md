@@ -45,7 +45,8 @@ Example configuration file to filter incoming traffic only:
 ```
 zone {
   localhost
-  public  eth1  # Interface list may be empty if using NetworkManager; glob patterns like * or e* are supported too
+  public  eth1  # Interface list may be empty if using NetworkManager.
+                # Glob patterns like * or e* are supported too.
 }
 
 public-localhost {  # Allow specified incoming traffic
