@@ -793,7 +793,68 @@ def find_config_files(basedir, mask):
     return [item for item in files if not item.name.startswith(('.', '#'))]
 
 
-def read_config(require_etc_config: bool):
+def _validate_section_format(
+    current_section_id: typing.Optional[str],
+    tokens: list[str],
+    fileline: str,
+) -> str:
+    """Config file section validation helper.
+
+    Used by read_config() internally.
+    """
+    if current_section_id:
+        fail(
+            f'{fileline}New "{" ".join(tokens)}" while section '
+            f'"{current_section_id}" is still open'
+        )
+
+    if tokens.count('{') > 1:
+        fail(f'{fileline}One opening brace allowed: {" ".join(tokens)}')
+
+    if tokens.count('}') == 0:
+        if tokens[-1] != '{':
+            fail(f'{fileline}Closing brace missing: {" ".join(tokens)}')
+    elif tokens.count('}') == 1:
+        if tokens[-1] != '}':
+            fail(f'{fileline}Closing brace must be last: {" ".join(tokens)}')
+    else:
+        fail(f'{fileline}One closing brace allowed: {" ".join(tokens)}')
+
+    section_name = tokens[0]
+    section_params = tokens[1 : tokens.index('{')]
+    section_id = ' '.join([section_name] + section_params)
+
+    if section_name.startswith('_'):  # _name is protected
+        fail(f'{fileline}Unknown section: {section_id}')
+
+    if section_name in {
+        'template',
+        'target',
+        'group',
+    }:
+        if len(section_params) != 1:
+            fail(
+                f'{fileline}Section "{section_name}" must have single '
+                f'word name: {" ".join(tokens)}'
+            )
+    elif section_params and section_name not in {
+        'snat',
+        'dnat',
+        'prerouting',
+        'postrouting',
+        'forward',
+        'input',
+        'output',
+    }:
+        fail(
+            f'{fileline}Section "{section_name}" does not take '
+            f'parameters: {" ".join(tokens)}'
+        )
+
+    return section_id
+
+
+def read_config(require_etc_config: bool) -> dict:
     """Read all config files to config dict: section -> lines[].
 
     Files are read in alphabetical order, ignoring backup and hidden files.
@@ -824,8 +885,8 @@ def read_config(require_etc_config: bool):
 
     # Read all config files
     config = {}  # Final config dict
-    section = None  # Currently open section name
-    section_line = {}  # Section_name -> filename_line for error messages
+    section_line = {}  # section_id -> filename_line for error messages
+    section_id = None  # Current section id (name + parameters)
     for filename in share_config + etc_config:
         try:
             content = filename.read_text(encoding='utf-8')
@@ -862,72 +923,44 @@ def read_config(require_etc_config: bool):
                 continue
 
             # "}" is end of section
-            if len(tokens) == 1 and tokens[0] == '}':  # End of section
-                if not section:
+            if len(tokens) == 1 and tokens[0] == '}':
+                if not section_id:
                     fail(f'{fileline}Extra "}}"')
-                section = None
-
+                section_id = None
             # Section start:
-            # - "foo {"
-            # - "template foo {" / "target foo" / "group foo"
-            # - "prerouting {"
-            # - "prerouting filter mangle - 10 {"
-            elif len(tokens) >= 2 and tokens[-1] == '{':
-                if section:
-                    fail(
-                        f'{fileline}New "{" ".join(tokens)}" while section '
-                        f'"{section}" is still open'
-                    )
-                if (
-                    tokens[0] in {'template', 'target', 'group'}
-                    and len(tokens) != 3
-                ):
-                    fail(
-                        f'{fileline}Section "{tokens[0]}" must have single '
-                        f' word name: {" ".join(tokens)}'
-                    )
-                if len(tokens) > 2 and tokens[0] not in {
-                    'template',
-                    'target',
-                    'group',
-                    'snat',
-                    'dnat',
-                    'prerouting',
-                    'postrouting',
-                    'forward',
-                    'input',
-                    'output',
-                }:
-                    fail(
-                        f'{fileline}Section "{tokens[0]}" does not take '
-                        f'parameters: {" ".join(tokens)}'
-                    )
+            # - "foo [parameters] {"
+            # Or complete inline section:
+            # - "bar [parameters] { baz }"
+            elif '{' in tokens and (open_idx := tokens.index('{')) >= 1:
+                section_id = _validate_section_format(
+                    section_id, tokens, fileline
+                )
 
-                section = ' '.join(tokens[:-1])
-                if section.startswith('_'):  # _name is protected
-                    fail(f'{fileline}Unknown section: {section}')
-                if section not in config:
-                    config[section] = []
-                    section_line[section] = fileline
+                if section_id not in config:
+                    config[section_id] = []
+                    section_line[section_id] = fileline
 
+                if tokens[-1] == '}':  # inline section
+                    if inline_content := tokens[open_idx + 1 : -1]:
+                        config[section_id].append((fileline, inline_content))  # ty: ignore
+                    section_id = None
             # "foo" which is not inside section
-            elif not section:
+            elif not section_id:
                 fail(f'{fileline}Unknown line: {" ".join(tokens)}')
-
             # "foo" inside section
             else:
-                config[section].append((fileline, tokens))  # ty: ignore
+                config[section_id].append((fileline, tokens))  # ty: ignore
 
         # End of file checks
         if continuation:
             fail(f'File {filename}: Continuation "\\" at end of file')
-        if section:
+        if section_id:
             fail(
-                f'File {filename}: Section "{section}" is missing "}}" at '
+                f'File {filename}: Section "{section_id}" is missing "}}" at '
                 f'end of file'
             )
 
-    # Include section_name -> filename_line to config for error messages
+    # Include section_id -> filename_line to config for error messages
     config['_section_line'] = section_line
     return config
 

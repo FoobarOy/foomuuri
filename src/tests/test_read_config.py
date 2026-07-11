@@ -1,5 +1,6 @@
 """Basic unit tests of read_config()."""
-# pylint: disable=invalid-name,import-error
+# pylint: disable=invalid-name,import-error,too-many-public-methods
+# ruff: noqa: PLR0904 (too-many-public-methods)
 
 import contextlib
 import unittest
@@ -30,14 +31,17 @@ class TestReadConfig(unittest.TestCase):
         with self.mock_config("""
             iplist {
             }
+            foomuuri { }
         """) as config_file:
             config = read_config(require_etc_config=False)
             self.assertDictEqual(
                 config,
                 {
                     '_section_line': {
-                        'iplist': f'File {config_file} line 2: '
+                        'foomuuri': f'File {config_file} line 4: ',
+                        'iplist': f'File {config_file} line 2: ',
                     },
+                    'foomuuri': [],
                     'iplist': [],
                 },
             )
@@ -48,16 +52,24 @@ class TestReadConfig(unittest.TestCase):
             iplist {
                 url_timeout 1d
             }
+            foomuuri { priority_offset 42 }
         """) as config_file:
             config = read_config(require_etc_config=False)
             self.assertDictEqual(
                 config,
                 {
                     '_section_line': {
-                        'iplist': f'File {config_file} line 2: '
+                        'foomuuri': f'File {config_file} line 5: ',
+                        'iplist': f'File {config_file} line 2: ',
                     },
                     'iplist': [
                         (f'File {config_file} line 3: ', ['url_timeout', '1d'])
+                    ],
+                    'foomuuri': [
+                        (
+                            f'File {config_file} line 5: ',
+                            ['priority_offset', '42'],
+                        )
                     ],
                 },
             )
@@ -69,14 +81,23 @@ class TestReadConfig(unittest.TestCase):
                 url_timeout \\
                 1d
             }
+            foomuuri { priority_offset \\
+            42 }
         """) as config_file:
             config = read_config(require_etc_config=False)
             self.assertDictEqual(
                 config,
                 {
                     '_section_line': {
-                        'iplist': f'File {config_file} line 2: '
+                        'foomuuri': f'File {config_file} line 7: ',
+                        'iplist': f'File {config_file} line 2: ',
                     },
+                    'foomuuri': [
+                        (
+                            f'File {config_file} line 7: ',
+                            ['priority_offset', '42'],
+                        )
+                    ],
                     'iplist': [
                         (f'File {config_file} line 4: ', ['url_timeout', '1d'])
                     ],
@@ -108,7 +129,7 @@ class TestReadConfig(unittest.TestCase):
             iplist {
             }
             url_timeout 1d
-        \\""") as config_file,
+        """) as config_file,
             unittest.mock.patch(
                 'foomuuri.fail', side_effect=SystemExit
             ) as fail,
@@ -120,11 +141,30 @@ class TestReadConfig(unittest.TestCase):
                 f'File {config_file} line 4: Unknown line: url_timeout 1d'
             )
 
+    def test_content_outside_inline_section(self):
+        """Test content outside inline section."""
+        with (
+            self.mock_config("""
+            iplist { } url_timeout 1d
+        """) as config_file,
+            unittest.mock.patch(
+                'foomuuri.fail', side_effect=SystemExit
+            ) as fail,
+        ):
+            self.assertRaises(
+                SystemExit, read_config, require_etc_config=False
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 2: '
+                'Closing brace must be last: iplist { } url_timeout 1d'
+            )
+
     def test_section_with_parameters(self):
         """Test section with parameters."""
         with self.mock_config("""
             prerouting filter mangle - 10 {
             }
+            template template_name { }
         """) as config_file:
             config = read_config(require_etc_config=False)
             self.assertDictEqual(
@@ -132,10 +172,32 @@ class TestReadConfig(unittest.TestCase):
                 {
                     '_section_line': {
                         'prerouting filter mangle - 10': f'File {config_file} '
-                        'line 2: '
+                        'line 2: ',
+                        'template template_name': f'File {config_file} '
+                        'line 4: ',
                     },
                     'prerouting filter mangle - 10': [],
+                    'template template_name': [],
                 },
+            )
+
+    def test_section_with_single_word_parameter(self):
+        """Test section accepting single word parameter only."""
+        with (
+            self.mock_config("""
+            template param1 param2 {
+            }
+        """) as config_file,
+            unittest.mock.patch(
+                'foomuuri.fail', side_effect=SystemExit
+            ) as fail,
+        ):
+            self.assertRaises(
+                SystemExit, read_config, require_etc_config=False
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 2: Section "template" '
+                'must have single word name: template param1 param2 {'
             )
 
     def test_parameter_for_parameterless_section(self):
@@ -176,6 +238,24 @@ class TestReadConfig(unittest.TestCase):
                 '"}" at end of file'
             )
 
+    def test_inline_section_missing_closing_brace(self):
+        """Test inline_section without closing brace."""
+        with (
+            self.mock_config("""
+            iplist { url_timeout 1d
+        """) as config_file,
+            unittest.mock.patch(
+                'foomuuri.fail', side_effect=SystemExit
+            ) as fail,
+        ):
+            self.assertRaises(
+                SystemExit, read_config, require_etc_config=False
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 2: '
+                'Closing brace missing: iplist { url_timeout 1d'
+            )
+
     def test_stray_closing_brace(self):
         """Test stray closing brace."""
         with (
@@ -193,6 +273,42 @@ class TestReadConfig(unittest.TestCase):
             )
             fail.assert_called_once_with(
                 f'File {config_file} line 4: Extra "}}"'
+            )
+
+    def test_inline_section_extra_closing_brace(self):
+        """Test inline section with extra closing brace."""
+        with (
+            self.mock_config("""
+            foomuuri { bar } }
+        """) as config_file,
+            unittest.mock.patch(
+                'foomuuri.fail', side_effect=SystemExit
+            ) as fail,
+        ):
+            self.assertRaises(
+                SystemExit, read_config, require_etc_config=False
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 2: '
+                'One closing brace allowed: foomuuri { bar } }'
+            )
+
+    def test_inline_section_extra_opening_braces(self):
+        """Test extra opening braces for inline section."""
+        with (
+            self.mock_config("""
+            foomuuri { bar } iplist {
+        """) as config_file,
+            unittest.mock.patch(
+                'foomuuri.fail', side_effect=SystemExit
+            ) as fail,
+        ):
+            self.assertRaises(
+                SystemExit, read_config, require_etc_config=False
+            )
+            fail.assert_called_once_with(
+                f'File {config_file} line 2: '
+                'One opening brace allowed: foomuuri { bar } iplist {'
             )
 
     def test_section_nesting(self):
@@ -243,14 +359,23 @@ class TestReadConfig(unittest.TestCase):
                 # comment inside section
                 url_timeout 1d      # comment section content
             }   # comment on section close
+
+            foomuuri { priority_offset 42 }    # comment inline section
         """) as config_file:
             config = read_config(require_etc_config=False)
             self.assertDictEqual(
                 config,
                 {
                     '_section_line': {
-                        'iplist': f'File {config_file} line 3: '
+                        'foomuuri': f'File {config_file} line 8: ',
+                        'iplist': f'File {config_file} line 3: ',
                     },
+                    'foomuuri': [
+                        (
+                            f'File {config_file} line 8: ',
+                            ['priority_offset', '42'],
+                        )
+                    ],
                     'iplist': [
                         (f'File {config_file} line 5: ', ['url_timeout', '1d'])
                     ],
