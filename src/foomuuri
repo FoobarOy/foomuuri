@@ -875,12 +875,11 @@ def read_config(require_etc_config: bool) -> dict:
             'configuration.'
         )
 
-    # There characters will combine to single word in shlex
+    # These characters form a single word in shlex
     wordchars = ''.join(
-        chr(letter)
-        for letter in range(33, 256)
-        # excludes: " # ' ; { }
-        if letter not in {34, 35, 39, 59, 123, 125}
+        char
+        for code in range(33, 256)
+        if (char := chr(code)) not in {'"', "'", ';', '{', '}'}
     )
 
     # Read all config files
@@ -914,7 +913,7 @@ def read_config(require_etc_config: bool) -> dict:
             # used to avoid macro expansion.
             fileline = f'File {filename} line {linenumber + 1}: '
             try:
-                lexer = shlex.shlex(line, punctuation_chars=';{')
+                lexer = shlex.shlex(line)
                 lexer.wordchars = wordchars
                 tokens = list(lexer)
             except ValueError as error:

@@ -432,3 +432,65 @@ class TestReadConfig(unittest.TestCase):
                     ],
                 },
             )
+
+    def test_tokenizer_delimiters_and_glued_comments(self):
+        """Test all supported tokenizer delimiters and glued comments."""
+        with self.mock_config("""
+            macro{#comment
+                macro1 http;https;;smtp#comment
+                macro2 ftp log "message ; 1"#comment
+                macro3 ntp log 'message { 2 }'#comment
+            }#comment
+            foomuuri{priority_offset 42}#comment
+        """) as config_file:
+            config = read_config(require_etc_config=False)
+            self.assertDictEqual(
+                config,
+                {
+                    '_section_line': {
+                        'macro': f'File {config_file} line 2: ',
+                        'foomuuri': f'File {config_file} line 7: ',
+                    },
+                    'macro': [
+                        (
+                            f'File {config_file} line 3: ',
+                            ['macro1', 'http', ';', 'https', ';', ';', 'smtp'],
+                        ),
+                        (
+                            f'File {config_file} line 4: ',
+                            ['macro2', 'ftp', 'log', '"message ; 1"'],
+                        ),
+                        (
+                            f'File {config_file} line 5: ',
+                            ['macro3', 'ntp', 'log', "'message { 2 }'"],
+                        ),
+                    ],
+                    'foomuuri': [
+                        (
+                            f'File {config_file} line 7: ',
+                            ['priority_offset', '42'],
+                        )
+                    ],
+                },
+            )
+
+    def test_tokenizer_unbalanced_quotes_fail(self):
+        """Test tokenizer failure on unbalanced quotes."""
+        for style, config in [
+            ('double', 'section { "content }'),
+            ('single', "section { 'content }"),
+        ]:
+            with (
+                self.subTest(quote_style=style),
+                self.mock_config(config) as config_file,
+                unittest.mock.patch(
+                    'foomuuri.fail', side_effect=SystemExit
+                ) as fail,
+            ):
+                self.assertRaises(
+                    SystemExit, read_config, require_etc_config=False
+                )
+                fail.assert_called_once_with(
+                    f"File {config_file} line 1: Can't parse line: "
+                    'No closing quotation'
+                )
