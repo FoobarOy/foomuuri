@@ -96,11 +96,6 @@ class Validators:
         return 1 <= len(value) <= 15  # IFNAMSIZ=16 including NUL
 
     @staticmethod
-    def str_words(value: str) -> bool:
-        """Assert value is one or more words."""
-        return len(value.split()) >= 1
-
-    @staticmethod
     def has_elements(value: typing.Union[set, list]) -> bool:
         """Assert value is non-empty list or set."""
         return len(value) >= 1
