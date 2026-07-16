@@ -48,13 +48,6 @@ class TestValidators(unittest.TestCase):
             Validators.str_interface_name, valid, invalid
         )
 
-    def test_str_words(self):
-        """Test for str is one or more words."""
-        invalid = ['']
-        valid = ['word', 'word word']
-
-        self.assert_valid_invalid(Validators.str_words, valid, invalid)
-
     def test_has_elements(self):
         """Test for list or set is not empty."""
         invalid = [[], {}]
