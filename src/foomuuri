@@ -545,7 +545,7 @@ def print_table(
     if not data or (header and len(data) == 1):
         return
 
-    if not set(align).issubset(set('^<>')):
+    if not set(align).issubset('^<>'):
         raise ValueError('Supported alignment: left <, right >, center ^')
 
     columns = len(data[0])
@@ -561,15 +561,15 @@ def print_table(
     for r, row in enumerate(data):
         print(
             sep.join(
-                f'{column:{align[c]}{width[c]}}'
-                for c, column in enumerate(row)
+                [
+                    f'{column:{align[c]}{width[c]}}'
+                    for c, column in enumerate(row)
+                ]
             ).rstrip(),
         )
 
         if header and not r:
-            print(
-                sep.join([f'{"-" * width[c]}' for c in range(columns)]),
-            )
+            print(sep.join(['-' * w for w in width]))
 
 
 def out(line: str) -> None:
