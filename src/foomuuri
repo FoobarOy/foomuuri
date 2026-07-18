@@ -1002,7 +1002,7 @@ def parse_config_macros(config):
     # Expand macro in macro{}. Keep going as long as there was some expansion
     # done. This can happen if macro group contains multiple macros.
     # pylint: disable=too-many-nested-blocks
-    # ruff: noqa: PLR1702 (Too many nested blocks)
+    # ruff: ignore[too-many-nested-blocks]
     while True:
         found = False
 
@@ -1437,7 +1437,7 @@ def verify_rule_sanity(rule, fileline):
     # pylint: disable=too-many-branches
     for key, value in rule.items():
         if (
-            value == ''  # noqa: RUF100,PLC1901 -- it can be None too
+            value == ''  # ruff: ignore[compare-to-empty-string] -- it can be None too
             and key
             not in {'nat_to', 'queue', 'counter', 'log', 'fileline', 'line'}
         ):
@@ -2546,7 +2546,7 @@ def parse_nat_to(rule, ipv):
     return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target}'
 
 
-def rule_matchers(  # noqa: PLR0914 -- Too many local variables
+def rule_matchers(  # ruff: ignore[too-many-locals]
     rule,
     ipv,
     *,
@@ -4053,7 +4053,7 @@ if HAVE_DBUS:
         """Start D-Bus daemon."""
         # Import gi here as it is heavy module to load.
         try:
-            # ruff: noqa: PLC0415 (`import` should be at the top-level)
+            # ruff: ignore[import-outside-top-level]
             # pylint: disable=import-outside-toplevel
             import gi.repository.GLib
         except ImportError:
@@ -4286,7 +4286,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
     try:
         # urllib3 is optional, needed to download iplist with HTTP GET.
         # Import it here as it is heavy module to load.
-        # ruff: noqa: PLC0415 (`import` should be at the top-level of a file)
+        # ruff: ignore[import-outside-top-level]
         # pylint: disable=import-outside-toplevel
         import urllib3
 
@@ -5336,7 +5336,7 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
     )
 
 
-def monitor_run_command(  # noqa: RUF100,PLR0917
+def monitor_run_command(  # ruff: ignore[too-many-positional-arguments]
     targets,
     groups,
     cfg,

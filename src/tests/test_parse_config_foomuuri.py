@@ -1,6 +1,6 @@
 """Basic unit tests of parse_command_line()."""
 # pylint: disable=invalid-name,import-error
-# ruff: noqa: N803
+# ruff: file-ignore[invalid-argument-name]
 
 import contextlib
 import copy

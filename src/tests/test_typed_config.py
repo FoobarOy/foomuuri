@@ -36,7 +36,7 @@ class TestTypedConfig(unittest.TestCase):
             # pylint: disable=too-many-instance-attributes
             initialized_str: str = 'init_value1'
             uninitialized_str: str = field(init=False)
-            initialized_untyped = 'init_value2'  # noqa: RUF100,RUF045
+            initialized_untyped = 'init_value2'  # ruff: ignore[implicit-class-var-in-dataclass]
             type_conversion_float: float = 0.0
             type_conversion_int: int = 0
             type_conversion_list: list = field(default_factory=list)
