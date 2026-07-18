@@ -37,9 +37,6 @@ lint.ignore = [
     "start-process-with-partial-path",
     "print",
     "raise-vanilla-args",
-    "raise-within-try",
-    "non-pep604-annotation-union",
-    "non-pep604-annotation-optional",
 
     # --preview
     "missing-copyright-notice",
