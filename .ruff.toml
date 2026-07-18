@@ -12,7 +12,6 @@ lint.ignore = [
     "missing-trailing-comma",
     "incorrect-blank-line-before-class",
     "multi-line-summary-second-line",
-    "non-imperative-mood",
     "call-datetime-strptime-without-zone",
     "raw-string-in-exception",
     "f-string-in-exception",

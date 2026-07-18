@@ -208,7 +208,7 @@ class TypedConfig:
         setattr(self, name, new_value)
 
     def append_from_str(self, name, value: str) -> None:
-        """Appends attribute value from str with type conversion."""
+        """Append attribute value from str with type conversion."""
         self._check_set_append_args(name, value)
         new_value = self._convert_set_append_value(name, value)
 
@@ -586,8 +586,8 @@ def notify(message: str) -> None:
             warning(f'Failed to send systemd notify "{message}": {error}')
 
 
-def state_file(key):
-    """Helper function to return CONFIG.state_dir / CONFIG.key.
+def state_file(key: str) -> pathlib.PosixPath:
+    """Return CONFIG.state_dir / CONFIG.key as a combined PosixPath.
 
     All xxx_file variables are relative to state_dir.
     Values "../filename" and "/full/path/filename" works too.
@@ -596,7 +596,7 @@ def state_file(key):
 
 
 def join_args(args: list) -> str:
-    """Helper function to return joined string of stringified args."""
+    """Return joined string of stringified args."""
     if isinstance(args, list):
         return shlex.join(map(str, args))
     raise TypeError(f'args type must be a {list}, not a {type(args)}')
@@ -4265,7 +4265,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
 
     def get_response_content(response, max_size: int) -> io.BytesIO:
-        """Helper function to get response content."""
+        """Validate and return response content."""
         if response.status != 200:
             raise ValueError(f'status code: {response.status}')
 

@@ -27,7 +27,7 @@ class TestTypedConfig(unittest.TestCase):
         return self.config[name]
 
     def setUp(self):
-        """Setup tests."""
+        """Set up test data."""
 
         @dataclass
         class TestConfig(TypedConfig):

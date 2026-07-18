@@ -10,7 +10,7 @@ class TestValidators(unittest.TestCase):
     """Test assert helpers."""
 
     def assert_valid_invalid(self, test, valid_cases, invalid_cases):
-        """Helper function to reduce repetition."""
+        """Run test against valid and invalid cases."""
         for case in valid_cases:
             with self.subTest(case):
                 self.assertTrue(test(case), f'Expected {case!r} to be valid')
