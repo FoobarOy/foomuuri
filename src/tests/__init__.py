@@ -5,7 +5,7 @@ from importlib.abc import Loader
 from importlib.machinery import SourceFileLoader
 from importlib.util import module_from_spec, spec_from_loader
 
-if (  # noqa: RUF100,RUF067
+if (  # ruff: ignore[non-empty-init-module]
     (
         spec := spec_from_loader(
             'foomuuri', SourceFileLoader('foomuuri', './src/foomuuri')

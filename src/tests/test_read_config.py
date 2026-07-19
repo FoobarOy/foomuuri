@@ -1,6 +1,6 @@
 """Basic unit tests of read_config()."""
 # pylint: disable=invalid-name,import-error,too-many-public-methods
-# ruff: noqa: PLR0904 (too-many-public-methods)
+# ruff: file-ignore[too-many-public-methods]
 
 import contextlib
 import unittest
