@@ -169,8 +169,8 @@ table inet foomuuri {
 
 	chain public-localhost {
 		meta nfproto vmap {
-			ipv4 : jump public-localhost_4,
-			ipv6 : jump public-localhost_6
+			ipv4 : goto public-localhost_4,
+			ipv6 : goto public-localhost_6
 		}
 	}
 
@@ -211,8 +211,8 @@ table inet foomuuri {
 
 	chain internal-localhost {
 		meta nfproto vmap {
-			ipv4 : jump internal-localhost_4,
-			ipv6 : jump internal-localhost_6
+			ipv4 : goto internal-localhost_4,
+			ipv6 : goto internal-localhost_6
 		}
 	}
 
@@ -255,8 +255,8 @@ table inet foomuuri {
 
 	chain localhost-public {
 		meta nfproto vmap {
-			ipv4 : jump localhost-public_4,
-			ipv6 : jump localhost-public_6
+			ipv4 : goto localhost-public_4,
+			ipv6 : goto localhost-public_6
 		}
 	}
 
@@ -295,8 +295,8 @@ table inet foomuuri {
 
 	chain internal-public {
 		meta nfproto vmap {
-			ipv4 : jump internal-public_4,
-			ipv6 : jump internal-public_6
+			ipv4 : goto internal-public_4,
+			ipv6 : goto internal-public_6
 		}
 	}
 
@@ -336,8 +336,8 @@ table inet foomuuri {
 
 	chain public-internal {
 		meta nfproto vmap {
-			ipv4 : jump public-internal_4,
-			ipv6 : jump public-internal_6
+			ipv4 : goto public-internal_4,
+			ipv6 : goto public-internal_6
 		}
 	}
 
@@ -371,8 +371,8 @@ table inet foomuuri {
 
 	chain localhost-internal {
 		meta nfproto vmap {
-			ipv4 : jump localhost-internal_4,
-			ipv6 : jump localhost-internal_6
+			ipv4 : goto localhost-internal_4,
+			ipv6 : goto localhost-internal_6
 		}
 	}
 
@@ -411,8 +411,8 @@ table inet foomuuri {
 
 	chain localhost-localhost {
 		meta nfproto vmap {
-			ipv4 : jump localhost-localhost_4,
-			ipv6 : jump localhost-localhost_6
+			ipv4 : goto localhost-localhost_4,
+			ipv6 : goto localhost-localhost_6
 		}
 	}
 
@@ -442,8 +442,8 @@ table inet foomuuri {
 
 	chain public-public {
 		meta nfproto vmap {
-			ipv4 : jump public-public_4,
-			ipv6 : jump public-public_6
+			ipv4 : goto public-public_4,
+			ipv6 : goto public-public_6
 		}
 	}
 
@@ -477,8 +477,8 @@ table inet foomuuri {
 
 	chain internal-internal {
 		meta nfproto vmap {
-			ipv4 : jump internal-internal_4,
-			ipv6 : jump internal-internal_6
+			ipv4 : goto internal-internal_4,
+			ipv6 : goto internal-internal_6
 		}
 	}
 

@@ -112,8 +112,8 @@ table inet foomuuri {
 
 	chain localhost-localhost {
 		meta nfproto vmap {
-			ipv4 : jump localhost-localhost_4,
-			ipv6 : jump localhost-localhost_6
+			ipv4 : goto localhost-localhost_4,
+			ipv6 : goto localhost-localhost_6
 		}
 	}
 
@@ -147,8 +147,8 @@ table inet foomuuri {
 
 	chain localhost-public {
 		meta nfproto vmap {
-			ipv4 : jump localhost-public_4,
-			ipv6 : jump localhost-public_6
+			ipv4 : goto localhost-public_4,
+			ipv6 : goto localhost-public_6
 		}
 	}
 
@@ -187,8 +187,8 @@ table inet foomuuri {
 
 	chain localhost-a {
 		meta nfproto vmap {
-			ipv4 : jump localhost-a_4,
-			ipv6 : jump localhost-a_6
+			ipv4 : goto localhost-a_4,
+			ipv6 : goto localhost-a_6
 		}
 	}
 
@@ -223,8 +223,8 @@ table inet foomuuri {
 
 	chain localhost-b {
 		meta nfproto vmap {
-			ipv4 : jump localhost-b_4,
-			ipv6 : jump localhost-b_6
+			ipv4 : goto localhost-b_4,
+			ipv6 : goto localhost-b_6
 		}
 	}
 
@@ -261,8 +261,8 @@ table inet foomuuri {
 
 	chain public-localhost {
 		meta nfproto vmap {
-			ipv4 : jump public-localhost_4,
-			ipv6 : jump public-localhost_6
+			ipv4 : goto public-localhost_4,
+			ipv6 : goto public-localhost_6
 		}
 	}
 
@@ -303,8 +303,8 @@ table inet foomuuri {
 
 	chain public-public {
 		meta nfproto vmap {
-			ipv4 : jump public-public_4,
-			ipv6 : jump public-public_6
+			ipv4 : goto public-public_4,
+			ipv6 : goto public-public_6
 		}
 	}
 
@@ -346,8 +346,8 @@ table inet foomuuri {
 
 	chain public-a {
 		meta nfproto vmap {
-			ipv4 : jump public-a_4,
-			ipv6 : jump public-a_6
+			ipv4 : goto public-a_4,
+			ipv6 : goto public-a_6
 		}
 	}
 
@@ -385,8 +385,8 @@ table inet foomuuri {
 
 	chain public-b {
 		meta nfproto vmap {
-			ipv4 : jump public-b_4,
-			ipv6 : jump public-b_6
+			ipv4 : goto public-b_4,
+			ipv6 : goto public-b_6
 		}
 	}
 
@@ -426,8 +426,8 @@ table inet foomuuri {
 
 	chain a-localhost {
 		meta nfproto vmap {
-			ipv4 : jump a-localhost_4,
-			ipv6 : jump a-localhost_6
+			ipv4 : goto a-localhost_4,
+			ipv6 : goto a-localhost_6
 		}
 	}
 
@@ -466,8 +466,8 @@ table inet foomuuri {
 
 	chain a-public {
 		meta nfproto vmap {
-			ipv4 : jump a-public_4,
-			ipv6 : jump a-public_6
+			ipv4 : goto a-public_4,
+			ipv6 : goto a-public_6
 		}
 	}
 
@@ -507,8 +507,8 @@ table inet foomuuri {
 
 	chain a-a {
 		meta nfproto vmap {
-			ipv4 : jump a-a_4,
-			ipv6 : jump a-a_6
+			ipv4 : goto a-a_4,
+			ipv6 : goto a-a_6
 		}
 	}
 
@@ -544,8 +544,8 @@ table inet foomuuri {
 
 	chain a-b {
 		meta nfproto vmap {
-			ipv4 : jump a-b_4,
-			ipv6 : jump a-b_6
+			ipv4 : goto a-b_4,
+			ipv6 : goto a-b_6
 		}
 	}
 
@@ -583,8 +583,8 @@ table inet foomuuri {
 
 	chain b-localhost {
 		meta nfproto vmap {
-			ipv4 : jump b-localhost_4,
-			ipv6 : jump b-localhost_6
+			ipv4 : goto b-localhost_4,
+			ipv6 : goto b-localhost_6
 		}
 	}
 
@@ -621,8 +621,8 @@ table inet foomuuri {
 
 	chain b-public {
 		meta nfproto vmap {
-			ipv4 : jump b-public_4,
-			ipv6 : jump b-public_6
+			ipv4 : goto b-public_4,
+			ipv6 : goto b-public_6
 		}
 	}
 
@@ -660,8 +660,8 @@ table inet foomuuri {
 
 	chain b-a {
 		meta nfproto vmap {
-			ipv4 : jump b-a_4,
-			ipv6 : jump b-a_6
+			ipv4 : goto b-a_4,
+			ipv6 : goto b-a_6
 		}
 	}
 
@@ -695,8 +695,8 @@ table inet foomuuri {
 
 	chain b-b {
 		meta nfproto vmap {
-			ipv4 : jump b-b_4,
-			ipv6 : jump b-b_6
+			ipv4 : goto b-b_4,
+			ipv6 : goto b-b_6
 		}
 	}
 

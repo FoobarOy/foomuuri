@@ -239,8 +239,8 @@ table inet foomuuri {
 
 	chain public-localhost {
 		meta nfproto vmap {
-			ipv4 : jump public-localhost_4,
-			ipv6 : jump public-localhost_6
+			ipv4 : goto public-localhost_4,
+			ipv6 : goto public-localhost_6
 		}
 	}
 
@@ -281,8 +281,8 @@ table inet foomuuri {
 
 	chain internal-localhost {
 		meta nfproto vmap {
-			ipv4 : jump internal-localhost_4,
-			ipv6 : jump internal-localhost_6
+			ipv4 : goto internal-localhost_4,
+			ipv6 : goto internal-localhost_6
 		}
 	}
 
@@ -325,8 +325,8 @@ table inet foomuuri {
 
 	chain dmz-localhost {
 		meta nfproto vmap {
-			ipv4 : jump dmz-localhost_4,
-			ipv6 : jump dmz-localhost_6
+			ipv4 : goto dmz-localhost_4,
+			ipv6 : goto dmz-localhost_6
 		}
 	}
 
@@ -369,8 +369,8 @@ table inet foomuuri {
 
 	chain localhost-public {
 		meta nfproto vmap {
-			ipv4 : jump localhost-public_4,
-			ipv6 : jump localhost-public_6
+			ipv4 : goto localhost-public_4,
+			ipv6 : goto localhost-public_6
 		}
 	}
 
@@ -409,8 +409,8 @@ table inet foomuuri {
 
 	chain internal-public {
 		meta nfproto vmap {
-			ipv4 : jump internal-public_4,
-			ipv6 : jump internal-public_6
+			ipv4 : goto internal-public_4,
+			ipv6 : goto internal-public_6
 		}
 	}
 
@@ -450,8 +450,8 @@ table inet foomuuri {
 
 	chain dmz-public {
 		meta nfproto vmap {
-			ipv4 : jump dmz-public_4,
-			ipv6 : jump dmz-public_6
+			ipv4 : goto dmz-public_4,
+			ipv6 : goto dmz-public_6
 		}
 	}
 
@@ -491,8 +491,8 @@ table inet foomuuri {
 
 	chain public-internal {
 		meta nfproto vmap {
-			ipv4 : jump public-internal_4,
-			ipv6 : jump public-internal_6
+			ipv4 : goto public-internal_4,
+			ipv6 : goto public-internal_6
 		}
 	}
 
@@ -526,8 +526,8 @@ table inet foomuuri {
 
 	chain localhost-internal {
 		meta nfproto vmap {
-			ipv4 : jump localhost-internal_4,
-			ipv6 : jump localhost-internal_6
+			ipv4 : goto localhost-internal_4,
+			ipv6 : goto localhost-internal_6
 		}
 	}
 
@@ -566,8 +566,8 @@ table inet foomuuri {
 
 	chain dmz-internal {
 		meta nfproto vmap {
-			ipv4 : jump dmz-internal_4,
-			ipv6 : jump dmz-internal_6
+			ipv4 : goto dmz-internal_4,
+			ipv6 : goto dmz-internal_6
 		}
 	}
 
@@ -601,8 +601,8 @@ table inet foomuuri {
 
 	chain localhost-dmz {
 		meta nfproto vmap {
-			ipv4 : jump localhost-dmz_4,
-			ipv6 : jump localhost-dmz_6
+			ipv4 : goto localhost-dmz_4,
+			ipv6 : goto localhost-dmz_6
 		}
 	}
 
@@ -642,8 +642,8 @@ table inet foomuuri {
 
 	chain public-dmz {
 		meta nfproto vmap {
-			ipv4 : jump public-dmz_4,
-			ipv6 : jump public-dmz_6
+			ipv4 : goto public-dmz_4,
+			ipv6 : goto public-dmz_6
 		}
 	}
 
@@ -691,8 +691,8 @@ table inet foomuuri {
 
 	chain internal-dmz {
 		meta nfproto vmap {
-			ipv4 : jump internal-dmz_4,
-			ipv6 : jump internal-dmz_6
+			ipv4 : goto internal-dmz_4,
+			ipv6 : goto internal-dmz_6
 		}
 	}
 
@@ -732,8 +732,8 @@ table inet foomuuri {
 
 	chain localhost-localhost {
 		meta nfproto vmap {
-			ipv4 : jump localhost-localhost_4,
-			ipv6 : jump localhost-localhost_6
+			ipv4 : goto localhost-localhost_4,
+			ipv6 : goto localhost-localhost_6
 		}
 	}
 
@@ -763,8 +763,8 @@ table inet foomuuri {
 
 	chain public-public {
 		meta nfproto vmap {
-			ipv4 : jump public-public_4,
-			ipv6 : jump public-public_6
+			ipv4 : goto public-public_4,
+			ipv6 : goto public-public_6
 		}
 	}
 
@@ -798,8 +798,8 @@ table inet foomuuri {
 
 	chain internal-internal {
 		meta nfproto vmap {
-			ipv4 : jump internal-internal_4,
-			ipv6 : jump internal-internal_6
+			ipv4 : goto internal-internal_4,
+			ipv6 : goto internal-internal_6
 		}
 	}
 
@@ -833,8 +833,8 @@ table inet foomuuri {
 
 	chain dmz-dmz {
 		meta nfproto vmap {
-			ipv4 : jump dmz-dmz_4,
-			ipv6 : jump dmz-dmz_6
+			ipv4 : goto dmz-dmz_4,
+			ipv6 : goto dmz-dmz_6
 		}
 	}
 

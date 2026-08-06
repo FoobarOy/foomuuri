@@ -154,8 +154,8 @@ table inet foomuuri {
 
 	chain public-localhost {
 		meta nfproto vmap {
-			ipv4 : jump public-localhost_4,
-			ipv6 : jump public-localhost_6
+			ipv4 : goto public-localhost_4,
+			ipv6 : goto public-localhost_6
 		}
 	}
 
@@ -199,8 +199,8 @@ table inet foomuuri {
 
 	chain home-localhost {
 		meta nfproto vmap {
-			ipv4 : jump home-localhost_4,
-			ipv6 : jump home-localhost_6
+			ipv4 : goto home-localhost_4,
+			ipv6 : goto home-localhost_6
 		}
 	}
 
@@ -250,8 +250,8 @@ table inet foomuuri {
 
 	chain localhost-public {
 		meta nfproto vmap {
-			ipv4 : jump localhost-public_4,
-			ipv6 : jump localhost-public_6
+			ipv4 : goto localhost-public_4,
+			ipv6 : goto localhost-public_6
 		}
 	}
 
@@ -291,8 +291,8 @@ table inet foomuuri {
 
 	chain localhost-home {
 		meta nfproto vmap {
-			ipv4 : jump localhost-home_4,
-			ipv6 : jump localhost-home_6
+			ipv4 : goto localhost-home_4,
+			ipv6 : goto localhost-home_6
 		}
 	}
 
@@ -340,8 +340,8 @@ table inet foomuuri {
 
 	chain localhost-localhost {
 		meta nfproto vmap {
-			ipv4 : jump localhost-localhost_4,
-			ipv6 : jump localhost-localhost_6
+			ipv4 : goto localhost-localhost_4,
+			ipv6 : goto localhost-localhost_6
 		}
 	}
 
@@ -371,8 +371,8 @@ table inet foomuuri {
 
 	chain public-public {
 		meta nfproto vmap {
-			ipv4 : jump public-public_4,
-			ipv6 : jump public-public_6
+			ipv4 : goto public-public_4,
+			ipv6 : goto public-public_6
 		}
 	}
 
@@ -406,8 +406,8 @@ table inet foomuuri {
 
 	chain public-home {
 		meta nfproto vmap {
-			ipv4 : jump public-home_4,
-			ipv6 : jump public-home_6
+			ipv4 : goto public-home_4,
+			ipv6 : goto public-home_6
 		}
 	}
 
@@ -441,8 +441,8 @@ table inet foomuuri {
 
 	chain home-public {
 		meta nfproto vmap {
-			ipv4 : jump home-public_4,
-			ipv6 : jump home-public_6
+			ipv4 : goto home-public_4,
+			ipv6 : goto home-public_6
 		}
 	}
 
@@ -476,8 +476,8 @@ table inet foomuuri {
 
 	chain home-home {
 		meta nfproto vmap {
-			ipv4 : jump home-home_4,
-			ipv6 : jump home-home_6
+			ipv4 : goto home-home_4,
+			ipv6 : goto home-home_6
 		}
 	}
 

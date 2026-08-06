@@ -2922,8 +2922,8 @@ def output_zone2zone_rules(rules, zonemap):
         # Split to zone-zone_4 and zone-zone_6
         out(f'chain {szone}-{dzone} {{')
         out('meta nfproto vmap {')
-        out(f'ipv4 : jump {szone}-{dzone}_4,')
-        out(f'ipv6 : jump {szone}-{dzone}_6')
+        out(f'ipv4 : goto {szone}-{dzone}_4,')
+        out(f'ipv6 : goto {szone}-{dzone}_6')
         out('}')
         out('}')
 
