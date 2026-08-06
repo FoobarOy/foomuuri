@@ -342,6 +342,7 @@ class Internal(TypedConfig):
     priority_offset: str = dataclasses.field(init=False)
     catch_all_interface_zone: str = dataclasses.field(init=False)
     root_power: bool = dataclasses.field(init=False)  # Running as "root"?
+    zonemap_loop_check: dict = dataclasses.field(init=False)
 
     # Url loader
     # Constants
@@ -1279,6 +1280,7 @@ def parse_config_zonemap(config, zones):
                     f'{" ".join(line)}'
                 )
         zonemap.append(rule)
+    INTERNAL.zonemap_loop_check = {}
     return zonemap
 
 
@@ -2739,7 +2741,22 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         match = rule_matchers(rule, ipv, skip_icmp=False)
         if match is None:
             continue
-        out(f'{match}jump {new_szone}-{new_dzone}_{ipv}')
+        out(f'{match}goto {new_szone}-{new_dzone}_{ipv}')
+
+        # Check if there is reverse zonemap entry, creating a loop
+        reverse = INTERNAL.zonemap_loop_check.get(
+            (new_szone, new_dzone, szone, dzone)
+        )
+        if reverse:
+            warning(
+                f'{rule["fileline"]}Possible zonemap loop in '
+                f'{szone}-{dzone}: {" ".join(rule["line"])}'
+            )
+            warning(
+                f'  Reverse zonemap in {new_szone}-{new_dzone}: '
+                f'{reverse["fileline"]}{" ".join(reverse["line"])}'
+            )
+        INTERNAL.zonemap_loop_check[szone, dzone, new_szone, new_dzone] = rule
 
 
 def output_options(szone, dzone, rules, ipv):

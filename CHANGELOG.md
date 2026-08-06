@@ -10,6 +10,7 @@
 * Fix: Support numeric ranges in `uid` and `gid` matchers. (#214)
 * Fix: Don't add `fib daddr type multicast drop` after rule `multicast accept`.
   It is unneeded and confuses `nft --optimize`. (#207)
+* Fix: Add a warning if `zonemap` creates loop. (#225)
 
 ## 0.33 (2026-06-03)
 

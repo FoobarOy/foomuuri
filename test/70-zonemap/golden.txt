@@ -118,8 +118,8 @@ table inet foomuuri {
 	}
 
 	chain localhost-localhost_4 {
-		tcp dport 1000 jump localhost-a_4
-		tcp dport 1001 jump b-localhost_4
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-localhost_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -132,8 +132,8 @@ table inet foomuuri {
 	}
 
 	chain localhost-localhost_6 {
-		tcp dport 1000 jump localhost-a_6
-		tcp dport 1001 jump b-localhost_6
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-localhost_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -153,9 +153,9 @@ table inet foomuuri {
 	}
 
 	chain localhost-public_4 {
-		tcp dport 1000 jump localhost-a_4
-		tcp dport 1001 jump b-public_4
-		tcp dport 1010 jump localhost-a_4
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto localhost-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -170,9 +170,9 @@ table inet foomuuri {
 	}
 
 	chain localhost-public_6 {
-		tcp dport 1000 jump localhost-a_6
-		tcp dport 1001 jump b-public_6
-		tcp dport 1010 jump localhost-a_6
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto localhost-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -193,7 +193,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-a_4 {
-		tcp dport 1001 jump b-a_4
+		tcp dport 1001 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -208,7 +208,7 @@ table inet foomuuri {
 	}
 
 	chain localhost-a_6 {
-		tcp dport 1001 jump b-a_6
+		tcp dport 1001 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -229,8 +229,8 @@ table inet foomuuri {
 	}
 
 	chain localhost-b_4 {
-		tcp dport 1000 jump localhost-a_4
-		tcp dport 1001 jump b-b_4
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-b_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -245,8 +245,8 @@ table inet foomuuri {
 	}
 
 	chain localhost-b_6 {
-		tcp dport 1000 jump localhost-a_6
-		tcp dport 1001 jump b-b_6
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-b_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -267,9 +267,9 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_4 {
-		tcp dport 1000 jump public-a_4
-		tcp dport 1001 jump b-localhost_4
-		tcp dport 1011 jump b-localhost_4
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-localhost_4
+		tcp dport 1011 goto b-localhost_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -285,9 +285,9 @@ table inet foomuuri {
 	}
 
 	chain public-localhost_6 {
-		tcp dport 1000 jump public-a_6
-		tcp dport 1001 jump b-localhost_6
-		tcp dport 1011 jump b-localhost_6
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-localhost_6
+		tcp dport 1011 goto b-localhost_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -309,10 +309,10 @@ table inet foomuuri {
 	}
 
 	chain public-public_4 {
-		tcp dport 1000 jump public-a_4
-		tcp dport 1001 jump b-public_4
-		tcp dport 1010 jump public-a_4
-		tcp dport 1011 jump b-public_4
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto public-a_4
+		tcp dport 1011 goto b-public_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -327,10 +327,10 @@ table inet foomuuri {
 	}
 
 	chain public-public_6 {
-		tcp dport 1000 jump public-a_6
-		tcp dport 1001 jump b-public_6
-		tcp dport 1010 jump public-a_6
-		tcp dport 1011 jump b-public_6
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto public-a_6
+		tcp dport 1011 goto b-public_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -352,8 +352,8 @@ table inet foomuuri {
 	}
 
 	chain public-a_4 {
-		tcp dport 1001 jump b-a_4
-		tcp dport 1011 jump b-a_4
+		tcp dport 1001 goto b-a_4
+		tcp dport 1011 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -368,8 +368,8 @@ table inet foomuuri {
 	}
 
 	chain public-a_6 {
-		tcp dport 1001 jump b-a_6
-		tcp dport 1011 jump b-a_6
+		tcp dport 1001 goto b-a_6
+		tcp dport 1011 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -391,9 +391,9 @@ table inet foomuuri {
 	}
 
 	chain public-b_4 {
-		tcp dport 1000 jump public-a_4
-		tcp dport 1001 jump b-b_4
-		tcp dport 1011 jump b-b_4
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-b_4
+		tcp dport 1011 goto b-b_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -408,9 +408,9 @@ table inet foomuuri {
 	}
 
 	chain public-b_6 {
-		tcp dport 1000 jump public-a_6
-		tcp dport 1001 jump b-b_6
-		tcp dport 1011 jump b-b_6
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-b_6
+		tcp dport 1011 goto b-b_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -432,8 +432,8 @@ table inet foomuuri {
 	}
 
 	chain a-localhost_4 {
-		tcp dport 1000 jump a-a_4
-		tcp dport 1001 jump b-localhost_4
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-localhost_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -449,8 +449,8 @@ table inet foomuuri {
 	}
 
 	chain a-localhost_6 {
-		tcp dport 1000 jump a-a_6
-		tcp dport 1001 jump b-localhost_6
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-localhost_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -472,9 +472,9 @@ table inet foomuuri {
 	}
 
 	chain a-public_4 {
-		tcp dport 1000 jump a-a_4
-		tcp dport 1001 jump b-public_4
-		tcp dport 1010 jump a-a_4
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto a-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -489,9 +489,9 @@ table inet foomuuri {
 	}
 
 	chain a-public_6 {
-		tcp dport 1000 jump a-a_6
-		tcp dport 1001 jump b-public_6
-		tcp dport 1010 jump a-a_6
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto a-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -513,7 +513,7 @@ table inet foomuuri {
 	}
 
 	chain a-a_4 {
-		tcp dport 1001 jump b-a_4
+		tcp dport 1001 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -528,7 +528,7 @@ table inet foomuuri {
 	}
 
 	chain a-a_6 {
-		tcp dport 1001 jump b-a_6
+		tcp dport 1001 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -550,8 +550,8 @@ table inet foomuuri {
 	}
 
 	chain a-b_4 {
-		tcp dport 1000 jump a-a_4
-		tcp dport 1001 jump b-b_4
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-b_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -566,8 +566,8 @@ table inet foomuuri {
 	}
 
 	chain a-b_6 {
-		tcp dport 1000 jump a-a_6
-		tcp dport 1001 jump b-b_6
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-b_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -589,7 +589,7 @@ table inet foomuuri {
 	}
 
 	chain b-localhost_4 {
-		tcp dport 1000 jump b-a_4
+		tcp dport 1000 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -605,7 +605,7 @@ table inet foomuuri {
 	}
 
 	chain b-localhost_6 {
-		tcp dport 1000 jump b-a_6
+		tcp dport 1000 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -627,8 +627,8 @@ table inet foomuuri {
 	}
 
 	chain b-public_4 {
-		tcp dport 1000 jump b-a_4
-		tcp dport 1010 jump b-a_4
+		tcp dport 1000 goto b-a_4
+		tcp dport 1010 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -643,8 +643,8 @@ table inet foomuuri {
 	}
 
 	chain b-public_6 {
-		tcp dport 1000 jump b-a_6
-		tcp dport 1010 jump b-a_6
+		tcp dport 1000 goto b-a_6
+		tcp dport 1010 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
@@ -701,7 +701,7 @@ table inet foomuuri {
 	}
 
 	chain b-b_4 {
-		tcp dport 1000 jump b-a_4
+		tcp dport 1000 goto b-a_4
 		jump allow_icmp_4
 		ct state vmap {
 			established : accept,
@@ -716,7 +716,7 @@ table inet foomuuri {
 	}
 
 	chain b-b_6 {
-		tcp dport 1000 jump b-a_6
+		tcp dport 1000 goto b-a_6
 		jump allow_icmp_6
 		ct state vmap {
 			established : accept,
