@@ -142,7 +142,11 @@ class TypedConfig:
         """Set attribute value."""
         if (field := self._get_field(name)) is None:
             raise AttributeError(f'{name}: unknown attribute')
-        if not isinstance(value, field.type):
+        expected_type = field.type
+        # Work around Python 3.9's handling of Union type hints.
+        if typing.get_origin(expected_type) is typing.Union:
+            expected_type = typing.get_args(expected_type)
+        if not isinstance(value, expected_type):
             raise TypeError(
                 f'{name}: expected value type {field.type}, got {type(value)}'
             )
