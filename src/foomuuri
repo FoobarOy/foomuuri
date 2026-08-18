@@ -1666,6 +1666,10 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
 
         # Version 0.29 deprecates 'to' after 'snat' statement, ignore it
         if keyword == 'nat_to' and not ret.nat_to and item == 'to':
+            warning(
+                f'{fileline}Obsolete keyword "to" after "snat/dnat": '
+                f'{" ".join(line)}'
+            )
             continue
 
         # First item after start keyword is always a parameter for it, except
