@@ -142,7 +142,11 @@ class TypedConfig:
         """Set attribute value."""
         if (field := self._get_field(name)) is None:
             raise AttributeError(f'{name}: unknown attribute')
-        if not isinstance(value, field.type):
+        expected_type = field.type
+        # Work around Python 3.9's handling of Union type hints.
+        if typing.get_origin(expected_type) is typing.Union:
+            expected_type = typing.get_args(expected_type)
+        if not isinstance(value, expected_type):
             raise TypeError(
                 f'{name}: expected value type {field.type}, got {type(value)}'
             )
@@ -493,6 +497,84 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     def update_if_less(self, name: str, new_value: int) -> None:
         """Update attribute value if new value is less than current."""
         setattr(self, name, min(new_value, getattr(self, name)))
+
+
+@dataclasses.dataclass
+class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
+    """A single rule parsed from config."""
+
+    # Basic rules
+    statement: str = 'accept'
+    cast: str = 'unicast'
+    protocol: typing.Optional[str] = None
+    saddr: typing.Optional[str] = None
+    sport: typing.Optional[str] = None
+    daddr: typing.Optional[str] = None
+    dport: typing.Optional[str] = None
+    oifname: typing.Optional[str] = None
+    iifname: typing.Optional[str] = None
+    mac_saddr: typing.Optional[str] = None
+    mac_daddr: typing.Optional[str] = None
+    # Is this IPv4/6 specific rule?
+    ipv4: bool = False
+    ipv6: bool = False
+    # Rate limits
+    global_rate: typing.Optional[str] = None
+    saddr_rate: typing.Optional[str] = None
+    saddr_rate_mask: typing.Optional[str] = None
+    saddr_rate_name: typing.Optional[str] = None
+    daddr_rate: typing.Optional[str] = None
+    daddr_rate_mask: typing.Optional[str] = None
+    daddr_rate_name: typing.Optional[str] = None
+    saddr_daddr_rate: typing.Optional[str] = None
+    saddr_daddr_rate_mask: typing.Optional[str] = None
+    saddr_daddr_rate_name: typing.Optional[str] = None
+    # User limits
+    uid: typing.Optional[str] = None
+    gid: typing.Optional[str] = None
+    # Zonemap specific rules
+    szone: typing.Optional[str] = None
+    dzone: typing.Optional[str] = None
+    new_szone: typing.Optional[str] = None
+    new_dzone: typing.Optional[str] = None
+    # Misc rules
+    nat_to: typing.Optional[str] = None  # snat/dnat to
+    queue: typing.Optional[str] = None  # optional queue flags
+    counter: typing.Optional[str] = None
+    helper: typing.Optional[str] = None
+    sipsec: typing.Optional[str] = None
+    dipsec: typing.Optional[str] = None
+    log: typing.Optional[str] = None
+    log_level: typing.Optional[str] = None
+    nft: typing.Optional[str] = None
+    mss: typing.Optional[str] = None
+    template: typing.Optional[str] = None
+    tproxy: typing.Optional[str] = None
+    mark_set: typing.Optional[str] = None
+    mark_match: typing.Optional[str] = None
+    priority_set: typing.Optional[str] = None
+    priority_match: typing.Optional[str] = None
+    iplist_add: typing.Optional[str] = None
+    iplist_update: typing.Optional[str] = None
+    iplist_delete: typing.Optional[str] = None
+    dscp: typing.Optional[str] = None
+    cgroup: typing.Optional[str] = None
+    ct_status: typing.Optional[str] = None
+    time: typing.Optional[str] = None
+    after_conntrack: bool = True
+    warning: typing.Optional[str] = None  # Print warning to user
+    # Internal housekeeping
+    plain: bool = True  # Plain "log" or "counter" without anything else
+    fileline: str = dataclasses.field(default='')  # For error messages
+    line: list = dataclasses.field(default_factory=list)  # Original line
+    only_one: dict = dataclasses.field(default_factory=dict)
+
+
+RuleList = list[Rule]
+ZonePairKey = tuple[str, str]
+SpecialChainKey = tuple[str, typing.Optional[str], typing.Optional[str]]
+ZonePairRules = dict[ZonePairKey, RuleList]
+SpecialChainRules = dict[SpecialChainKey, RuleList]
 
 
 CONFIG = Config()
@@ -1267,7 +1349,7 @@ def parse_config_zonemap(config, zones):
     zonemap = []
     for fileline, line in config.pop('zonemap', []):
         rule = parse_rule_line((fileline, line))
-        if not rule['new_dzone'] and not rule['new_szone']:
+        if not rule.new_dzone and not rule.new_szone:
             fail(
                 f'{fileline}Zonemap without "new_dzone" or "new_szone" '
                 f'has no effect: {" ".join(line)}'
@@ -1328,7 +1410,7 @@ def parse_config_special_chains(config):
             lines = config.pop(section)
             chain_rules[prefix, ftype, priority] = [
                 parse_rule_line(line) for line in lines
-            ]  # ty: ignore[invalid-assignment]
+            ]
     return chain_rules
 
 
@@ -1423,21 +1505,22 @@ def is_port(value: str, protocol: str) -> bool:
     return True
 
 
-def rule_item_only_one(rule, keyword, value):
+def rule_item_only_one(rule: Rule, keyword: str, value: str) -> None:
     """Verify that keyword is set only once, or set to same value."""
-    old = rule.get(f'_only_one_{keyword}', value)
+    old = rule.only_one.get(keyword, value)
     if old != value:
         fail(
-            f"{rule['fileline']}Rule's {keyword} is already set to "
-            f'"{old}": {" ".join(rule["line"])}'
+            f"{rule.fileline}Rule's {keyword} is already set to "
+            f'"{old}": {" ".join(rule.line)}'
         )
-    rule[f'_only_one_{keyword}'] = value
+    rule.only_one[keyword] = value
 
 
-def verify_rule_sanity(rule, fileline):
+def verify_rule_sanity(rule: Rule, fileline: str) -> None:
     """Do some basic verify that single rule is valid."""
     # pylint: disable=too-many-branches
-    for key, value in rule.items():
+    for key in rule:
+        value = rule[key]
         if (
             value == ''  # ruff: ignore[compare-to-empty-string] -- it can be None too
             and key
@@ -1525,15 +1608,15 @@ def verify_rule_sanity(rule, fileline):
         if rule[extra] and not rule[basic]:
             fail(f'{fileline}"{extra}" without "{basic}" is not valid')
 
-    if not rule['nat_to'] and rule['statement'] in {
+    if not rule.nat_to and rule.statement in {
         'snat',
         'dnat',
         'snat_prefix',
         'dnat_prefix',
     }:
-        fail(f'{fileline}"{rule["statement"]}" without address is not valid')
+        fail(f'{fileline}"{rule.statement}" without address is not valid')
 
-    if rule['ct_status'] and rule['ct_status'] not in {
+    if rule.ct_status and rule.ct_status not in {
         'expected',
         'seen-reply',
         'assured',
@@ -1542,11 +1625,11 @@ def verify_rule_sanity(rule, fileline):
         'dnat',
         'dying',
     }:
-        fail(f'{fileline}"Invalid "ct_status" value: {rule["ct_status"]}')
+        fail(f'{fileline}"Invalid "ct_status" value: {rule.ct_status}')
 
 
-def parse_rule_line(fileline_line):
-    """Parse single config section line to rule dict.
+def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
+    """Parse single config section line to Rule class.
 
     This parser is quite relaxed. Words can be in almost any order. For
     example, all following entries are equal:
@@ -1558,72 +1641,7 @@ def parse_rule_line(fileline_line):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     fileline, line = fileline_line
-    ret = {
-        # Basic rules
-        'statement': 'accept',
-        'cast': 'unicast',
-        'protocol': None,
-        'saddr': None,
-        'sport': None,
-        'daddr': None,
-        'dport': None,
-        'oifname': None,
-        'iifname': None,
-        'mac_saddr': None,
-        'mac_daddr': None,
-        # Is this IPv4/6 specific rule?
-        'ipv4': False,
-        'ipv6': False,
-        # Rate limits
-        'global_rate': None,
-        'saddr_rate': None,
-        'saddr_rate_mask': None,
-        'saddr_rate_name': None,
-        'daddr_rate': None,
-        'daddr_rate_mask': None,
-        'daddr_rate_name': None,
-        'saddr_daddr_rate': None,
-        'saddr_daddr_rate_mask': None,
-        'saddr_daddr_rate_name': None,
-        # User limits
-        'uid': None,
-        'gid': None,
-        # Zonemap specific rules
-        'szone': None,
-        'dzone': None,
-        'new_szone': None,
-        'new_dzone': None,
-        # Misc rules
-        'nat_to': None,  # snat/dnat to
-        'queue': None,  # optional queue flags
-        'counter': None,
-        'helper': None,
-        'sipsec': None,
-        'dipsec': None,
-        'log': None,
-        'log_level': None,
-        'nft': None,
-        'mss': None,
-        'template': None,
-        'tproxy': None,
-        'mark_set': None,
-        'mark_match': None,
-        'priority_set': None,
-        'priority_match': None,
-        'iplist_add': None,
-        'iplist_update': None,
-        'iplist_delete': None,
-        'dscp': None,
-        'cgroup': None,
-        'ct_status': None,
-        'time': None,
-        'after_conntrack': True,
-        'warning': None,  # Print warning to user
-        # Internal housekeeping
-        'plain': True,  # Plain "log" or "counter" without anything else
-        'fileline': fileline,  # For error messages
-        'line': line,  # Original line for error messages
-    }
+    ret = Rule(fileline=fileline, line=line)
 
     keyword = None
     for item in line:
@@ -1637,17 +1655,17 @@ def parse_rule_line(fileline_line):
         # "tcp < 1000" is shortcut for "tcp dport < 1000"
         if (
             not keyword
-            and ret['protocol']
+            and ret.protocol
             and (
                 Validators.str_comparison_operator(item)
-                or is_port(item, ret['protocol'])
+                or is_port(item, ret.protocol)
             )
         ):
             keyword = 'dport'
-            ret['plain'] = False
+            ret.plain = False
 
         # Version 0.29 deprecates 'to' after 'snat' statement, ignore it
-        if keyword == 'nat_to' and not ret['nat_to'] and item == 'to':
+        if keyword == 'nat_to' and not ret.nat_to and item == 'to':
             continue
 
         # First item after start keyword is always a parameter for it, except
@@ -1669,50 +1687,50 @@ def parse_rule_line(fileline_line):
             'nftrace',
         }:
             rule_item_only_one(ret, 'statement', item)
-            ret['statement'] = item
-            ret['plain'] = False
+            ret.statement = item
+            ret.plain = False
             keyword = None
         elif item == 'reject':
             rule_item_only_one(ret, 'statement', item)
-            ret['statement'] = 'reject with icmpx admin-prohibited'
-            ret['plain'] = False
+            ret.statement = 'reject with icmpx admin-prohibited'
+            ret.plain = False
             keyword = None
         elif item in {'multicast', 'broadcast'}:
             rule_item_only_one(ret, 'cast', item)
-            ret['cast'] = item
-            ret['plain'] = False
+            ret.cast = item
+            ret.plain = False
             keyword = None
         elif item in {'tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'}:
             # "igmp" and "esp" are for backward compability (v0.21)
             rule_item_only_one(ret, 'protocol', item)
-            ret['protocol'] = item
-            ret['plain'] = False
+            ret.protocol = item
+            ret.plain = False
             keyword = None
         elif item in {'ipv4', 'ipv6'}:
             ret[item] = True
-            ret['plain'] = False
+            ret.plain = False
             keyword = None
         elif item in {'sipsec', 'dipsec'}:
             ret[item] = 'exists'
-            ret['plain'] = False
+            ret.plain = False
             keyword = None
         elif item in {'-sipsec', '-dipsec'}:
             ret[item[1:]] = 'missing'
-            ret['plain'] = False
+            ret.plain = False
             keyword = None
         elif item in {'conntrack', '-conntrack'}:
             rule_item_only_one(ret, 'conntrack', item)
-            ret['after_conntrack'] = item == 'conntrack'
-            ret['plain'] = False
+            ret.after_conntrack = item == 'conntrack'
+            ret.plain = False
             keyword = None
 
         # Start keywords
         elif item in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
             rule_item_only_one(ret, 'statement', item)
-            ret['statement'] = item
-            ret['plain'] = False
+            ret.statement = item
+            ret.plain = False
             keyword = 'nat_to'
-            ret[keyword] = ret[keyword] or ''
+            ret.nat_to = ret.nat_to or ''
         elif item in {
             'protocol',
             'saddr',
@@ -1765,14 +1783,14 @@ def parse_rule_line(fileline_line):
             ret[keyword] = ret[keyword] or ''
             if item == 'queue':  # statement and start keyword
                 rule_item_only_one(ret, 'statement', item)
-                ret['statement'] = item
+                ret.statement = item
             if item not in {'counter', 'log', 'log_level'}:
-                ret['plain'] = False
+                ret.plain = False
 
         # More parameters for keyword
         elif keyword:
             if ret[keyword]:
-                ret[keyword] += ' '  # ty: ignore[unsupported-operator]
+                ret[keyword] += ' '
             ret[keyword] += item
 
         # Unknown word after non-start keyword
@@ -1782,14 +1800,14 @@ def parse_rule_line(fileline_line):
     # Use no-op statement "continue" for plain "log" or "counter" rule,
     # everything else defaults to "accept". Also mark them as -conntrack
     # so that they really log/count everything.
-    if ret['plain']:
-        ret['statement'] = 'continue'
-        ret['after_conntrack'] = False
+    if ret.plain:
+        ret.statement = 'continue'
+        ret.after_conntrack = False
     verify_rule_sanity(ret, fileline)
 
     # Print warning, used mostly in old macros
-    if ret['warning']:
-        warning(f'{fileline}{ret["warning"]}')
+    if ret.warning:
+        warning(f'{fileline}{ret.warning}')
     return ret
 
 
@@ -1813,9 +1831,7 @@ def parse_config_rules(config):
         # Allow multicast + broadcast if last rule is "accept".
         # These can be added to the end as they are processed in
         # correct order in output_zone().
-        if rules[szone, dzone] and rules[szone, dzone][-1]['line'] == [
-            'accept'
-        ]:
+        if rules[szone, dzone] and rules[szone, dzone][-1].line == ['accept']:
             rules[szone, dzone].extend(
                 [
                     parse_rule_line(('', ['multicast'])),
@@ -1826,7 +1842,7 @@ def parse_config_rules(config):
     return rules
 
 
-def filter_any_zonelist(rule, srcdst):
+def filter_any_zonelist(rule: Rule, srcdst: str) -> tuple[bool, list[str]]:
     """Parse rule[szone] list and return pos/neg boolean + zonelist."""
     if not rule[srcdst]:
         return False, []  # "not in empty list" == everything
@@ -1837,7 +1853,7 @@ def filter_any_zonelist(rule, srcdst):
         if item.startswith('-'):
             if inside and zonelist:
                 fail(
-                    f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                    f'{rule.fileline}Can\'t mix "+" and "-" items: '
                     f'{rule[srcdst]}'
                 )
             inside = False
@@ -1845,14 +1861,16 @@ def filter_any_zonelist(rule, srcdst):
         else:
             if not inside:
                 fail(
-                    f'{rule["fileline"]}Can\'t mix "+" and "-" items: '
+                    f'{rule.fileline}Can\'t mix "+" and "-" items: '
                     f'{rule[srcdst]}'
                 )
             zonelist.append(item)
     return inside, zonelist
 
 
-def insert_single_any(any_rules, rules, szone, dzone):
+def insert_single_any(
+    any_rules: RuleList, rules: ZonePairRules, szone: str, dzone: str
+) -> None:
     """Insert single any_rules to rules[(szone, dzone)]."""
     if szone == dzone == CONFIG.localhost_zone:
         return  # Don't insert to localhost-localhost
@@ -1873,7 +1891,7 @@ def insert_single_any(any_rules, rules, szone, dzone):
         rules[szone, dzone] = filtered + rules.get((szone, dzone), [])
 
 
-def insert_any_zones(zones, rules):
+def insert_any_zones(zones: dict, rules: ZonePairRules) -> None:
     """Insert "any-zone", "zone-any" and "any-any" rules to "zone-zone" rules.
 
     These are inserted to beginning of zone-zone rules.
@@ -1893,7 +1911,7 @@ def insert_any_zones(zones, rules):
             insert_single_any(any_rules, rules, szone, dzone)
 
 
-def verify_config(config, zones, rules):
+def verify_config(config: dict, zones: dict, rules: ZonePairRules) -> None:
     """Verify config data."""
     if not zones:
         fail('No zones defined in section zone{}')
@@ -1943,7 +1961,7 @@ def verify_config(config, zones, rules):
             rules[szone, dzone].append(parse_rule_line(('', rule)))
 
 
-def output_rate_names(rules):
+def output_rate_names(rules: ZonePairRules) -> None:
     """Output empty saddr_rate sets to ruleset."""
     counter = 1
     already_added = set()
@@ -2076,10 +2094,10 @@ def limit_rate_or_ct(rate):
     return f'limit rate {rate} '
 
 
-def rule_rate_limit(rule, ipv):
+def rule_rate_limit(rule: Rule, ipv: int) -> str:
     """Return rule's rate limits as nft update-command."""
-    if rule['global_rate']:
-        return limit_rate_or_ct(rule['global_rate'])
+    if rule.global_rate:
+        return limit_rate_or_ct(rule.global_rate)
 
     ret = ''
     for rate in ('saddr_rate', 'daddr_rate', 'saddr_daddr_rate'):
@@ -2094,23 +2112,23 @@ def rule_rate_limit(rule, ipv):
         ret += f' @{rate_name}_{ipv} {{ '
         if 'saddr' in rate:
             ret += f'{"ip" if ipv == 4 else "ip6"} saddr '
-            ret += netmask_to_and(rate_mask, ipv, rule['fileline'])
+            ret += netmask_to_and(rate_mask, ipv, rule.fileline)
         if rate == 'saddr_daddr_rate':
             ret += '. '
         if 'daddr' in rate:
             ret += f'{"ip" if ipv == 4 else "ip6"} daddr '
-            ret += netmask_to_and(rate_mask, ipv, rule['fileline'])
+            ret += netmask_to_and(rate_mask, ipv, rule.fileline)
         # "limit rate 3/second } "
         ret += f'{limit_rate_or_ct(rate_limit)}}} '
     return ret
 
 
-def mark_set_argument(rule):
+def mark_set_argument(rule: Rule) -> str:
     """Convert "x" to "x", "x/y" to "mark and ~y or x"."""
-    value = rule['mark_set']
+    value = typing.cast('str', rule.mark_set)
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(f'{rule["fileline"]}Invalid "mark_set" value: {value}')
+        fail(f'{rule.fileline}Invalid "mark_set" value: {value}')
     if len(x_y) == 1:
         return value
 
@@ -2119,16 +2137,16 @@ def mark_set_argument(rule):
     try:
         mask = int(x_y[1], 0)  # dec or hex
     except ValueError:
-        fail(f'{rule["fileline"]}Invalid "mark_set" value: {value}')
+        fail(f'{rule.fileline}Invalid "mark_set" value: {value}')
     return f'meta mark & {hex(0xFFFFFFFF ^ mask)} | {x_y[0]}'
 
 
-def mark_match(rule):
+def mark_match(rule: Rule) -> str:
     """Convert "x" to "== x", "x/y" to "and y == x".
 
     Negative "-x" can also be used to get "!= x".
     """
-    value = rule['mark_match']
+    value = rule.mark_match
     if not value:
         return ''
     check = '=='
@@ -2137,23 +2155,24 @@ def mark_match(rule):
         value = value[1:]
     x_y = value.split('/')
     if len(x_y) > 2:
-        fail(
-            f'{rule["fileline"]}Invalid "mark_match" value: '
-            f'{rule["mark_match"]}'
-        )
+        fail(f'{rule.fileline}Invalid "mark_match" value: {rule.mark_match}')
     if len(x_y) == 1:
         return f'meta mark {check} {value} '
     return f'meta mark & {x_y[1]} {check} {x_y[0]} '
 
 
-def time_only_one(rule, oldvalue, newvalue):
+def time_only_one(
+    rule: Rule,
+    oldvalue: typing.Optional[typing.Union[str, list[str]]],
+    newvalue: typing.Union[str, list[str]],
+) -> typing.Union[str, list[str]]:
     """Return newvalue if oldvalue is not set, else fail."""
     if oldvalue or not newvalue:
-        fail(f'{rule["fileline"]}Invalid "time" value: {rule["time"]}')
+        fail(f'{rule.fileline}Invalid "time" value: {rule.time}')
     return newvalue
 
 
-def time_match_single(rule, compare, value):
+def time_match_single(rule: Rule, compare: str, value: list[str]) -> str:
     """Return single time compare+value as nft."""
     if not compare and not value:
         return ''
@@ -2182,7 +2201,7 @@ def time_match_single(rule, compare, value):
         elif re.fullmatch(r'\d\d\d\d-\d\d-\d\d', item):  # yyyy-mm-dd
             date = time_only_one(rule, date, item)
         else:
-            fail(f'{rule["fileline"]}Invalid "time" value: {rule["time"]}')
+            fail(f'{rule.fileline}Invalid "time" value: {rule.time}')
 
     # Output as nft
     if date and hour:  # Combine if both set
@@ -2201,14 +2220,14 @@ def time_match_single(rule, compare, value):
     return ret
 
 
-def time_match(rule):
+def time_match(rule: Rule) -> str:
     """Convert "time Saturday" to nft, supporting time/day/hour."""
-    if not rule['time']:
+    if not rule.time:
         return ''
     compare = ''
     value = []
     ret = ''
-    for item in rule['time'].split():
+    for item in rule.time.split():
         if Validators.str_comparison_operator(item):
             ret += time_match_single(rule, compare, value)
             compare = '' if item == '==' else f'{item} '
@@ -2219,9 +2238,9 @@ def time_match(rule):
     return ret
 
 
-def cgroup_match(rule):
+def cgroup_match(rule: Rule) -> str:
     """Parse cgroup to nft."""
-    cgroup = rule['cgroup']
+    cgroup = rule.cgroup
     if not cgroup:
         return ''
 
@@ -2231,25 +2250,31 @@ def cgroup_match(rule):
         return f'socket cgroupv2 level {level} "{cgroup}" '
 
     # cgroup
-    return f'meta cgroup {single_or_set(cgroup, rule["fileline"])} '
+    return f'meta cgroup {single_or_set(cgroup, rule.fileline)} '
 
 
 def rule_statement(
-    szone, dzone, rule, ipv, *, force_statement=None, do_lograte=True
-):
+    szone: str,
+    dzone: str,
+    rule: Rule,
+    ipv: int,
+    *,
+    force_statement: typing.Optional[str] = None,
+    do_lograte: bool = True,
+) -> str:
     """Return rule's rate, log and statement as nft command."""
     # pylint: disable=too-many-arguments
 
     # Map internal statement to nft statement
-    if rule['mss']:
-        mss = 'rt mtu' if rule['mss'] == 'pmtu' else rule['mss']
+    if rule.mss:
+        mss = 'rt mtu' if rule.mss == 'pmtu' else rule.mss
         statement = f'tcp flags syn tcp option maxseg size set {mss}'
     else:
         statement = force_statement or {
             'snat_prefix': 'snat',
             'dnat_prefix': 'dnat',
             'nftrace': 'meta nftrace set 1',
-        }.get(rule['statement'], rule['statement'])
+        }.get(rule.statement, rule.statement)
 
     # queue can have optional flags
     if statement == 'queue' and rule[statement]:
@@ -2267,33 +2292,31 @@ def rule_statement(
     #   any-zone   - add to all rules in all *-zone
     # Multiple zone-pairs can be defined
     checklist = {'yes', f'{szone}-{dzone}', f'{szone}-any', f'any-{dzone}'}
-    if not rule['nft'] and (
-        rule['counter'] is not None  # "counter" in this single rule
+    if not rule.nft and (
+        rule.counter is not None  # "counter" in this single rule
         or not checklist.isdisjoint(CONFIG.counter)  # zone level enable
     ):
         prefix += 'counter '
-        if rule['counter']:
-            prefix += f'name "{rule["counter"]}" '
+        if rule.counter:
+            prefix += f'name "{rule.counter}" '
 
     # "log" in rule will log all packets matching this rule. This is usually
     # used in final "drop log" rule. Default log prefix is
     # "zone-zone STATEMENT".
-    if rule['log'] is not None or rule['log_level'] is not None:
+    if rule.log is not None or rule.log_level is not None:
         log_prefix = CONFIG.log_prefix
-        if rule['log']:
-            if rule['log'].startswith('+ '):
-                log_prefix += rule['log'][2:]
+        if rule.log:
+            if rule.log.startswith('+ '):
+                log_prefix += rule.log[2:]
             else:
-                log_prefix = rule['log']
+                log_prefix = rule.log
         log_prefix = log_prefix.replace('$(szone)', szone)
         log_prefix = log_prefix.replace('$(dzone)', dzone)
         log_prefix = log_prefix.replace(
             '$(statement)', statement.split()[0].upper()
         )
         log_level = (
-            CONFIG.log_level
-            if rule['log_level'] is None
-            else rule['log_level']
+            CONFIG.log_level if rule.log_level is None else rule.log_level
         )
         log_nft = f'log prefix "{log_prefix} " {log_level}'
         if do_lograte and CONFIG.log_rate:
@@ -2314,7 +2337,7 @@ def rule_statement(
     return prefix + statement
 
 
-def output_icmp(szone, dzone, rules, ipv):
+def output_icmp(szone: str, dzone: str, rules: RuleList, ipv: int) -> None:
     """Find and parse icmp and icmpv6 rules.
 
     These must be handled before ct as "ct established" would accept
@@ -2329,7 +2352,7 @@ def output_icmp(szone, dzone, rules, ipv):
         icmp = 'icmpv6'
         ping = '128'
     for rule in rules:
-        if rule['protocol'] != icmp:
+        if rule.protocol != icmp:
             continue
 
         match = rule_matchers(rule, ipv, skip_icmp=False)
@@ -2340,9 +2363,9 @@ def output_icmp(szone, dzone, rules, ipv):
 
         # Continue to next rule if this wasn't type echo-request (ping) or all
         if (
-            rule['dport']
-            and ping not in rule['dport'].split()
-            and 'echo-request' not in rule['dport'].split()
+            rule.dport
+            and ping not in rule.dport.split()
+            and 'echo-request' not in rule.dport.split()
         ):
             continue
 
@@ -2362,7 +2385,7 @@ def output_icmp(szone, dzone, rules, ipv):
         ):
             has_match_all = True
         elif has_match_all:  # Specific ping rule after match-all rule
-            warning(f'{rule["fileline"]}Unreachable ping rule')
+            warning(f'{rule.fileline}Unreachable ping rule')
 
     # Overflow-pings must be dropped before ct
     if has_ping_rule and not has_match_all:
@@ -2372,7 +2395,7 @@ def output_icmp(szone, dzone, rules, ipv):
     out(f'jump allow_icmp_{ipv}')
 
 
-def parse_iplist(rule, direction, ipv):
+def parse_iplist(rule: Rule, direction: str, ipv: int) -> str:
     """Parse IP address list in rule[direction] to nft rule."""
     iplist = rule[direction]
     if not iplist:
@@ -2388,8 +2411,7 @@ def parse_iplist(rule, direction, ipv):
                 ips.append(item)
             elif not ipv_addr:  # Invalid IP address
                 fail(
-                    f'{rule["fileline"]}Invalid IP address "{item}" in: '
-                    f'{iplist}'
+                    f'{rule.fileline}Invalid IP address "{item}" in: {iplist}'
                 )
 
     # No matching addresses for this ipv family
@@ -2399,11 +2421,11 @@ def parse_iplist(rule, direction, ipv):
     # Return "ip saddr 10.2.3.4 " string
     return (
         f'{"ip" if ipv == 4 else "ip6"} {direction} '
-        f'{single_or_set(ips, rule["fileline"])} '
+        f'{single_or_set(ips, rule.fileline)} '
     )
 
 
-def parse_maclist(rule, direction):
+def parse_maclist(rule: Rule, direction: str) -> str:
     """Parse MAC address list in rule[direction] to nft rule."""
     maclist = rule[direction]
     if not maclist:
@@ -2415,15 +2437,13 @@ def parse_maclist(rule, direction):
         if re.match(r'^(-)?([0-9a-f]{2}:){5}[0-9a-f]{2}$', item):
             macs.append(item)
         else:
-            fail(
-                f'{rule["fileline"]}Invalid MAC address "{item}" in: {maclist}'
-            )
+            fail(f'{rule.fileline}Invalid MAC address "{item}" in: {maclist}')
 
     # Return "ether saddr 0a:00:27:00:00:00 " string
-    return f'ether {direction[4:]} {single_or_set(macs, rule["fileline"])} '
+    return f'ether {direction[4:]} {single_or_set(macs, rule.fileline)} '
 
 
-def parse_interface_names(rule):
+def parse_interface_names(rule: Rule) -> str:
     """Parse iifname/oifname to nft rule.
 
     Interface "lo" is special:
@@ -2444,12 +2464,14 @@ def parse_interface_names(rule):
             ret += 'fib daddr type local '
         else:
             ret += f'{key} '
-            ret += single_or_set(rule[key], rule['fileline'], quote=True)
+            ret += single_or_set(rule[key], rule.fileline, quote=True)
             ret += ' '
     return ret
 
 
-def parse_protocol_ports(rule, ipv, skip_icmp=True):
+def parse_protocol_ports(
+    rule: Rule, ipv: int, skip_icmp: bool = True
+) -> typing.Optional[str]:
     """Parse tcp/udp sport/dport to nft rule.
 
     This can also handle rules like:
@@ -2458,7 +2480,7 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
     - "protocol esp 123" to nft "esp spi 123"
     - "protocol vlan 123" to nft "vlan id 123"
     """
-    protocol = rule['protocol']
+    protocol = rule.protocol
     if not protocol or (skip_icmp and protocol in {'icmp', 'icmpv6'}):
         # Protocol is empty for rules like "drop log" and "dnat"
         # icmp is handled in output_icmp()
@@ -2494,14 +2516,16 @@ def parse_protocol_ports(rule, ipv, skip_icmp=True):
                 }.get(protocol, protokey)
             ports += (
                 f'{protocol} {protokey} '
-                f'{single_or_set(rule[key], rule["fileline"])} '
+                f'{single_or_set(rule[key], rule.fileline)} '
             )
     if ports:
         return ports
     return f'{"ip protocol" if ipv == 4 else "ip6 nexthdr"} {protocol} '
 
 
-def parse_iplist_to_single_ip(rule, key, value, ipv):
+def parse_iplist_to_single_ip(
+    rule: Rule, key: str, value: str, ipv: int
+) -> typing.Optional[str]:
     """Parse rule's iplist to single ipaddress, or None."""
     target = []
     for check in value.split():
@@ -2517,45 +2541,42 @@ def parse_iplist_to_single_ip(rule, key, value, ipv):
             check_ipv = get_ip_family(check)
         if check_ipv == 0:
             fail(
-                f'{rule["fileline"]}Invalid IP address in '
-                f'"{key}" target: {check}'
+                f'{rule.fileline}Invalid IP address in "{key}" target: {check}'
             )
         if check_ipv == ipv:
             target.append(check)
     if not target:  # Nothing found for this ipv, don't generate rule
         return None
     if len(target) > 1:
-        fail(f'{rule["fileline"]}Multiple "{key}" targets: {" ".join(target)}')
+        fail(f'{rule.fileline}Multiple "{key}" targets: {" ".join(target)}')
     return target[0]
 
 
-def parse_nat_to(rule, ipv):
+def parse_nat_to(rule: Rule, ipv: int) -> typing.Optional[str]:
     """Parse snat/dnat "to" rule to nft rule."""
-    if not rule['nat_to']:
+    if not rule.nat_to:
         return ''
 
     # "to" can be IPv4, IPv6 or both, find correct one
-    target = parse_iplist_to_single_ip(
-        rule, rule['statement'], rule['nat_to'], ipv
-    )
+    target = parse_iplist_to_single_ip(rule, rule.statement, rule.nat_to, ipv)
     if not target:
         return None
 
     # Generate rule
     to_text = 'to'
-    if rule['statement'] in {'snat_prefix', 'dnat_prefix'}:
+    if rule.statement in {'snat_prefix', 'dnat_prefix'}:
         to_text = 'prefix to'
     return f' {"ip" if ipv == 4 else "ip6"} {to_text} {target}'
 
 
 def rule_matchers(  # ruff: ignore[too-many-locals]
-    rule,
-    ipv,
+    rule: Rule,
+    ipv: int,
     *,
-    cast=None,
-    skip_options=True,
-    skip_icmp=True,
-):
+    cast: typing.Optional[str] = None,
+    skip_options: bool = True,
+    skip_icmp: bool = True,
+) -> typing.Optional[str]:
     """Parse rule's matchers to nft rule.
 
     Return value "None" is "no match, skip rule".
@@ -2564,60 +2585,58 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-statements
-    if cast is not None and rule['cast'] != cast:
+    if cast is not None and rule.cast != cast:
         return None  # multi/broadcast doesn't match
-    if ipv == 6 and rule['cast'] == 'broadcast':
+    if ipv == 6 and rule.cast == 'broadcast':
         return None  # broadcast is ipv4 only
-    if skip_icmp and rule['protocol'] in {'icmp', 'icmpv6'}:
+    if skip_icmp and rule.protocol in {'icmp', 'icmpv6'}:
         return None
-    if skip_options and rule['mss']:  # Handled in output_options()
+    if skip_options and rule.mss:  # Handled in output_options()
         return None
 
     # IPv4/6 specific rule?
-    if ipv == 4 and rule['ipv6'] and not rule['ipv4']:
+    if ipv == 4 and rule.ipv6 and not rule.ipv4:
         return None
-    if ipv == 6 and rule['ipv4'] and not rule['ipv6']:
+    if ipv == 6 and rule.ipv4 and not rule.ipv6:
         return None
 
     # Convert matchers to nft
     castmeta = ''
-    if cast and rule['cast'] != 'unicast':
-        castmeta = f'fib daddr type {rule["cast"]} '
+    if cast and rule.cast != 'unicast':
+        castmeta = f'fib daddr type {rule.cast} '
 
     ipsecmeta = ''
-    if rule['sipsec']:
-        ipsecmeta += f'meta ipsec {rule["sipsec"]} '
-    if rule['dipsec']:
-        ipsecmeta += f'rt ipsec {rule["dipsec"]} '
+    if rule.sipsec:
+        ipsecmeta += f'meta ipsec {rule.sipsec} '
+    if rule.dipsec:
+        ipsecmeta += f'rt ipsec {rule.dipsec} '
 
     ct_status = ''
-    if rule['ct_status']:
-        ct_status = f'ct status {rule["ct_status"]} '
+    if rule.ct_status:
+        ct_status = f'ct status {rule.ct_status} '
 
     priority_match = ''
-    if rule['priority_match']:
-        priority_match = f'meta priority "{rule["priority_match"]}" '
+    if rule.priority_match:
+        priority_match = f'meta priority "{rule.priority_match}" '
 
     uid = ''
-    if rule['uid']:
+    if rule.uid:
         uid = (
-            f'meta skuid '
-            f'{single_or_set(rule["uid"], rule["fileline"], quote=True)} '
+            f'meta skuid {single_or_set(rule.uid, rule.fileline, quote=True)} '
         )
     gid = ''
-    if rule['gid']:
+    if rule.gid:
         gid = (
-            f'meta skgid '
-            f'{single_or_set(rule["gid"], rule["fileline"], quote=True)} '
+            f'meta skgid {single_or_set(rule.gid, rule.fileline, quote=True)} '
         )
 
     meta_set = ''
-    if rule['mark_set']:
+    if rule.mark_set:
         meta_set += (
             f'meta mark set {mark_set_argument(rule)} ct mark set meta mark '
         )
-    if rule['priority_set']:
-        meta_set += f'meta priority set "{rule["priority_set"]}" '
+    if rule.priority_set:
+        meta_set += f'meta priority set "{rule.priority_set}" '
 
     iplist_mangle = ''
     for operation in ('add', 'update', 'delete'):
@@ -2630,19 +2649,17 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
             )
 
     tproxy = ''
-    if rule['tproxy']:
-        tproxy_to = parse_iplist_to_single_ip(
-            rule, 'tproxy', rule['tproxy'], ipv
-        )
+    if rule.tproxy:
+        tproxy_to = parse_iplist_to_single_ip(rule, 'tproxy', rule.tproxy, ipv)
         if not tproxy_to:
             return None
         tproxy = f'tproxy {"ip" if ipv == 4 else "ip6"} to {tproxy_to} '
 
     dscp = ''
-    if rule['dscp']:
+    if rule.dscp:
         dscp = (
             f'{"ip" if ipv == 4 else "ip6"} dscp '
-            f'{single_or_set(rule["dscp"], rule["fileline"])} '
+            f'{single_or_set(rule.dscp, rule.fileline)} '
         )
 
     ifname = parse_interface_names(rule)
@@ -2673,7 +2690,7 @@ def output_cast(
     cast: typing.Optional[str],
     szone: str,
     dzone: str,
-    rules: list,
+    rules: RuleList,
     ipv: int,
     *,
     after_conntrack: bool = True,
@@ -2687,25 +2704,25 @@ def output_cast(
     has_mark_restore = False
     has_needle_rule = False
     for rule in rules:
-        if rule['after_conntrack'] != after_conntrack:
+        if rule.after_conntrack != after_conntrack:
             continue
         match = rule_matchers(rule, ipv, cast=cast)
         if match is None:
             continue
-        if not match and cast is None and rule['cast'] != 'unicast':
+        if not match and cast is None and rule.cast != 'unicast':
             continue  # Don't convert "multicast accept" to nft "accept"
-        if rule['statement'] in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
+        if rule.statement in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
             fail(
-                f'{rule["fileline"]}Statement "{rule["statement"]}" can\'t '
+                f'{rule.fileline}Statement "{rule.statement}" can\'t '
                 f'be used in "{szone}-{dzone}" section'
             )
         statement = rule_statement(
-            szone, dzone, rule, ipv, force_statement=rule['nft']
+            szone, dzone, rule, ipv, force_statement=rule.nft
         )
 
         # Automatically restore mark from conntrack before mark match or set
         # is used. Mark set needs it too for OR-operations.
-        if not has_mark_restore and (rule['mark_match'] or rule['mark_set']):
+        if not has_mark_restore and (rule.mark_match or rule.mark_set):
             has_mark_restore = True
             out('meta mark set ct mark')
 
@@ -2715,26 +2732,26 @@ def output_cast(
             has_needle_rule = True
 
         # Does this rule need kernel helper?
-        if rule['helper']:
-            if rule['helper'].count('-') != 1:
-                fail(
-                    f'{rule["fileline"]}Invalid helper name: {rule["helper"]}'
-                )
-            HELPERS.append((rule['helper'], rule['protocol'], rule['dport']))
-            kernelname = rule['helper'].split('-')[0].replace('_', '-')
-            out(f'ct helper "{kernelname}" {rule["statement"]}')
+        if rule.helper:
+            if rule.helper.count('-') != 1:
+                fail(f'{rule.fileline}Invalid helper name: {rule.helper}')
+            HELPERS.append((rule.helper, rule.protocol, rule.dport))
+            kernelname = rule.helper.split('-')[0].replace('_', '-')
+            out(f'ct helper "{kernelname}" {rule.statement}')
     return has_needle_rule
 
 
-def output_zonemap(zonemap, szone, dzone, ipv):
+def output_zonemap(
+    zonemap: RuleList, szone: str, dzone: str, ipv: int
+) -> None:
     """Output zonemap{} rules for this szone-dzone."""
     for rule in zonemap:
-        if rule['szone'] and szone not in rule['szone'].split():
+        if rule.szone and szone not in rule.szone.split():
             continue
-        if rule['dzone'] and dzone not in rule['dzone'].split():
+        if rule.dzone and dzone not in rule.dzone.split():
             continue
-        new_szone = rule['new_szone'] or szone
-        new_dzone = rule['new_dzone'] or dzone
+        new_szone = rule.new_szone or szone
+        new_dzone = rule.new_dzone or dzone
         if new_szone == szone and new_dzone == dzone:
             continue
 
@@ -2749,20 +2766,20 @@ def output_zonemap(zonemap, szone, dzone, ipv):
         )
         if reverse:
             warning(
-                f'{rule["fileline"]}Possible zonemap loop in '
-                f'{szone}-{dzone}: {" ".join(rule["line"])}'
+                f'{rule.fileline}Possible zonemap loop in '
+                f'{szone}-{dzone}: {" ".join(rule.line)}'
             )
             warning(
                 f'  Reverse zonemap in {new_szone}-{new_dzone}: '
-                f'{reverse["fileline"]}{" ".join(reverse["line"])}'
+                f'{reverse.fileline}{" ".join(reverse.line)}'
             )
         INTERNAL.zonemap_loop_check[szone, dzone, new_szone, new_dzone] = rule
 
 
-def output_options(szone, dzone, rules, ipv):
+def output_options(szone: str, dzone: str, rules: RuleList, ipv: int) -> None:
     """Output "mss" etc options as first rules."""
     for rule in rules:
-        if rule['mss']:
+        if rule.mss:
             match = rule_matchers(rule, ipv, skip_options=False)
             if match is None:
                 continue
@@ -2772,7 +2789,13 @@ def output_options(szone, dzone, rules, ipv):
             out(f'{match}{statement}')
 
 
-def output_zone(zonemap, szone, dzone, rules, ipv):
+def output_zone(
+    zonemap: RuleList,
+    szone: str,
+    dzone: str,
+    rules: RuleList,
+    ipv: int,
+) -> None:
     """Output single zone-zone_ipv4 nft chain."""
     # Header + zonemap jumps + options
     out(f'chain {szone}-{dzone}_{ipv} {{')
@@ -2856,7 +2879,7 @@ def output_zone(zonemap, szone, dzone, rules, ipv):
     out('}')
 
 
-def output_zone_vmaps(zones, rules):
+def output_zone_vmaps(zones: dict, rules: ZonePairRules) -> None:
     """Output interface verdict maps to jump to correct zone-zone."""
     # pylint: disable=too-many-branches
 
@@ -2916,7 +2939,7 @@ def output_zone_vmaps(zones, rules):
     out('}')
 
 
-def output_zone2zone_rules(rules, zonemap):
+def output_zone2zone_rules(rules: ZonePairRules, zonemap: RuleList) -> None:
     """Output all zone-zone rules for both IPv4 and IPv6."""
     for szone, dzone in rules:
         # Split to zone-zone_4 and zone-zone_6
@@ -2932,7 +2955,7 @@ def output_zone2zone_rules(rules, zonemap):
         output_zone(zonemap, szone, dzone, rules[szone, dzone], 6)
 
 
-def output_rule_section_no_header(rules, section):
+def output_rule_section_no_header(rules: RuleList, section: str) -> None:
     """Output snat, dnat, prerouting, postrouting, etc. rules inside chain."""
     if not rules:
         return
@@ -2954,14 +2977,12 @@ def output_rule_section_no_header(rules, section):
                 '',
                 rule,
                 ipv,
-                force_statement=rule['nft'],
+                force_statement=rule.nft,
                 do_lograte=False,
             )
 
             # Automatically restore mark from conntrack when needed
-            if not has_mark_restore and (
-                rule['mark_match'] or rule['mark_set']
-            ):
+            if not has_mark_restore and (rule.mark_match or rule.mark_set):
                 has_mark_restore = True
                 out('meta mark set ct mark')
 
@@ -2973,7 +2994,7 @@ def output_rule_section_no_header(rules, section):
             out(full_rule)
 
 
-def output_special_chains(chain_rules):
+def output_special_chains(chain_rules: SpecialChainRules) -> None:
     """Output snat, dnat, prerouting postrouting, etc. chain + rules."""
     for prefix in (
         'snat',
@@ -3047,7 +3068,7 @@ def output_static_chain_logging(chain, statement):
     )
 
 
-def output_header(chain_rules):
+def output_header(chain_rules: SpecialChainRules) -> None:
     """Output generic nft header."""
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
@@ -3280,14 +3301,16 @@ def output_iplist_sets(iplists: IPLists) -> None:
             out('}')
 
 
-def output_named_counters(rules, chain_rules):
+def output_named_counters(
+    rules: ZonePairRules, chain_rules: SpecialChainRules
+) -> None:
     """Output named counters."""
     # Collect all counter names
     names = set()
     for rulelist in list(rules.values()) + list(chain_rules.values()):
         for rule in rulelist:
-            if rule['counter']:
-                names.add(rule['counter'])
+            if rule.counter:
+                names.add(rule.counter)
 
     # Output counters
     for name in sorted(names):
@@ -3467,7 +3490,13 @@ def apply_final():
     return 0
 
 
-def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
+def print_assembled_config(
+    config: dict,
+    zones: dict,
+    zonemap: RuleList,
+    rules: ZonePairRules,
+    chain_rules: SpecialChainRules,
+) -> None:
     """Print assembled configuration in foomuuri.conf format."""
 
     def print_section(name: str, lines: list, indent: int = 2) -> None:
@@ -3496,13 +3525,13 @@ def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
     )
 
     print_section(
-        'zonemap', [f'{" ".join(statement["line"])}' for statement in zonemap]
+        'zonemap', [f'{" ".join(statement.line)}' for statement in zonemap]
     )
 
     for chains, statements in chain_rules.items():
         print_section(
-            ' '.join(chains),
-            [f'{" ".join(statement["line"])}' for statement in statements],
+            ' '.join(chain for chain in chains if chain is not None),
+            [f'{" ".join(statement.line)}' for statement in statements],
         )
 
     print_section(
@@ -3512,7 +3541,7 @@ def print_assembled_config(config, zones, zonemap, rules, chain_rules) -> None:
     for zone2zone, statements in rules.items():
         print_section(
             '-'.join(zone2zone),
-            [f'{" ".join(statement["line"])}' for statement in statements],
+            [f'{" ".join(statement.line)}' for statement in statements],
         )
 
     print_section(

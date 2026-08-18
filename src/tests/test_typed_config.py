@@ -2,6 +2,7 @@
 # pylint: disable=import-error
 
 import pathlib
+import typing
 import unittest
 from dataclasses import dataclass, field
 
@@ -35,6 +36,7 @@ class TestTypedConfig(unittest.TestCase):
 
             # pylint: disable=too-many-instance-attributes
             initialized_str: str = 'init_value1'
+            union_str_or_none: typing.Union[str, None] = None
             uninitialized_str: str = field(init=False)
             initialized_untyped = 'init_value2'  # ruff: ignore[implicit-class-var-in-dataclass]
             type_conversion_float: float = 0.0
@@ -85,6 +87,15 @@ class TestTypedConfig(unittest.TestCase):
         self.assertRaises(
             AttributeError, lambda: self.config.uninitialized_untyped
         )
+
+    def test_union_type(self):
+        """Test assigning values to Union attributes."""
+        self.config.union_str_or_none = 'value'
+        self.assertEqual(self.config.union_str_or_none, 'value')
+        self.config.union_str_or_none = None
+        self.assertIsNone(self.config.union_str_or_none)
+        with self.assertRaises(TypeError):
+            self.config.union_str_or_none = 1  # ty: ignore[invalid-assignment]
 
     def test_set_from_str(self):
         """Test attribute type conversion from str (set_from_str)."""
@@ -182,6 +193,7 @@ class TestTypedConfig(unittest.TestCase):
                 'type_conversion_posixpath',
                 'type_conversion_set',
                 'uninitialized_str',
+                'union_str_or_none',
                 'validation',
             ],
         )
