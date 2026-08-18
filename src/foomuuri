@@ -508,16 +508,18 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     cast: str = 'unicast'
     protocol: typing.Optional[str] = None
     saddr: typing.Optional[str] = None
-    sport: typing.Optional[str] = None
     daddr: typing.Optional[str] = None
+    sport: typing.Optional[str] = None
     dport: typing.Optional[str] = None
-    oifname: typing.Optional[str] = None
     iifname: typing.Optional[str] = None
+    oifname: typing.Optional[str] = None
     mac_saddr: typing.Optional[str] = None
     mac_daddr: typing.Optional[str] = None
+
     # Is this IPv4/6 specific rule?
     ipv4: bool = False
     ipv6: bool = False
+
     # Rate limits
     global_rate: typing.Optional[str] = None
     saddr_rate: typing.Optional[str] = None
@@ -529,14 +531,17 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     saddr_daddr_rate: typing.Optional[str] = None
     saddr_daddr_rate_mask: typing.Optional[str] = None
     saddr_daddr_rate_name: typing.Optional[str] = None
+
     # User limits
     uid: typing.Optional[str] = None
     gid: typing.Optional[str] = None
+
     # Zonemap specific rules
     szone: typing.Optional[str] = None
     dzone: typing.Optional[str] = None
     new_szone: typing.Optional[str] = None
     new_dzone: typing.Optional[str] = None
+
     # Misc rules
     nat_to: typing.Optional[str] = None  # snat/dnat to
     queue: typing.Optional[str] = None  # optional queue flags
@@ -563,6 +568,7 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     time: typing.Optional[str] = None
     after_conntrack: bool = True
     warning: typing.Optional[str] = None  # Print warning to user
+
     # Internal housekeeping
     plain: bool = True  # Plain "log" or "counter" without anything else
     fileline: str = dataclasses.field(default='')  # For error messages
@@ -1738,11 +1744,11 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
         elif item in {
             'protocol',
             'saddr',
-            'sport',
             'daddr',
+            'sport',
             'dport',
-            'oifname',
             'iifname',
+            'oifname',
             'mac_saddr',
             'mac_daddr',
             'global_rate',
