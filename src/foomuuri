@@ -1647,7 +1647,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     fileline, line = fileline_line
-    ret = Rule(fileline=fileline, line=line)
+    rule = Rule(fileline=fileline, line=line)
 
     keyword = None
     for item in line:
@@ -1661,17 +1661,17 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
         # "tcp < 1000" is shortcut for "tcp dport < 1000"
         if (
             not keyword
-            and ret.protocol
+            and rule.protocol
             and (
                 Validators.str_comparison_operator(item)
-                or is_port(item, ret.protocol)
+                or is_port(item, rule.protocol)
             )
         ):
             keyword = 'dport'
-            ret.plain = False
+            rule.plain = False
 
         # Version 0.29 deprecates 'to' after 'snat' statement, ignore it
-        if keyword == 'nat_to' and not ret.nat_to and item == 'to':
+        if keyword == 'nat_to' and not rule.nat_to and item == 'to':
             warning(
                 f'{fileline}Obsolete keyword "to" after "snat/dnat": '
                 f'{" ".join(line)}'
@@ -1681,8 +1681,8 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
         # First item after start keyword is always a parameter for it, except
         # for "log" or "counter". Log will have good default value if not
         # defined. Counter without parameter will create anonymous counter.
-        if keyword and not ret[keyword] and keyword not in {'log', 'counter'}:
-            ret[keyword] = item
+        if keyword and not rule[keyword] and keyword not in {'log', 'counter'}:
+            rule[keyword] = item
             if keyword == 'protocol':  # Single word only
                 keyword = None
 
@@ -1696,51 +1696,51 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             'notrack',
             'nftrace',
         }:
-            rule_item_only_one(ret, 'statement', item)
-            ret.statement = item
-            ret.plain = False
+            rule_item_only_one(rule, 'statement', item)
+            rule.statement = item
+            rule.plain = False
             keyword = None
         elif item == 'reject':
-            rule_item_only_one(ret, 'statement', item)
-            ret.statement = 'reject with icmpx admin-prohibited'
-            ret.plain = False
+            rule_item_only_one(rule, 'statement', item)
+            rule.statement = 'reject with icmpx admin-prohibited'
+            rule.plain = False
             keyword = None
         elif item in {'multicast', 'broadcast'}:
-            rule_item_only_one(ret, 'cast', item)
-            ret.cast = item
-            ret.plain = False
+            rule_item_only_one(rule, 'cast', item)
+            rule.cast = item
+            rule.plain = False
             keyword = None
         elif item in {'tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'}:
             # "igmp" and "esp" are for backward compability (v0.21)
-            rule_item_only_one(ret, 'protocol', item)
-            ret.protocol = item
-            ret.plain = False
+            rule_item_only_one(rule, 'protocol', item)
+            rule.protocol = item
+            rule.plain = False
             keyword = None
         elif item in {'ipv4', 'ipv6'}:
-            ret[item] = True
-            ret.plain = False
+            rule[item] = True
+            rule.plain = False
             keyword = None
         elif item in {'sipsec', 'dipsec'}:
-            ret[item] = 'exists'
-            ret.plain = False
+            rule[item] = 'exists'
+            rule.plain = False
             keyword = None
         elif item in {'-sipsec', '-dipsec'}:
-            ret[item[1:]] = 'missing'
-            ret.plain = False
+            rule[item[1:]] = 'missing'
+            rule.plain = False
             keyword = None
         elif item in {'conntrack', '-conntrack'}:
-            rule_item_only_one(ret, 'conntrack', item)
-            ret.after_conntrack = item == 'conntrack'
-            ret.plain = False
+            rule_item_only_one(rule, 'conntrack', item)
+            rule.after_conntrack = item == 'conntrack'
+            rule.plain = False
             keyword = None
 
         # Start keywords
         elif item in {'snat', 'dnat', 'snat_prefix', 'dnat_prefix'}:
-            rule_item_only_one(ret, 'statement', item)
-            ret.statement = item
-            ret.plain = False
+            rule_item_only_one(rule, 'statement', item)
+            rule.statement = item
+            rule.plain = False
             keyword = 'nat_to'
-            ret.nat_to = ret.nat_to or ''
+            rule.nat_to = rule.nat_to or ''
         elif item in {
             'protocol',
             'saddr',
@@ -1790,18 +1790,18 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             'warning',
         }:
             keyword = item
-            ret[keyword] = ret[keyword] or ''
+            rule[keyword] = rule[keyword] or ''
             if item == 'queue':  # statement and start keyword
-                rule_item_only_one(ret, 'statement', item)
-                ret.statement = item
+                rule_item_only_one(rule, 'statement', item)
+                rule.statement = item
             if item not in {'counter', 'log', 'log_level'}:
-                ret.plain = False
+                rule.plain = False
 
         # More parameters for keyword
         elif keyword:
-            if ret[keyword]:
-                ret[keyword] += ' '
-            ret[keyword] += item
+            if rule[keyword]:
+                rule[keyword] += ' '
+            rule[keyword] += item
 
         # Unknown word after non-start keyword
         else:
@@ -1810,15 +1810,15 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
     # Use no-op statement "continue" for plain "log" or "counter" rule,
     # everything else defaults to "accept". Also mark them as -conntrack
     # so that they really log/count everything.
-    if ret.plain:
-        ret.statement = 'continue'
-        ret.after_conntrack = False
-    verify_rule_sanity(ret, fileline)
+    if rule.plain:
+        rule.statement = 'continue'
+        rule.after_conntrack = False
+    verify_rule_sanity(rule, fileline)
 
     # Print warning, used mostly in old macros
-    if ret.warning:
-        warning(f'{fileline}{ret.warning}')
-    return ret
+    if rule.warning:
+        warning(f'{fileline}{rule.warning}')
+    return rule
 
 
 def parse_config_rules(config):
