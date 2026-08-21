@@ -1321,7 +1321,7 @@ def parse_config_foomuuri(config):
         INTERNAL.priority_offset = f' - {-CONFIG.priority_offset}'
 
     # Add "packets" to log rates
-    for key in list(CONFIG):
+    for key in CONFIG:
         if key.startswith('log_') and re.match(
             r'^\d+/(second|minute|hour) burst \d+$', CONFIG[key]
         ):
@@ -3317,7 +3317,7 @@ def output_named_counters(
     """Output named counters."""
     # Collect all counter names
     names = set()
-    for rulelist in list(rules.values()) + list(chain_rules.values()):
+    for rulelist in itertools.chain(rules.values(), chain_rules.values()):
         for rule in rulelist:
             if rule.counter:
                 names.add(rule.counter)
