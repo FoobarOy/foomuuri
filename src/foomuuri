@@ -348,8 +348,19 @@ class Internal(TypedConfig):
         default_factory=list
     )  # Parameters for command
     force: int = 0  # --force
+    config_override: dict[str, typing.Union[str, int]] = dataclasses.field(
+        default_factory=dict
+    )
 
     # Other internally used variables
+    # Lograte names and limits: name -> (log statement, rule statement)
+    logrates: dict[str, tuple[str, str]] = dataclasses.field(
+        default_factory=dict
+    )
+    # List of helpers: (helper, protocol, ports)
+    helpers: list[tuple[str, str, str]] = dataclasses.field(
+        default_factory=list
+    )
     # Added without default value to prevent uninitialized use
     iplist_missing_ok: set = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
@@ -598,12 +609,9 @@ SpecialChainRules = dict[SpecialChainKey, RuleList]
 
 
 CONFIG = Config()
-CONFIG_OVERRIDE = {}
 INTERNAL = Internal()
 
 OUT = []  # Generated nftables ruleset / commands
-LOGRATES = {}  # Lograte names and limits
-HELPERS = []  # List of helpers: (helper-object, protocol, ports)
 
 
 def fail(error: str, fatal: bool = True) -> int:
@@ -1320,7 +1328,7 @@ def parse_config_foomuuri(config):
             )
 
     # Overrides from CLI arguments
-    for name, value in CONFIG_OVERRIDE.items():
+    for name, value in INTERNAL.config_override.items():
         CONFIG.set_from_str(name, str(value))
 
     # Reinitialize syslogging, foomuuri{} may have a different syslog setting
@@ -2353,8 +2361,8 @@ def rule_statement(
             )
             if statement == 'continue':
                 return f'{prefix}{rate}{log_nft}'
-            logname = f'lograte_{len(LOGRATES) + 1}'
-            LOGRATES[logname] = (f'{rate}{log_nft}', statement)
+            logname = f'lograte_{len(INTERNAL.logrates) + 1}'
+            INTERNAL.logrates[logname] = (f'{rate}{log_nft}', statement)
             return f'{prefix}jump {logname}'
         prefix += f'{log_nft} '
 
@@ -2759,7 +2767,13 @@ def output_cast(
         if rule.helper:
             if rule.helper.count('-') != 1:
                 fail(f'{rule.fileline}Invalid helper name: {rule.helper}')
-            HELPERS.append((rule.helper, rule.protocol, rule.dport))
+            INTERNAL.helpers.append(
+                (
+                    rule.helper,
+                    typing.cast('str', rule.protocol),
+                    typing.cast('str', rule.dport),
+                )
+            )
             kernelname = rule.helper.split('-')[0].replace('_', '-')
             out(f'ct helper "{kernelname}" {rule.statement}')
     return has_needle_rule
@@ -3271,7 +3285,7 @@ def optimize_jumps():
         line = OUT[linenum]
         if line.startswith('jump lograte_'):
             logname = line.split()[1]
-            log_nft, statement = LOGRATES.pop(logname)
+            log_nft, statement = INTERNAL.logrates.pop(logname)
             OUT[linenum] = log_nft
             OUT.insert(linenum + 1, statement)
         linenum += 1
@@ -3289,7 +3303,7 @@ def optimize_final_rules():
 
 def output_logrates():
     """Output non-optimized lograte entries as chains."""
-    for logname, (log_nft, statement) in LOGRATES.items():
+    for logname, (log_nft, statement) in INTERNAL.logrates.items():
         out(f'chain {logname} {{')
         out(log_nft)
         out(statement)
@@ -3346,7 +3360,7 @@ def output_helpers():
     """Output helpers."""
     # Convert helper list to helper->proto->set(ports) dict
     helpers = {}
-    for name, proto, ports in HELPERS:
+    for name, proto, ports in INTERNAL.helpers:
         if name not in helpers:
             helpers[name] = {}
         if proto not in helpers[name]:
@@ -5967,14 +5981,18 @@ def parse_command_line():
         elif arg == '--verbose':
             option = arg[2:]
             CONFIG[option] += 1
-            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
+            INTERNAL.config_override[option] = (
+                int(INTERNAL.config_override.get(option, 0)) + 1
+            )
         elif arg == '--quiet':
             option = 'verbose'
             CONFIG[option] -= 1
-            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
+            INTERNAL.config_override[option] = (
+                int(INTERNAL.config_override.get(option, 0)) - 1
+            )
         elif arg in {'--fork', '--syslog'}:
             CONFIG[arg[2:]] = 1
-            CONFIG_OVERRIDE[arg[2:]] = 1
+            INTERNAL.config_override[arg[2:]] = 1
         elif arg == '--force':
             INTERNAL.force += 1
         elif arg == '--soft':
@@ -5987,7 +6005,7 @@ def parse_command_line():
                 fail(f'Unknown foomuuri{{}} option: {option}')
             try:
                 CONFIG.set_from_str(option, value)
-                CONFIG_OVERRIDE[option] = value
+                INTERNAL.config_override[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
         elif arg.startswith('--'):
