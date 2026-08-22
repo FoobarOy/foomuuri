@@ -141,10 +141,7 @@ class TypedConfig:
     def __setattr__(self, name: str, value: object) -> None:
         """Validate and set attribute value."""
         field = self._get_field(name)
-        expected_type: typing.Any = field.type
-        # Work around Python 3.9's handling of Union type hints.
-        if typing.get_origin(expected_type) is typing.Union:
-            expected_type = typing.get_args(expected_type)
+        expected_type = self._isinstance_target(field.type)
         if not isinstance(value, expected_type):
             raise TypeError(
                 f'{name}: expected value type {field.type}, got {type(value)}'
@@ -153,6 +150,21 @@ class TypedConfig:
         if validator and not validator(value):
             raise ValueError(f'{name}: value failed validation')
         super().__setattr__(name, value)
+
+    @staticmethod
+    def _isinstance_target(expected_type):
+        """Return isinstance() target of a type hint.
+
+        Convert parameterized hints to their origin and typing.Union
+        hints to tuples of targets.
+        """
+        type_origin = typing.get_origin(expected_type)
+        if type_origin is typing.Union:
+            return tuple(
+                TypedConfig._isinstance_target(arg)
+                for arg in typing.get_args(expected_type)
+            )
+        return type_origin or expected_type
 
     def get(self, name: str, default: typing.Any = None) -> typing.Any:
         """Get attribute value."""
@@ -176,22 +188,16 @@ class TypedConfig:
         # pylint: disable=no-member
         return name in self.__dataclass_fields__
 
-    def _check_set_append_args(
-        self, name: str, value: str
-    ) -> dataclasses.Field:
-        """Return field after validating name and value."""
-        field = self._get_field(name)
-        if not isinstance(value, str):
-            raise TypeError(
-                f'{name}: expected value type {str}, got {type(value)}'
-            )
-        return field
-
-    @staticmethod
-    def _convert_set_append_value(
-        field: dataclasses.Field, value: str
+    def _convert_from_str(
+        self, field: dataclasses.Field, value: str
     ) -> typing.Any:
         """Convert string using field type and metadata."""
+        if not isinstance(value, str):
+            raise TypeError(
+                f'{field.name}: expected value type {str}, got {type(value)}'
+            )
+        expected_type = self._isinstance_target(field.type)
+
         # "Built-in" value converters. Executed when
         # convert_str is not defined in field metadata.
         implicit_converters = {
@@ -203,11 +209,10 @@ class TypedConfig:
 
         if converter := (
             field.metadata.get('convert_str')
-            or implicit_converters.get(field.type)
+            or implicit_converters.get(expected_type)
         ):
             return converter(value)
-        field_type: typing.Any = field.type
-        if isinstance(value, field_type):
+        if isinstance(value, expected_type):
             return value
         raise TypeError(
             f'{field.name}: value conversion to {field.type} not implemented'
@@ -215,14 +220,15 @@ class TypedConfig:
 
     def set_from_str(self, name: str, value: str) -> None:
         """Set attribute value converted from string."""
-        field = self._check_set_append_args(name, value)
-        new_value = self._convert_set_append_value(field, value)
+        field = self._get_field(name)
+        new_value = self._convert_from_str(field, value)
         setattr(self, name, new_value)
 
     def append_from_str(self, name: str, value: str) -> None:
         """Append attribute value converted from string."""
-        field = self._check_set_append_args(name, value)
-        new_value = self._convert_set_append_value(field, value)
+        field = self._get_field(name)
+        new_value = self._convert_from_str(field, value)
+        expected_type = self._isinstance_target(field.type)
 
         # "Built-in" implicit appenders.
         implicit_appenders = {
@@ -231,9 +237,8 @@ class TypedConfig:
             list: lambda value, append: value + append,
         }
 
-        field_type: typing.Any = field.type
-        if (appender := implicit_appenders.get(field.type)) and isinstance(
-            new_value, field_type
+        if (appender := implicit_appenders.get(expected_type)) and isinstance(
+            new_value, expected_type
         ):
             new_value = appender(self[name], new_value)
         else:
