@@ -19,9 +19,9 @@ iplist {
   # Resolve known good hostnames
   @goodhost foobar.fi mydomain.com
 
-  # Download Finnish IPv4 and IPv6 addresses from https://github.com/ipverse/country-ip-blocks
-  @fi   https://raw.githubusercontent.com/ipverse/country-ip-blocks/master/country/fi/ipv4-aggregated.txt
-  @fi   + https://raw.githubusercontent.com/ipverse/country-ip-blocks/master/country/fi/ipv6-aggregated.txt
+  # Download Finnish IPv4 and IPv6 addresses from https://github.com/ipverse/geo-ip-blocks
+  @fi   https://raw.githubusercontent.com/ipverse/geo-ip-blocks/master/country/fi/fi-ipv4.txt
+  @fi   + https://raw.githubusercontent.com/ipverse/geo-ip-blocks/master/country/fi/fi-ipv6.txt
 
   # Download Finnish Elisa operator IP addresses from https://github.com/ipverse/as-ip-blocks
   @elisa  https://raw.githubusercontent.com/ipverse/as-ip-blocks/master/as/719/ipv4-aggregated.txt
