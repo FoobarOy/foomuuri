@@ -278,12 +278,12 @@ class Config(TypedConfig):
     dbus_zone: str = dataclasses.field(
         default='public', metadata={'validate': Validators.str_zone_name}
     )
-    rpfilter: set = dataclasses.field(
+    rpfilter: set[str] = dataclasses.field(
         default_factory=lambda: {'yes'},
         metadata={'validate': Validators.has_elements},
     )
-    flowtable: set = dataclasses.field(default_factory=set)
-    counter: set = dataclasses.field(
+    flowtable: set[str] = dataclasses.field(default_factory=set)
+    counter: set[str] = dataclasses.field(
         default_factory=lambda: {'no'},
         metadata={'validate': Validators.has_elements},
     )
@@ -297,7 +297,7 @@ class Config(TypedConfig):
     dbus_firewalld: str = dataclasses.field(
         default='no', metadata={'validate': Validators.str_yes_no}
     )
-    nft_bin: list = dataclasses.field(
+    nft_bin: list[str] = dataclasses.field(
         default_factory=lambda: ['nft'],
         metadata={
             'convert_str': shlex.split,
@@ -362,24 +362,26 @@ class Internal(TypedConfig):
         default_factory=list
     )
     # Added without default value to prevent uninitialized use
-    iplist_missing_ok: set = dataclasses.field(init=False)
+    iplist_missing_ok: set[str] = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
-    post_start: list = dataclasses.field(init=False)
-    post_stop: list = dataclasses.field(init=False)
-    pre_start: list = dataclasses.field(init=False)
-    pre_stop: list = dataclasses.field(init=False)
+    post_start: list[str] = dataclasses.field(init=False)
+    post_stop: list[str] = dataclasses.field(init=False)
+    pre_start: list[str] = dataclasses.field(init=False)
+    pre_stop: list[str] = dataclasses.field(init=False)
     priority_offset: str = dataclasses.field(init=False)
     catch_all_interface_zone: str = dataclasses.field(init=False)
     root_power: bool = dataclasses.field(init=False)  # Running as "root"?
-    zonemap_loop_check: dict = dataclasses.field(init=False)
+    zonemap_loop_check: dict[tuple[str, str, str, str], 'Rule'] = (
+        dataclasses.field(init=False)
+    )  # (szone, dzone, new_szone, new_dzone) -> Rule
 
     # Url loader
     # Constants
     url_chunk_size: int = 1_048_576
-    url_get_timeout: dict = dataclasses.field(
+    url_get_timeout: dict[str, float] = dataclasses.field(
         default_factory=lambda: {'connect': 3.05, 'read': 3.05}
     )  # Timeouts (seconds)
-    url_get_retries: dict = dataclasses.field(
+    url_get_retries: dict[str, typing.Union[int, bool]] = dataclasses.field(
         default_factory=lambda: {
             'connect': 3,
             'redirect': 3,
@@ -597,8 +599,8 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     # Internal housekeeping
     plain: bool = True  # Plain "log" or "counter" without anything else
     fileline: str = dataclasses.field(default='')  # For error messages
-    line: list = dataclasses.field(default_factory=list)  # Original line
-    only_one: dict = dataclasses.field(default_factory=dict)
+    line: list[str] = dataclasses.field(default_factory=list)  # Original line
+    only_one: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 RuleList = list[Rule]
