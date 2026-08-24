@@ -19,13 +19,13 @@ iplist {
   # Resolve known good hostnames
   @goodhost foobar.fi mydomain.com
 
-  # Download Finnish IPv4 and IPv6 addresses from https://github.com/ipverse/rir-ip
-  @fi   https://raw.githubusercontent.com/ipverse/rir-ip/master/country/fi/ipv4-aggregated.txt
-  @fi   + https://raw.githubusercontent.com/ipverse/rir-ip/master/country/fi/ipv6-aggregated.txt
+  # Download Finnish IPv4 and IPv6 addresses from https://github.com/ipverse/country-ip-blocks
+  @fi   https://raw.githubusercontent.com/ipverse/country-ip-blocks/master/country/fi/ipv4-aggregated.txt
+  @fi   + https://raw.githubusercontent.com/ipverse/country-ip-blocks/master/country/fi/ipv6-aggregated.txt
 
-  # Download Finnish Elisa operator IP addresses from https://github.com/ipverse/asn-ip
-  @elisa  https://raw.githubusercontent.com/ipverse/asn-ip/master/as/719/ipv4-aggregated.txt
-  @elisa  + https://raw.githubusercontent.com/ipverse/asn-ip/master/as/719/ipv6-aggregated.txt
+  # Download Finnish Elisa operator IP addresses from https://github.com/ipverse/as-ip-blocks
+  @elisa  https://raw.githubusercontent.com/ipverse/as-ip-blocks/master/as/719/ipv4-aggregated.txt
+  @elisa  + https://raw.githubusercontent.com/ipverse/as-ip-blocks/master/as/719/ipv6-aggregated.txt
 
   # Read blacklist from text files
   @blacklist  /etc/foomuuri/blacklist*.txt
@@ -156,8 +156,8 @@ Another example how to create a macro to allow access to Valve Steam:
 ```
 iplist {
   # Create iplist from Valve's IP addresses
-  @valve_as	 https://raw.githubusercontent.com/ipverse/asn-ip/master/as/32590/ipv4-aggregated.txt
-  @valve_as	 + https://raw.githubusercontent.com/ipverse/asn-ip/master/as/32590/ipv6-aggregated.txt
+  @valve_as	 https://raw.githubusercontent.com/ipverse/as-ip-blocks/master/as/32590/ipv4-aggregated.txt
+  @valve_as	 + https://raw.githubusercontent.com/ipverse/as-ip-blocks/master/as/32590/ipv6-aggregated.txt
 }
 
 macro {
