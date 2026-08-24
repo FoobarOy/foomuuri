@@ -54,7 +54,7 @@ class TestTypedConfig(unittest.TestCase):
         self.config = TestConfig()
 
     def test_accessor_style(self):
-        """Test dict/dot style accessor/setter."""
+        """Test index and dot access and assignment."""
         self.config.initialized_str = 'new_value1'
         self.assertEqual(self.config.initialized_str, 'new_value1')
         self.assertRaises(
@@ -70,12 +70,12 @@ class TestTypedConfig(unittest.TestCase):
         self.assertRaises(AttributeError, self.set, 'unknown_attribute', '123')
 
     def test_initialized_typed(self):
-        """Test assigning values to initialized typed attributes."""
+        """Test assignment to initialized typed attributes."""
         self.assertRaises(TypeError, self.set, 'initialized_str', 123)
         self.assertEqual(self.set('initialized_str', 'value'), 'value')
 
     def test_uninitialized_typed(self):
-        """Test assigning values to uninialized typed attributes."""
+        """Test assignment to uninitialized typed attributes."""
         self.assertRaises(
             AttributeError, lambda: self.config.uninitialized_str
         )
@@ -83,13 +83,18 @@ class TestTypedConfig(unittest.TestCase):
         self.assertEqual(self.set('uninitialized_str', 'value'), 'value')
 
     def test_initialized_untyped(self):
-        """Test accessing listed untyped attributes."""
-        self.assertRaises(
-            AttributeError, lambda: self.config.uninitialized_untyped
-        )
+        """Test access to initialized untyped attribute.
+
+        Untyped attributes can be read, but cannot be written to.
+        Gating attribute reads via dataclass fields membership is expensive and
+        is not needed anyway.
+        """
+        self.assertEqual(self.config.initialized_untyped, 'init_value2')
+        with self.assertRaises(AttributeError):
+            self.config.initialized_untyped = 'new_value'
 
     def test_union_type(self):
-        """Test assigning values to Union attributes."""
+        """Test assignment to Union attributes."""
         self.config.union_str_or_none = 'value'
         self.assertEqual(self.config.union_str_or_none, 'value')
         self.config.union_str_or_none = None
@@ -98,7 +103,7 @@ class TestTypedConfig(unittest.TestCase):
             self.config.union_str_or_none = 1  # ty: ignore[invalid-assignment]
 
     def test_set_from_str(self):
-        """Test attribute type conversion from str (set_from_str)."""
+        """Test attribute type conversion from strings."""
         # Invalid value type: only str supported
         self.assertRaises(
             TypeError, self.config.set_from_str, 'type_conversion_int', 123
@@ -137,7 +142,7 @@ class TestTypedConfig(unittest.TestCase):
         )
 
     def test_append_from_str(self):
-        """Test attribute value append from str (append_from_str)."""
+        """Test attribute type conversion and appending from strings."""
         # Invalid value type: only str supported
         self.assertRaises(
             TypeError, self.config.append_from_str, 'initialized_str', 123
@@ -176,12 +181,12 @@ class TestTypedConfig(unittest.TestCase):
         )
 
     def test_validation(self):
-        """Test attribute validation helper call."""
+        """Test attribute metadata validation."""
         self.assertRaises(ValueError, self.set, 'validation', '')
         self.assertEqual(self.set('validation', 'test'), 'test')
 
     def test_iter(self):
-        """Test __iter__."""
+        """Test dataclass field names iteration."""
         self.assertEqual(
             sorted(self.config),
             [
@@ -198,7 +203,12 @@ class TestTypedConfig(unittest.TestCase):
             ],
         )
 
+    def test_contains(self):
+        """Test dataclass field name membership."""
+        self.assertIn('initialized_str', self.config)
+        self.assertNotIn('unknown_attribute', self.config)
+
     def test_get(self):
-        """Test get."""
+        """Test get() attribute lookup."""
         self.assertEqual(self.config.get('initialized_str'), 'init_value1')
-        self.assertEqual(self.config.get('unknown_attr'), None)
+        self.assertEqual(self.config.get('unknown_attribute'), None)
