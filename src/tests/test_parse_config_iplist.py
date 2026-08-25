@@ -410,12 +410,3 @@ class TestIplistParseConfig(unittest.TestCase):
                 iplists['@bar'].options.element_timeout,
                 parse_duration('1m30s', -1),
             )
-
-    def test_internal_iplist_missing_ok_init(self, _, INTERNAL, *__):
-        """Test INTERNAL.iplist_missing_ok is initialized."""
-        with self.mock_config_foomuuri():
-            self.assertRaises(
-                AttributeError, lambda: INTERNAL.iplist_missing_ok
-            )
-            _ = parse_config_iplist(minimal_config())
-            self.assertEqual(INTERNAL.iplist_missing_ok, set())

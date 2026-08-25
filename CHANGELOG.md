@@ -5,6 +5,11 @@
 * Add support for `==`, `!=`, `<`, `>`, `<=` and `>=` compare operators
   when matching numeric values. For example `tcp < 1024`.
 * Add support for `localhost-public { accept }` single line syntax.
+* With iplist filter `|missing-ok`, a warning is printed instead of an
+  error if:
+  * DNS resolution or URL/file download fails.
+  * Resolution/download succeeds, but the content is empty.
+  Without `|missing-ok`, any of these conditions causes an error.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
 * Fix: Support numeric ranges in `uid` and `gid` matchers. (#214)

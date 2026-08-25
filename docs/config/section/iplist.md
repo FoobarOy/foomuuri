@@ -95,7 +95,9 @@ URL or hostname. Multiple filters can be chained.
 * `|json:filter` use external `jq` command to parse it as JSON data
 * `|html:XPath` parse it as HTML data, using XPath filter
 * `|xml:XPath` parse it as XML data, using XPath filter
-* `|missing-ok` don't print warning if download or DNS resolve fails
+* `|missing-ok` print a warning instead of an error if:
+    * DNS resolution or URL/file download fails.
+    * Resolution/download succeeds, but the content is empty.
 
 Example:
 

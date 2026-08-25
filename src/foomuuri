@@ -362,7 +362,6 @@ class Internal(TypedConfig):
         default_factory=list
     )
     # Added without default value to prevent uninitialized use
-    iplist_missing_ok: set[str] = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
     post_start: list[str] = dataclasses.field(init=False)
     post_stop: list[str] = dataclasses.field(init=False)
@@ -4328,9 +4327,7 @@ def resolve_all_hostnames(resolve, cache):
                     f'Hostname "{remove_filters(hostname)}" resolved '
                     f'to: {", ".join(addrlist)}'
                 )
-            elif '|missing-ok' in hostname:
-                INTERNAL.iplist_missing_ok.add(hostname)
-            else:
+            elif '|missing-ok' not in hostname:
                 warning(
                     f'No IP address found for hostname '
                     f'"{remove_filters(hostname)}" in iplist'
@@ -4397,9 +4394,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             f'No python-urllib3 installed'
         )
     except (ValueError, urllib3.exceptions.HTTPError) as error:
-        if '|missing-ok' in url:
-            INTERNAL.iplist_missing_ok.add(url)
-        else:
+        if '|missing-ok' not in url:
             warning(
                 f'Can\'t download iplist URL "{remove_filters(url)}": {error}'
             )
@@ -4414,9 +4409,7 @@ def get_file(wildcard):
     wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        if '|missing-ok' in wildcard:
-            INTERNAL.iplist_missing_ok.add(wildcard)
-        else:
+        if '|missing-ok' not in wildcard:
             warning(
                 f'Can\'t read iplist file "{remove_filters(wildcard)}": '
                 f'No such file'
@@ -4726,6 +4719,8 @@ def get_url_or_file(
             f'Iplist content for "{url}" refreshed, '
             f'{len(cache[url]["ip"])} entries'
         )
+        if not cache[url]['ip'] and '|missing-ok' not in url:
+            warning(f'No IP addresses listed in "{remove_filters(url)}"')
 
 
 def str_to_time(timestamp):
@@ -4920,7 +4915,6 @@ def parse_config_iplist(config) -> IPLists:
     if CONFIG.verbose >= 2:
         for name, iplist in iplists.items():
             verbose(f'{name:9s}  {" ".join(iplist.sources)}')
-    INTERNAL.iplist_missing_ok = set()
     return iplists
 
 
@@ -5058,7 +5052,7 @@ def iplist_output_values(
             and not cache[setname]['ip']
             and INTERNAL.command == 'iplist'
         ):
-            if all(name in INTERNAL.iplist_missing_ok for name in setvalues):
+            if all('|missing-ok' in name for name in setvalues):
                 warning(f'Iplist "{setname}" is empty')
             else:
                 fail(f'Iplist "{setname}" is empty', False)
