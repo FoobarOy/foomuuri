@@ -11,7 +11,6 @@ from foomuuri import INTERNAL as BASE_INTERNAL
 from foomuuri import parse_command_line
 
 
-@unittest.mock.patch('foomuuri.CONFIG_OVERRIDE', new_callable=dict)
 @unittest.mock.patch(
     'foomuuri.CONFIG', new_callable=lambda: copy.deepcopy(BASE_CONFIG)
 )
@@ -46,59 +45,59 @@ class TestParseCommandLine(unittest.TestCase):
         'sys.argv',
         ['foomuuri', '--verbose', 'command', 'arg1', '--force', 'arg2'],
     )
-    def test_command_and_options(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_command_and_options(self, INTERNAL, CONFIG):
         """Test command with arguments, mixed with options."""
         parse_command_line()
         self.assertEqual(INTERNAL.command, 'command')
         self.assertEqual(INTERNAL.parameters, ['arg1', 'arg2'])
         self.assertEqual(INTERNAL.force, 1)
         self.assertEqual(CONFIG.verbose, 1)
-        self.assertEqual(CONFIG_OVERRIDE['verbose'], 1)
+        self.assertEqual(INTERNAL.config_override['verbose'], 1)
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--syslog', '--fork'])
-    def test_options_syslog_fork(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_options_syslog_fork(self, INTERNAL, CONFIG):
         """Test --syslog and --fork options."""
         parse_command_line()
         self.assertEqual(CONFIG.syslog, 1)
         self.assertEqual(CONFIG.fork, 1)
-        self.assertEqual(CONFIG_OVERRIDE['syslog'], 1)
-        self.assertEqual(CONFIG_OVERRIDE['fork'], 1)
+        self.assertEqual(INTERNAL.config_override['syslog'], 1)
+        self.assertEqual(INTERNAL.config_override['fork'], 1)
         self.assertEqual(INTERNAL.command, '')
         self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--verbose'])
-    def test_option_verbose(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_option_verbose(self, INTERNAL, CONFIG):
         """Test --verbose option."""
         parse_command_line()
         self.assertEqual(CONFIG.verbose, 1)
-        self.assertEqual(CONFIG_OVERRIDE['verbose'], 1)
+        self.assertEqual(INTERNAL.config_override['verbose'], 1)
         self.assertEqual(INTERNAL.command, '')
         self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--verbose', '--verbose'])
-    def test_options_verbose_verbose(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_options_verbose_verbose(self, INTERNAL, CONFIG):
         """Test --verbose --verbose options."""
         parse_command_line()
         self.assertEqual(CONFIG.verbose, 2)
-        self.assertEqual(CONFIG_OVERRIDE['verbose'], 2)
+        self.assertEqual(INTERNAL.config_override['verbose'], 2)
         self.assertEqual(INTERNAL.command, '')
         self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--quiet'])
-    def test_option_quiet(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_option_quiet(self, INTERNAL, CONFIG):
         """Test --quiet option."""
         parse_command_line()
         self.assertEqual(CONFIG.verbose, -1)
-        self.assertEqual(CONFIG_OVERRIDE['verbose'], -1)
+        self.assertEqual(INTERNAL.config_override['verbose'], -1)
         self.assertEqual(INTERNAL.command, '')
         self.assertEqual(INTERNAL.parameters, [])
 
     @unittest.mock.patch('sys.argv', ['foomuuri', '--verbose', '--quiet'])
-    def test_options_verbose_quiet(self, INTERNAL, CONFIG, CONFIG_OVERRIDE):
+    def test_options_verbose_quiet(self, INTERNAL, CONFIG):
         """Test --verbose --quiet options."""
         parse_command_line()
         self.assertEqual(CONFIG.verbose, 0)
-        self.assertEqual(CONFIG_OVERRIDE['verbose'], 0)
+        self.assertEqual(INTERNAL.config_override['verbose'], 0)
         self.assertEqual(INTERNAL.command, '')
         self.assertEqual(INTERNAL.parameters, [])
 
@@ -154,7 +153,7 @@ class TestParseCommandLine(unittest.TestCase):
         'sys.argv',
         ['foomuuri', '--set=priority_offset=42', '--set=set_size=1'],
     )
-    def test_options_set_valid(self, INTERNAL, CONFIG, _):
+    def test_options_set_valid(self, INTERNAL, CONFIG):
         """Test --set options with valid foomuuri{} CONFIG option/value."""
         parse_command_line()
         self.assertEqual(CONFIG.priority_offset, 42)

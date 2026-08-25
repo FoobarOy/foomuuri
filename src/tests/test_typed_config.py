@@ -44,6 +44,11 @@ class TestTypedConfig(unittest.TestCase):
             type_conversion_list: list = field(default_factory=list)
             type_conversion_posixpath: pathlib.PosixPath = field(init=False)
             type_conversion_set: set = field(default_factory=set)
+            parametrized_list: list[str] = field(default_factory=list)
+            parametrized_dict: dict[str, int] = field(default_factory=dict)
+            parametrized_union: typing.Union[list[str], int] = field(
+                default_factory=list
+            )
             validation: str = field(
                 init=False, metadata={'validate': lambda v: v}
             )
@@ -68,6 +73,26 @@ class TestTypedConfig(unittest.TestCase):
         )
 
         self.assertRaises(AttributeError, self.set, 'unknown_attribute', '123')
+
+    def test_parameterized_types(self):
+        """Test assigning parametrized types attributes."""
+        self.assertListEqual(
+            self.set('parametrized_list', ['value']), ['value']
+        )
+        self.assertDictEqual(
+            self.set('parametrized_dict', {'key': 1}), {'key': 1}
+        )
+        with self.assertRaises(TypeError):
+            self.set('parametrized_list', {})
+        with self.assertRaises(TypeError):
+            self.set('parametrized_dict', [])
+
+    def test_parameterized_union_types(self):
+        """Test assigning to Union attributes with parametrized args."""
+        self.assertEqual(self.set('parametrized_union', ['value']), ['value'])
+        self.assertEqual(self.set('parametrized_union', 1), 1)
+        with self.assertRaises(TypeError):
+            self.set('parametrized_union', {'key': 1})
 
     def test_initialized_typed(self):
         """Test assignment to initialized typed attributes."""
@@ -125,6 +150,15 @@ class TestTypedConfig(unittest.TestCase):
             self.set_from_str('type_conversion_set', '1 2 2 3 4'),
             {'1', '2', '3', '4'},
         )
+        # Supported conversion, from str to parametrized list
+        self.assertEqual(
+            self.set_from_str('parametrized_list', '1 2'),
+            ['1', '2'],
+        )
+        # Unsupported conversion, from str to parametrized dict
+        self.assertRaises(
+            TypeError, self.config.set_from_str, 'parametrized_dict', 'key'
+        )
         # Assignment, str to str
         self.assertEqual(self.set_from_str('initialized_str', '123'), '123')
         # Assignment, list converted from str
@@ -171,6 +205,22 @@ class TestTypedConfig(unittest.TestCase):
             self.append_from_str('type_conversion_set', '2 3'),
             {'1', '2', '3'},
         )
+        # Appending, str to parametrized list
+        self.assertEqual(
+            self.set_from_str('parametrized_list', '1 2'),
+            ['1', '2'],
+        )
+        self.assertEqual(
+            self.append_from_str('parametrized_list', '2 3'),
+            ['1', '2', '2', '3'],
+        )
+        # Unsupported append, from str to parametrized dict
+        self.assertRaises(
+            TypeError,
+            self.config.append_from_str,
+            'parametrized_dict',
+            'key',
+        )
         # Unsupported append, from str to int
         self.assertRaises(
             TypeError, self.append_from_str, 'type_conversion_int', '1'
@@ -192,6 +242,9 @@ class TestTypedConfig(unittest.TestCase):
             [
                 'conversion',
                 'initialized_str',
+                'parametrized_dict',
+                'parametrized_list',
+                'parametrized_union',
                 'type_conversion_float',
                 'type_conversion_int',
                 'type_conversion_list',

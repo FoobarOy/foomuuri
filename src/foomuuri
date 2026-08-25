@@ -141,10 +141,7 @@ class TypedConfig:
     def __setattr__(self, name: str, value: object) -> None:
         """Validate and set attribute value."""
         field = self._get_field(name)
-        expected_type: typing.Any = field.type
-        # Work around Python 3.9's handling of Union type hints.
-        if typing.get_origin(expected_type) is typing.Union:
-            expected_type = typing.get_args(expected_type)
+        expected_type = self._isinstance_target(field.type)
         if not isinstance(value, expected_type):
             raise TypeError(
                 f'{name}: expected value type {field.type}, got {type(value)}'
@@ -153,6 +150,21 @@ class TypedConfig:
         if validator and not validator(value):
             raise ValueError(f'{name}: value failed validation')
         super().__setattr__(name, value)
+
+    @staticmethod
+    def _isinstance_target(expected_type):
+        """Return isinstance() target of a type hint.
+
+        Convert parameterized hints to their origin and typing.Union
+        hints to tuples of targets.
+        """
+        type_origin = typing.get_origin(expected_type)
+        if type_origin is typing.Union:
+            return tuple(
+                TypedConfig._isinstance_target(arg)
+                for arg in typing.get_args(expected_type)
+            )
+        return type_origin or expected_type
 
     def get(self, name: str, default: typing.Any = None) -> typing.Any:
         """Get attribute value."""
@@ -176,22 +188,16 @@ class TypedConfig:
         # pylint: disable=no-member
         return name in self.__dataclass_fields__
 
-    def _check_set_append_args(
-        self, name: str, value: str
-    ) -> dataclasses.Field:
-        """Return field after validating name and value."""
-        field = self._get_field(name)
-        if not isinstance(value, str):
-            raise TypeError(
-                f'{name}: expected value type {str}, got {type(value)}'
-            )
-        return field
-
-    @staticmethod
-    def _convert_set_append_value(
-        field: dataclasses.Field, value: str
+    def _convert_from_str(
+        self, field: dataclasses.Field, value: str
     ) -> typing.Any:
         """Convert string using field type and metadata."""
+        if not isinstance(value, str):
+            raise TypeError(
+                f'{field.name}: expected value type {str}, got {type(value)}'
+            )
+        expected_type = self._isinstance_target(field.type)
+
         # "Built-in" value converters. Executed when
         # convert_str is not defined in field metadata.
         implicit_converters = {
@@ -203,11 +209,10 @@ class TypedConfig:
 
         if converter := (
             field.metadata.get('convert_str')
-            or implicit_converters.get(field.type)
+            or implicit_converters.get(expected_type)
         ):
             return converter(value)
-        field_type: typing.Any = field.type
-        if isinstance(value, field_type):
+        if isinstance(value, expected_type):
             return value
         raise TypeError(
             f'{field.name}: value conversion to {field.type} not implemented'
@@ -215,14 +220,15 @@ class TypedConfig:
 
     def set_from_str(self, name: str, value: str) -> None:
         """Set attribute value converted from string."""
-        field = self._check_set_append_args(name, value)
-        new_value = self._convert_set_append_value(field, value)
+        field = self._get_field(name)
+        new_value = self._convert_from_str(field, value)
         setattr(self, name, new_value)
 
     def append_from_str(self, name: str, value: str) -> None:
         """Append attribute value converted from string."""
-        field = self._check_set_append_args(name, value)
-        new_value = self._convert_set_append_value(field, value)
+        field = self._get_field(name)
+        new_value = self._convert_from_str(field, value)
+        expected_type = self._isinstance_target(field.type)
 
         # "Built-in" implicit appenders.
         implicit_appenders = {
@@ -231,9 +237,8 @@ class TypedConfig:
             list: lambda value, append: value + append,
         }
 
-        field_type: typing.Any = field.type
-        if (appender := implicit_appenders.get(field.type)) and isinstance(
-            new_value, field_type
+        if (appender := implicit_appenders.get(expected_type)) and isinstance(
+            new_value, expected_type
         ):
             new_value = appender(self[name], new_value)
         else:
@@ -273,12 +278,12 @@ class Config(TypedConfig):
     dbus_zone: str = dataclasses.field(
         default='public', metadata={'validate': Validators.str_zone_name}
     )
-    rpfilter: set = dataclasses.field(
+    rpfilter: set[str] = dataclasses.field(
         default_factory=lambda: {'yes'},
         metadata={'validate': Validators.has_elements},
     )
-    flowtable: set = dataclasses.field(default_factory=set)
-    counter: set = dataclasses.field(
+    flowtable: set[str] = dataclasses.field(default_factory=set)
+    counter: set[str] = dataclasses.field(
         default_factory=lambda: {'no'},
         metadata={'validate': Validators.has_elements},
     )
@@ -292,7 +297,7 @@ class Config(TypedConfig):
     dbus_firewalld: str = dataclasses.field(
         default='no', metadata={'validate': Validators.str_yes_no}
     )
-    nft_bin: list = dataclasses.field(
+    nft_bin: list[str] = dataclasses.field(
         default_factory=lambda: ['nft'],
         metadata={
             'convert_str': shlex.split,
@@ -343,27 +348,40 @@ class Internal(TypedConfig):
         default_factory=list
     )  # Parameters for command
     force: int = 0  # --force
+    config_override: dict[str, typing.Union[str, int]] = dataclasses.field(
+        default_factory=dict
+    )
 
     # Other internally used variables
+    # Lograte names and limits: name -> (log statement, rule statement)
+    logrates: dict[str, tuple[str, str]] = dataclasses.field(
+        default_factory=dict
+    )
+    # List of helpers: (helper, protocol, ports)
+    helpers: list[tuple[str, str, str]] = dataclasses.field(
+        default_factory=list
+    )
     # Added without default value to prevent uninitialized use
-    iplist_missing_ok: set = dataclasses.field(init=False)
+    iplist_missing_ok: set[str] = dataclasses.field(init=False)
     keep_going: int = dataclasses.field(init=False)
-    post_start: list = dataclasses.field(init=False)
-    post_stop: list = dataclasses.field(init=False)
-    pre_start: list = dataclasses.field(init=False)
-    pre_stop: list = dataclasses.field(init=False)
+    post_start: list[str] = dataclasses.field(init=False)
+    post_stop: list[str] = dataclasses.field(init=False)
+    pre_start: list[str] = dataclasses.field(init=False)
+    pre_stop: list[str] = dataclasses.field(init=False)
     priority_offset: str = dataclasses.field(init=False)
     catch_all_interface_zone: str = dataclasses.field(init=False)
     root_power: bool = dataclasses.field(init=False)  # Running as "root"?
-    zonemap_loop_check: dict = dataclasses.field(init=False)
+    zonemap_loop_check: dict[tuple[str, str, str, str], 'Rule'] = (
+        dataclasses.field(init=False)
+    )  # (szone, dzone, new_szone, new_dzone) -> Rule
 
     # Url loader
     # Constants
     url_chunk_size: int = 1_048_576
-    url_get_timeout: dict = dataclasses.field(
+    url_get_timeout: dict[str, float] = dataclasses.field(
         default_factory=lambda: {'connect': 3.05, 'read': 3.05}
     )  # Timeouts (seconds)
-    url_get_retries: dict = dataclasses.field(
+    url_get_retries: dict[str, typing.Union[int, bool]] = dataclasses.field(
         default_factory=lambda: {
             'connect': 3,
             'redirect': 3,
@@ -581,8 +599,8 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     # Internal housekeeping
     plain: bool = True  # Plain "log" or "counter" without anything else
     fileline: str = dataclasses.field(default='')  # For error messages
-    line: list = dataclasses.field(default_factory=list)  # Original line
-    only_one: dict = dataclasses.field(default_factory=dict)
+    line: list[str] = dataclasses.field(default_factory=list)  # Original line
+    only_one: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 RuleList = list[Rule]
@@ -593,12 +611,9 @@ SpecialChainRules = dict[SpecialChainKey, RuleList]
 
 
 CONFIG = Config()
-CONFIG_OVERRIDE = {}
 INTERNAL = Internal()
 
 OUT = []  # Generated nftables ruleset / commands
-LOGRATES = {}  # Lograte names and limits
-HELPERS = []  # List of helpers: (helper-object, protocol, ports)
 
 
 def fail(error: str, fatal: bool = True) -> int:
@@ -1315,7 +1330,7 @@ def parse_config_foomuuri(config):
             )
 
     # Overrides from CLI arguments
-    for name, value in CONFIG_OVERRIDE.items():
+    for name, value in INTERNAL.config_override.items():
         CONFIG.set_from_str(name, str(value))
 
     # Reinitialize syslogging, foomuuri{} may have a different syslog setting
@@ -1613,6 +1628,8 @@ def verify_rule_sanity(rule: Rule, fileline: str) -> None:
     for basic, extra in (
         ('protocol', 'sport'),
         ('protocol', 'dport'),
+        ('protocol', 'helper'),
+        ('dport', 'helper'),
         ('saddr_rate', 'saddr_rate_name'),
         ('saddr_rate', 'saddr_rate_mask'),
         ('daddr_rate', 'daddr_rate_name'),
@@ -2348,8 +2365,8 @@ def rule_statement(
             )
             if statement == 'continue':
                 return f'{prefix}{rate}{log_nft}'
-            logname = f'lograte_{len(LOGRATES) + 1}'
-            LOGRATES[logname] = (f'{rate}{log_nft}', statement)
+            logname = f'lograte_{len(INTERNAL.logrates) + 1}'
+            INTERNAL.logrates[logname] = (f'{rate}{log_nft}', statement)
             return f'{prefix}jump {logname}'
         prefix += f'{log_nft} '
 
@@ -2754,7 +2771,13 @@ def output_cast(
         if rule.helper:
             if rule.helper.count('-') != 1:
                 fail(f'{rule.fileline}Invalid helper name: {rule.helper}')
-            HELPERS.append((rule.helper, rule.protocol, rule.dport))
+            INTERNAL.helpers.append(
+                (
+                    rule.helper,
+                    typing.cast('str', rule.protocol),
+                    typing.cast('str', rule.dport),
+                )
+            )
             kernelname = rule.helper.split('-')[0].replace('_', '-')
             out(f'ct helper "{kernelname}" {rule.statement}')
     return has_needle_rule
@@ -3266,7 +3289,7 @@ def optimize_jumps():
         line = OUT[linenum]
         if line.startswith('jump lograte_'):
             logname = line.split()[1]
-            log_nft, statement = LOGRATES.pop(logname)
+            log_nft, statement = INTERNAL.logrates.pop(logname)
             OUT[linenum] = log_nft
             OUT.insert(linenum + 1, statement)
         linenum += 1
@@ -3284,7 +3307,7 @@ def optimize_final_rules():
 
 def output_logrates():
     """Output non-optimized lograte entries as chains."""
-    for logname, (log_nft, statement) in LOGRATES.items():
+    for logname, (log_nft, statement) in INTERNAL.logrates.items():
         out(f'chain {logname} {{')
         out(log_nft)
         out(statement)
@@ -3341,7 +3364,7 @@ def output_helpers():
     """Output helpers."""
     # Convert helper list to helper->proto->set(ports) dict
     helpers = {}
-    for name, proto, ports in HELPERS:
+    for name, proto, ports in INTERNAL.helpers:
         if name not in helpers:
             helpers[name] = {}
         if proto not in helpers[name]:
@@ -5962,14 +5985,18 @@ def parse_command_line():
         elif arg == '--verbose':
             option = arg[2:]
             CONFIG[option] += 1
-            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) + 1
+            INTERNAL.config_override[option] = (
+                int(INTERNAL.config_override.get(option, 0)) + 1
+            )
         elif arg == '--quiet':
             option = 'verbose'
             CONFIG[option] -= 1
-            CONFIG_OVERRIDE[option] = CONFIG_OVERRIDE.get(option, 0) - 1
+            INTERNAL.config_override[option] = (
+                int(INTERNAL.config_override.get(option, 0)) - 1
+            )
         elif arg in {'--fork', '--syslog'}:
             CONFIG[arg[2:]] = 1
-            CONFIG_OVERRIDE[arg[2:]] = 1
+            INTERNAL.config_override[arg[2:]] = 1
         elif arg == '--force':
             INTERNAL.force += 1
         elif arg == '--soft':
@@ -5982,7 +6009,7 @@ def parse_command_line():
                 fail(f'Unknown foomuuri{{}} option: {option}')
             try:
                 CONFIG.set_from_str(option, value)
-                CONFIG_OVERRIDE[option] = value
+                INTERNAL.config_override[option] = value
             except ValueError:
                 fail(f'Invalid foomuuri{{}} option {option} value: {value}')
         elif arg.startswith('--'):

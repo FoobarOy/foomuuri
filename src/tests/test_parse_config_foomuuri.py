@@ -101,13 +101,12 @@ class TestParseConfigFoomuuri(unittest.TestCase):
                 ' option value: priority_offset not_an_int'
             )
 
-    @unittest.mock.patch('foomuuri.CONFIG_OVERRIDE', new_callable=dict)
-    def test_config_override(self, CONFIG_OVERRIDE, CONFIG, *_):
-        """Test overriding of CONFIG from CONFIG_OVERRRIDE."""
+    def test_config_override(self, CONFIG, INTERNAL):
+        """Test overriding of CONFIG from config_override."""
 
         def test_override(option, override, config):
             with self.mock_config_foomuuri(option, '0'):
-                CONFIG_OVERRIDE[option] = override
+                INTERNAL.config_override[option] = override
                 _ = minimal_config()
                 self.assertEqual(CONFIG[option], config)
 
