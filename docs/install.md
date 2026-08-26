@@ -1,146 +1,125 @@
 # Installation
 
-The easiest way to install Foomuuri is to use packages from your Linux
-distribution.
+The recommended way to install Foomuuri is through your Linux distribution's
+package manager, using the instructions for your platform below.
 
-See [host firewall](example/host-firewall.md) for example `/etc/foomuuri/foomuuri.conf`
-configuration file.
+For a sample configuration, see the [host firewall
+example](example/host-firewall.md), which documents a typical
+`/etc/foomuuri/foomuuri.conf` file.
 
 
-## Fedora, RHEL, CentOS Stream
+## Fedora, RHEL and CentOS Stream
 
-Foomuuri is included to Fedora and to EPEL.
+Foomuuri is included in Fedora and EPEL.
 
-```
-# Install packages
+```sh
 dnf install foomuuri foomuuri-firewalld
-
-# Configure Foomuuri and verify it
-$EDITOR /etc/foomuuri/foomuuri.conf
-foomuuri check
-
-# Disable and stop current firewall, for example:
-systemctl disable firewalld.service
-systemctl disable shorewall.service
-systemctl disable shorewall6.service
-systemctl disable shorewall-init.service
-nft flush ruleset
-
-# Start Foomuuri
-systemctl start foomuuri.service
-
-# Check journal log for firewall logging
-journalctl --follow --dmesg
-
-# If everything works, make Foomuuri persistent across reboots
-systemctl enable foomuuri.service
 ```
 
+Continue with [post-installation configuration](#post-installation-configuration).
 
-## Debian, Ubuntu
 
-Foomuuri is include to Debian sid, forky, trixie (13) and bookworm-backports
-(12), Ubuntu 23.10 (Mantic) and Ubuntu 24.04 (Noble).
+## Debian and Ubuntu
 
-```
-# Install packages
+Foomuuri is included in Debian sid, forky, and trixie (13), as well as
+bookworm-backports (12), and in Ubuntu 23.10 (Mantic) and 24.04 (Noble).
+
+```sh
 apt install foomuuri foomuuri-firewalld
-
-# Configure Foomuuri and verify it
-$EDITOR /etc/foomuuri/foomuuri.conf
-foomuuri check
-
-# Disable and stop current firewall, for example:
-systemctl disable firewalld.service
-systemctl disable shorewall.service
-systemctl disable shorewall6.service
-systemctl disable shorewall-init.service
-nft flush ruleset
-
-# Start Foomuuri
-systemctl start foomuuri.service
-
-# Check journal log for firewall logging
-journalctl --follow --dmesg
-
-# If everything works, make Foomuuri persistent across reboots
-systemctl enable foomuuri.service
 ```
+
+Continue with [post-installation configuration](#post-installation-configuration).
 
 
 ## Arch Linux
 
-Foomuuri is included to Arch User Repository (AUR).
+Foomuuri is available in the Arch User Repository (AUR).
 
-```
-# Build and install packages
+```sh
+# Build and install the package
 git clone https://aur.archlinux.org/foomuuri.git
 cd foomuuri
 makepkg
 pacman -U foomuuri-*-x86_64.pkg.tar.zst
-
-# Configure Foomuuri and verify it
-$EDITOR /etc/foomuuri/foomuuri.conf
-foomuuri check
-
-# Disable and stop current firewall, for example:
-systemctl disable firewalld.service
-systemctl disable shorewall.service
-systemctl disable shorewall6.service
-systemctl disable shorewall-init.service
-nft flush ruleset
-
-# Start Foomuuri
-systemctl start foomuuri.service
-
-# Check journal log for firewall logging
-journalctl --follow --dmesg
-
-# If everything works, make Foomuuri persistent across reboots
-systemctl enable foomuuri.service
 ```
 
+Continue with [post-installation configuration](#post-installation-configuration).
 
-## Source code
 
-Source code tarball is available in
+## Building from Source
+
+Source tarballs are available on the
 [releases page](https://github.com/FoobarOy/foomuuri/releases).
 
-Foomuuri depends on `nftables` (version 1.0.0 or higher, with JSON support
-enabled) and `python` (version 3.9 or higher). Optional but highly
-recommended D-Bus support needs `python3-dbus` and `python3-gobject`
-(called `python3-gi` in some distributions).
+**Requirements**
 
-Optionally Foomuuri will use `python3-systemd`, `python3-urllib3` and
-`python3-lxml` if they are available.
+- `nftables` version 1.0.0 or higher, built with JSON support
+- `python` version 3.9 or higher
 
-```
-# Untar source
+**Recommended**
+
+- `python3-dbus` and `python3-gobject` (`python3-gi` on some distributions)
+  — required for D-Bus support
+
+**Optional**
+
+- `python3-systemd`
+- `python3-urllib3`
+- `python3-lxml`
+
+```sh
+# Extract the source
 tar xf foomuuri-0.??.tar.gz
 cd foomuuri-0.??
 
-# Install it to root filesystem
+# Install to the root filesystem
 make install DESTDIR=/
 systemctl daemon-reload
 sysctl --system
-
-# Configure Foomuuri and verify it
-$EDITOR /etc/foomuuri/foomuuri.conf
-foomuuri check
-
-# Disable and stop current firewall, for example:
-systemctl disable firewalld.service
-systemctl disable shorewall.service
-systemctl disable shorewall6.service
-systemctl disable shorewall-init.service
-nft flush ruleset
-
-# Start Foomuuri
-systemctl start foomuuri.service
-
-# Check journal log for firewall logging
-journalctl --follow --dmesg
-
-# If everything works, make Foomuuri persistent across reboots
-systemctl enable foomuuri.service
 ```
+
+Continue with [post-installation configuration](#post-installation-configuration).
+
+
+## Post-installation configuration
+
+These steps apply regardless of how Foomuuri was installed.
+
+1.  Configure and validate:
+
+    ```sh
+    $EDITOR /etc/foomuuri/foomuuri.conf
+    foomuuri check
+    ```
+
+    For a sample configuration, see the
+	[host firewall example](example/host-firewall.md).
+
+
+2.  Disable and stop any existing firewall service, for example:
+
+    ```sh
+    systemctl disable firewalld.service
+    systemctl disable shorewall.service
+    systemctl disable shorewall6.service
+    systemctl disable shorewall-init.service
+    nft flush ruleset
+    ```
+
+3.  Start Foomuuri:
+
+    ```sh
+    systemctl start foomuuri.service
+    ```
+
+4.  Verify firewall logging in the system journal:
+
+    ```sh
+    journalctl --follow --dmesg
+    ```
+
+5.  Enable Foomuuri at boot, once you have confirmed it is working correctly:
+
+    ```sh
+    systemctl enable foomuuri.service
+    ```
