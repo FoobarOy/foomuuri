@@ -395,6 +395,11 @@ class Internal(TypedConfig):
         }
     )  # Retries count and redirect behaviour
 
+    # Iplist expire constants (in seconds)
+    # Expire values over expire_max are normalized to expire_forever
+    expire_max: int = 2 * 365 * 86400  # "Forever" borderline value
+    expire_forever: int = 4_000_000_000  # Actual "forever" value (year 2096)
+
 
 @dataclasses.dataclass
 class IPListOptions(TypedConfig):
@@ -4281,8 +4286,8 @@ def iplist_verify_filters(name, values, fileline):
 
 def normalize_expire(now: int, timeout: int) -> int:
     """Add timeout to now. If it is too large return "forever"."""
-    if timeout > 2 * 365 * 86400:  # More than 2 year
-        return 4000000000  # Year 2096 is forever
+    if timeout > Internal.expire_max:
+        return Internal.expire_forever
     return now + timeout
 
 
@@ -5036,7 +5041,7 @@ def iplist_output_values(
         for value in setvalues:
             # Static IP address doesn't need refresh, so timeout is forever
             if get_ip_family(value, allow_negative=False):
-                cache[setname]['ip'][value] = 4000000000  # forever
+                cache[setname]['ip'][value] = Internal.expire_forever
                 cache[setname]['dirty'] = True
                 continue
 
