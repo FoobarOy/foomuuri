@@ -89,6 +89,9 @@ ruleset or only specified **ZONE-ZONE**.
 **counter list [COUNTER]...**
 : List all or specified named COUNTER(s).
 
+**counter reset [COUNTER]...**
+: Reset all or specified named COUNTER(s) values.
+
 **iplist status [IPLIST]...**
 : List number of entries of all or specified IPLIST(s).
 

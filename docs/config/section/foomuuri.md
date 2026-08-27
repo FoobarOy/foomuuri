@@ -30,6 +30,7 @@ foomuuri {
   rpfilter yes
   flowtable no
   counter no
+  permanent_counter no
   set_size 65535
   recursion_limit 10000
   priority_offset 5
@@ -84,6 +85,9 @@ enables hardware offloading (make sure your interface supports
 * `no` to not add it
 * `localhost-public public-localhost` to add it to all rules in
   `localhost-public` and `public-localhost` sections
+
+`permanent_counter` is to preserve named counter values across
+`foomuuri reload`. They are not preserved across a reboot.
 
 `set_size` is the size of [rate limit](../rule/ratelimit.md) set,
 [log rate limit](../rule/logging.md) set and

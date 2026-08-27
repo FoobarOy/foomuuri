@@ -5,6 +5,10 @@
 * Add support for `==`, `!=`, `<`, `>`, `<=` and `>=` compare operators
   when matching numeric values. For example `tcp < 1024`.
 * Add support for `localhost-public { accept }` single line syntax.
+* Add `permanent_counter` option to `foomuuri` section (default: `no`).
+  When enabled, named counter values are preserved across `foomuuri reload`.
+  They are not preserved across a reboot.
+* Add `foomuuri counter reset` command to reset named counter values.
 * With iplist filter `|missing-ok`, a warning is printed instead of an
   error if:
   * DNS resolution or URL/file download fails.
