@@ -5193,6 +5193,27 @@ def command_counter_list() -> int:
     return error
 
 
+def command_counter_reset() -> int:
+    """Reset named counter values."""
+    # Read config if available for nft binary path.
+    minimal_config(require_etc_config=False)
+    command_params = INTERNAL.parameters[1:]
+
+    # Reset counter values
+    counters = get_counter_values() or {}
+    error = 0
+    for name in command_params or counters:
+        if name not in counters:
+            warning(f'Unknown counter: {name}')
+            error = 1
+        else:
+            error |= nft_command(
+                f'reset counter inet foomuuri {name}',
+                print_output=False,
+            )
+    return error
+
+
 def command_macro_list() -> int:
     """List default system macros and user defined macros.
 
@@ -5259,6 +5280,7 @@ def command_subcommand() -> int:
     # Find correct handler. min_args includes "list" argument.
     handler, min_args = {
         ('counter', 'list'): (command_counter_list, 1),
+        ('counter', 'reset'): (command_counter_reset, 1),
         ('iplist', 'add'): (command_iplist_add, 3),
         ('iplist', 'del'): (command_iplist_del, 3),
         ('iplist', 'flush'): (command_iplist_flush, 1),
@@ -5954,6 +5976,8 @@ Available COMMANDs:
                List all macros or macros with specified NAME(s) or VALUE(s)
   counter list [COUNTER]...
                List all or specified named COUNTER(s)
+  counter reset [COUNTER]...
+               Reset all or specified named COUNTER(s)
   iplist status [IPLIST]...
                List number of entries of all or specified IPLIST(s)
   iplist list [IPLIST]...
