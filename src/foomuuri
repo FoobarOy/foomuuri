@@ -386,7 +386,7 @@ class Internal(TypedConfig):
     url_get_timeout: dict[str, float] = dataclasses.field(
         default_factory=lambda: {'connect': 3.05, 'read': 3.05}
     )  # Timeouts (seconds)
-    url_get_retries: dict[str, typing.Union[int, bool]] = dataclasses.field(
+    url_get_retries: dict = dataclasses.field(
         default_factory=lambda: {
             'connect': 3,
             'redirect': 3,
