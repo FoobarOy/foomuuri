@@ -287,6 +287,9 @@ class Config(TypedConfig):
         default_factory=lambda: {'no'},
         metadata={'validate': Validators.has_elements},
     )
+    permanent_counter: bool = dataclasses.field(
+        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    )
     set_size: int = dataclasses.field(
         default=65535, metadata={'validate': Validators.int_positive}
     )
@@ -360,6 +363,9 @@ class Internal(TypedConfig):
     # List of helpers: (helper, protocol, ports)
     helpers: list[tuple[str, str, str]] = dataclasses.field(
         default_factory=list
+    )
+    permanent_counter_values: dict[str, tuple[int, int]] = dataclasses.field(
+        default_factory=dict
     )
     # Added without default value to prevent uninitialized use
     keep_going: int = dataclasses.field(init=False)
@@ -3356,6 +3362,9 @@ def output_named_counters(
     # Output counters
     for name in sorted(names):
         out(f'counter {name} {{')
+        values = INTERNAL.permanent_counter_values.get(name)
+        if values:
+            out(f'packets {values[0]} bytes {values[1]}')
         out('}')
 
 
@@ -3612,6 +3621,10 @@ def command_start():
     rules = parse_config_rules(config)  # Also verify for unknown sections
     insert_any_zones(zones, rules)
     verify_config(config, zones, rules)
+
+    # Keep named counter values when reloading
+    if CONFIG.permanent_counter:
+        INTERNAL.permanent_counter_values = get_counter_values() or {}
 
     # Generate output
     output_header(chain_rules)
@@ -5134,6 +5147,24 @@ def command_iplist_refresh(
     return ret
 
 
+def get_counter_values() -> typing.Optional[dict[str, tuple[int, int]]]:
+    """Get named counter values from active ruleset."""
+    data = nft_json('list counters table inet foomuuri')
+    if not data:  # Foomuuri is not running
+        return None
+
+    counters = {}
+    for toplevel in data.get('nftables', []):
+        counter = toplevel.get('counter')
+        name = (counter or {}).get('name')
+        if not name:
+            continue
+        packet_value = counter.get('packets', 0)
+        byte_value = counter.get('bytes', 0)
+        counters[name] = (packet_value, byte_value)
+    return counters
+
+
 def command_counter_list() -> int:
     """List named counters."""
     # Read config if available for nft binary path.
@@ -5141,19 +5172,10 @@ def command_counter_list() -> int:
     list_params = INTERNAL.parameters[1:]
 
     # Parse counter data from kernel
-    data = nft_json('list counters table inet foomuuri')
-    if not data:
+    counters = get_counter_values()
+    if counters is None:
         fail("Can't read counter data from kernel")
         return 1
-    counters = {}
-    for toplevel in data.get('nftables', []):
-        counter = toplevel.get('counter')
-        name = (counter or {}).get('name')
-        if not name:
-            continue
-        packet_value = int_to_human(counter.get('packets', 0))
-        byte_value = int_to_human(counter.get('bytes', 0))
-        counters[name] = (packet_value, byte_value)
     if not counters:
         fail('No named counters defined in currently active firewall')
 
@@ -5166,7 +5188,7 @@ def command_counter_list() -> int:
             warning(f'Unknown counter: {name}')
             error = 1
             continue
-        table.append((name, values[0], values[1]))
+        table.append((name, int_to_human(values[0]), int_to_human(values[1])))
     print_table(data=table, align='<>>', header=True)
     return error
 
