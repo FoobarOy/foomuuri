@@ -102,12 +102,12 @@ These steps apply regardless of how Foomuuri was installed.
 	systemctl disable --now ferm.service
     systemctl disable --now firehol.service
     systemctl disable --now firewalld.service
-    systemctl disable --now netfilter-persistent.service  
+    systemctl disable --now netfilter-persistent.service
     systemctl disable --now nftables.service
-    systemctl disable --now shorewall-init.service
-    systemctl disable --now shorewall.service
-    systemctl disable --now shorewall6.service
     systemctl disable --now ufw.service
+    systemctl disable shorewall-init.service
+    systemctl disable shorewall.service
+    systemctl disable shorewall6.service
     nft flush ruleset
     ```
 
