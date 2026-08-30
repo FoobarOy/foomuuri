@@ -136,8 +136,8 @@ Foomuuri start will not fail or block your access for first minutes after
 reboot.
 
 Iplists can be manipulated from command line, for example by `fail2ban`
-external program. Command `foomuuri iplist add @setname ipaddress` adds IP
-address to `@setname`. Other commands are `foomuuri iplist list`,
+external program. Command `foomuuri iplist add IPLIST ipaddress` adds IP
+address to `IPLIST`. Other commands are `foomuuri iplist list`,
 `foomuuri iplist del` and `foomuuri iplist flush`. See command line help for
 usage. Example:
 
