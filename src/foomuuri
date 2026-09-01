@@ -4489,10 +4489,10 @@ def iterate_set_elements(data):
         for elem in toplevel.get('set', {}).get('elem', []):
             if isinstance(elem, dict) and 'elem' in elem:
                 ipaddr = elem['elem']['val']
-                expire = elem['elem'].get('expires', 864000)  # 10 days
+                expire = elem['elem'].get('expires')
             else:
                 ipaddr = elem
-                expire = 864000
+                expire = None
             if isinstance(ipaddr, str):
                 yield ipaddr, expire
             elif 'range' in ipaddr:
@@ -4560,7 +4560,11 @@ def command_iplist_list():
             table.append((f'@{setname}', '', ''))
         else:
             table.extend(
-                (f'@{setname}', elem, seconds_to_duration(timeout))
+                (
+                    f'@{setname}',
+                    elem,
+                    '-' if timeout is None else seconds_to_duration(timeout),
+                )
                 for elem, timeout in elems
             )
 
