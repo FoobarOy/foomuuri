@@ -1,4 +1,4 @@
-"""Test IPListCache operations."""
+"""Test IPListSourceCache operations."""
 # pylint: disable=invalid-name,import-error
 
 import copy
@@ -10,11 +10,11 @@ from foomuuri import INTERNAL as BASE_INTERNAL
 
 
 def source_cache(*sources, ip=None, refresh=None):
-    """Return cache dict with one entry per source."""
+    """Return source cache with one entry per source."""
     entry = {'ip': {} if ip is None else ip, 'dirty': False}
     if refresh is not None:
         entry['refresh'] = refresh
-    return foomuuri.IPListCache(
+    return foomuuri.IPListSourceCache(
         {source: copy.deepcopy(entry) for source in sources}
     )
 
@@ -22,8 +22,8 @@ def source_cache(*sources, ip=None, refresh=None):
 @unittest.mock.patch(
     'foomuuri.INTERNAL', new_callable=lambda: copy.deepcopy(BASE_INTERNAL)
 )
-class TestCacheRefreshURLOrFile(unittest.TestCase):
-    """Test IPListCache.refresh_url_or_file()."""
+class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
+    """Test IPListSourceCache.refresh_url_or_file()."""
 
     def setUp(self):
         """Prepare test fixtures."""
@@ -33,7 +33,7 @@ class TestCacheRefreshURLOrFile(unittest.TestCase):
 
     @staticmethod
     def run_refresh(source, cache, content, force=0):
-        """Call IPListCache.refresh_url_or_file() with mocked get_url()."""
+        """Call IPListSourceCache.refresh_url_or_file()."""
         foomuuri.INTERNAL.force = force
         options = foomuuri.IPListSourceOptions()
         options.timeout = 1000
