@@ -4666,12 +4666,21 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             {'ip': {}, 'dirty': False, 'refresh': int(time.time())},
         )
 
+    @staticmethod
+    def _should_discard_empty(
+        source: str, entry: IPListSourceCacheEntry
+    ) -> bool:
+        """Return True when source is empty and lacks |missing-ok."""
+        return '|missing-ok' not in source and not entry.get('ip')
+
     def write(self) -> None:
         """Remove transient metadata and save source cache to disk."""
-        for key, entry in self.items():
+        for source, entry in list(self.items()):
             entry.pop('dirty', None)
-            if key.startswith('manual.@'):
+            if source.startswith('manual.@'):
                 entry.pop('refresh', None)
+            if self._should_discard_empty(source, entry):
+                self.pop(source, None)
 
         save_file(state_file('iplist_cache_file'), self.data)
 
@@ -4715,18 +4724,22 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         self, source: str, options: IPListSourceOptions, now: int
     ) -> bool:
         """Expire timed-out source cache entry, or return True when usable."""
-        entry = self.get(source, {})
-        addresses = entry.get('ip', {})
-        refresh = entry.get('refresh')
-        if not addresses or not refresh:
+        entry = self.get(source)
+        if not entry:
             return False
+        refresh = entry['refresh']
         if now >= refresh + options.timeout:
             self._clear_entry(source)
             return False
-        if now < refresh + options.refresh and INTERNAL.force < 0:
-            verbose(f'Using cached value for "{remove_filters(source)}"')
-            return True
-        return False
+        # Empty |missing-ok source is used unless refresh is forced
+        if not entry['ip'] and (
+            '|missing-ok' not in source or INTERNAL.force >= 0
+        ):
+            return False
+        if now >= refresh + options.refresh or INTERNAL.force >= 0:
+            return False
+        verbose(f'Using cached value for "{remove_filters(source)}"')
+        return True
 
     def refresh_url_or_file(
         self, source: str, options: IPListSourceOptions
@@ -4843,8 +4856,31 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                     timeout = int(time.time()) + parse_duration(items[8], 0)
                 self._ensure_entry(source)['ip'][items[6]] = timeout
 
+    def _prune_source(
+        self, source: str, iplists: IPLists, configured_sources: set[str]
+    ) -> bool:
+        """Delete legacy or unconfigured source, return True when deleted."""
+        if source.startswith('@'):
+            del self[source]
+            verbose(f'Deleting legacy iplist "{source}" from cache')
+            return True
+
+        if source.startswith('manual.@'):
+            # Manually added iplist is kept when present in config
+            configured = source[7:] in iplists
+        else:
+            # URL/file/hostname source is kept when present in config
+            configured = source in configured_sources
+
+        if not configured:
+            # Source in cache, not in config
+            del self[source]
+            verbose(f'Deleting source "{source}" from cache, not in config')
+            return True
+        return False
+
     @classmethod
-    def read(cls, iplists: typing.Iterable[str]) -> 'IPListSourceCache':
+    def read(cls, iplists: IPLists) -> 'IPListSourceCache':
         """Read persistent source cache from disk."""
         self = cls()
         filename = state_file('iplist_cache_file')
@@ -4857,20 +4893,15 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         except OSError as error:
             fail(f"File {filename}: Can't read: {error}")
 
+        configured_sources = {
+            source for iplist in iplists.values() for source in iplist.sources
+        }
+
         now = int(time.time())
 
         for source in list(self):
-            if source.startswith('@'):
-                del self[source]
-                verbose(f'Deleting legacy iplist "{source}" from cache')
-                continue
-
-            if (
-                source.startswith('manual.@') and source[7:] not in iplists
-            ) or 'ip' not in self[source]:
-                # Iplist in cache, not in config
-                del self[source]
-                verbose(f'Deleting iplist "{source}" from cache, not in config')
+            # Delete legacy or unconfigured source
+            if self._prune_source(source, iplists, configured_sources):
                 continue
 
             entry = self[source]
@@ -4878,26 +4909,19 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             # Check top level refresh. Missing or invalid value is ok.
             try:
                 if isinstance(entry['refresh'], str):
-                    self[source]['refresh'] = str_to_time(entry['refresh'])
+                    entry['refresh'] = str_to_time(entry['refresh'])
             except KeyError:
                 entry['refresh'] = now
 
-            # Check IP address timeouts
-            dellist = set()
-            for addr, timeout in entry['ip'].items():
-                if isinstance(timeout, str):
-                    timeout = str_to_time(timeout)
-                    entry['ip'][addr] = timeout
-                if now >= timeout:
-                    dellist.add(addr)
-
-            # Delete expired addresses
-            for addr in dellist:
+            # Find and delete expired addresses
+            for addr in [
+                addr for addr, timeout in entry['ip'].items() if now >= timeout
+            ]:
                 verbose(f'Deleting expired iplist "{source}" entry "{addr}"')
                 del entry['ip'][addr]
 
-            # Don't keep empty cache entries
-            if not entry['ip']:
+            # Don't keep empty cache entries, when not marked with |missing-ok
+            if self._should_discard_empty(source, entry):
                 del self[source]
         return self
 

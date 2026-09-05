@@ -134,7 +134,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         self.assertIn('10.0.0.9', cache['foo.bar']['ip'])
 
     def test_resolve_hostname_expired_soft_reresolves(self, *_):
-        """Test --soft (force<0) mode re-resolves expired cache entry."""
+        """Test --soft(force<0) mode re-resolves expired cache entry."""
         cache = foomuuri.IPListSourceCache(
             {
                 'foo.bar': {
@@ -156,7 +156,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         verbose.assert_any_call('Hostname "foo.bar" resolved to: 10.0.0.9')
 
     def test_resolve_hostname_cached_soft(self, *_):
-        """Test no resolution with fresh cache and --soft (force<0)."""
+        """Test no resolution with fresh cache and --soft(force<0)."""
         cache = foomuuri.IPListSourceCache(
             {
                 'foo.bar|missing-ok': {
