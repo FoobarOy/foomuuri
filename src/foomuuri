@@ -4659,51 +4659,19 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             return IPListSourceCache.expire_forever
         return now + timeout
 
-    def _ensure_entry(self, key: str) -> None:
-        """Add empty cache entry if it doesn't exist already."""
-        if key in self:
-            return
-        self._reset_entry(key, int(time.time()))
-
-    def _create_entry(
-        self,
-        key: str,
-        addresses: IPListAddresses,
-        now: int,
-        dirty: bool,
-    ) -> None:
-        """Create cache entry with addresses and metadata."""
-        self[key] = {
-            'ip': addresses,
-            'dirty': dirty,
-            'refresh': now,
-        }
-
-    def _replace_entry(
-        self, key: str, addresses: IPListAddresses, now: int
-    ) -> None:
-        """Replace cache entry and mark it dirty."""
-        self._create_entry(key, addresses, now, dirty=True)
-
-    def _update_entry_addresses(
-        self, key: str, addresses: IPListAddresses, now: int
-    ) -> None:
-        """Update addresses in cache entry and mark it dirty."""
-        self._ensure_entry(key)
-        self[key]['dirty'] = True
-        self[key]['refresh'] = now
-        self[key]['ip'].update(addresses)
-
-    def _reset_entry(self, key: str, now: int) -> None:
-        """Initialize cache entry as empty and clean."""
-        self._create_entry(key, {}, now, dirty=False)
+    def _ensure_entry(self, key: str) -> IPListSourceCacheEntry:
+        """Return cache entry, creating it if missing."""
+        return self.setdefault(
+            key,
+            {'ip': {}, 'dirty': False, 'refresh': int(time.time())},
+        )
 
     def write(self) -> None:
         """Remove transient metadata and save source cache to disk."""
-        for key in list(self):
-            self[key].pop('dirty', None)
+        for key, entry in self.items():
+            entry.pop('dirty', None)
             if key.startswith('manual.@'):
-                del self[key]['refresh']
+                entry.pop('refresh', None)
 
         save_file(state_file('iplist_cache_file'), self.data)
 
@@ -4714,11 +4682,11 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         now = int(time.time())
         expire = self._normalize_expire(now, timeout)
         key = f'manual.{iplist_name}'
-        self._ensure_entry(key)
+        entry = self._ensure_entry(key)
         for address in addresses:
             if get_ip_family(address, allow_negative=False):
-                self[key]['ip'][address] = expire
-                self[key]['dirty'] = True
+                entry['ip'][address] = expire
+                entry['dirty'] = True
                 continue
             parsed_timeout = parse_duration(address, 0)
             if not parsed_timeout:
@@ -4729,11 +4697,10 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         self, iplist_name: str, addresses: typing.Iterable[str]
     ) -> None:
         """Delete addresses from manual source."""
-        key = f'manual.{iplist_name}'
-        self._ensure_entry(key)
+        entry = self._ensure_entry(f'manual.{iplist_name}')
         for address in addresses:
-            self[key]['ip'].pop(address, None)
-        self[key]['dirty'] = True
+            entry['ip'].pop(address, None)
+        entry['dirty'] = True
 
     def flush_manual(self, iplist_name: str) -> None:
         """Delete all addresses from manual source."""
@@ -4741,9 +4708,9 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
 
     def _clear_entry(self, key: str) -> None:
         """Remove addresses from cache entry and mark it dirty."""
-        self._ensure_entry(key)
-        self[key]['ip'].clear()
-        self[key]['dirty'] = True
+        entry = self._ensure_entry(key)
+        entry['ip'].clear()
+        entry['dirty'] = True
 
     def _expire_or_use_cache(
         self, key: str, options: IPListSourceOptions, now: int
@@ -4780,16 +4747,19 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             # Replace list, don't append. These lists are always complete
             # address lists.
             expire = self._normalize_expire(now, options.timeout)
-            self._replace_entry(
-                source,
-                dict.fromkeys(iplist_parse_content(source, value), expire),
-                now,
+            addresses = dict.fromkeys(
+                iplist_parse_content(source, value), expire
             )
+            self[source] = {
+                'ip': addresses,
+                'dirty': True,
+                'refresh': now,
+            }
             verbose(
                 f'Iplist content for "{source}" refreshed, '
-                f'{len(self[source]["ip"])} entries'
+                f'{len(addresses)} entries'
             )
-            if not self[source]['ip'] and '|missing-ok' not in source:
+            if not addresses and '|missing-ok' not in source:
                 warning(
                     f'No IP addresses listed in "{remove_filters(source)}"'
                 )
@@ -4826,9 +4796,10 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                     expire = self._normalize_expire(
                         now, hostnames[hostname].timeout
                     )
-                    self._update_entry_addresses(
-                        hostname, dict.fromkeys(addrlist, expire), now
-                    )
+                    entry = self._ensure_entry(hostname)
+                    entry['ip'].update(dict.fromkeys(addrlist, expire))
+                    entry['dirty'] = True
+                    entry['refresh'] = now
                     verbose(
                         f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}'
@@ -4871,8 +4842,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                     timeout = str_to_time(items[11])
                 else:
                     timeout = int(time.time()) + parse_duration(items[8], 0)
-                self._ensure_entry(key)
-                self[key]['ip'][items[6]] = timeout
+                self._ensure_entry(key)['ip'][items[6]] = timeout
 
     @classmethod
     def read(cls, iplists: typing.Iterable[str]) -> 'IPListSourceCache':
