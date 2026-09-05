@@ -4513,7 +4513,7 @@ def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = IPListCache.read(iplists)
+    cache = IPListSourceCache.read(iplists)
     iplist_name = INTERNAL.parameters[1]
     if not iplist_name.startswith('@'):
         iplist_name = f'@{iplist_name}'
@@ -4534,7 +4534,7 @@ def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = IPListCache.read(iplists)
+    cache = IPListSourceCache.read(iplists)
     iplist_name = INTERNAL.parameters[1]
     if not iplist_name.startswith('@'):
         iplist_name = f'@{iplist_name}'
@@ -4550,7 +4550,7 @@ def command_iplist_flush():
     """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = IPListCache.read(iplists)
+    cache = IPListSourceCache.read(iplists)
     update_only = set()
     target = set(INTERNAL.parameters[1:] or iplists)
 
@@ -4637,16 +4637,16 @@ def str_to_time(timestamp):
 IPListAddresses = dict[str, int]
 
 
-class IPListCacheEntry(typing.TypedDict, total=False):
-    """Persistent iplist cache entry."""
+class IPListSourceCacheEntry(typing.TypedDict, total=False):
+    """Store persistent source cache entry."""
 
     ip: IPListAddresses
     dirty: bool
     refresh: int
 
 
-class IPListCache(collections.UserDict[str, IPListCacheEntry]):
-    """Manage persistent iplist address cache."""
+class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
+    """Manage persistent source cache entries."""
 
     # Timeouts over expire_max are normalized to expire_forever.
     expire_max = 2 * 365 * 86400
@@ -4655,8 +4655,8 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     @staticmethod
     def _normalize_expire(now: int, timeout: int) -> int:
         """Add timeout to now, or return "forever" for large timeouts."""
-        if timeout > IPListCache.expire_max:
-            return IPListCache.expire_forever
+        if timeout > IPListSourceCache.expire_max:
+            return IPListSourceCache.expire_forever
         return now + timeout
 
     def _ensure_entry(self, key: str) -> None:
@@ -4664,18 +4664,6 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
         if key in self:
             return
         self._reset_entry(key, int(time.time()))
-
-    def _copy_ip(self, source: str, iplist_name: str) -> None:
-        """Copy IP addresses from a source cache entry to an iplist."""
-        if source not in self:
-            return
-        if self[source].get('dirty'):
-            self[iplist_name]['dirty'] = True
-        for address, timeout in self[source]['ip'].items():
-            # Choose maximum timeout if both dynamic (resolved from hostname)
-            # and manually added address exists.
-            old_timeout = self[iplist_name]['ip'].get(address, timeout)
-            self[iplist_name]['ip'][address] = max(old_timeout, timeout)
 
     def _create_entry(
         self,
@@ -4694,52 +4682,27 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def _replace_entry(
         self, key: str, addresses: IPListAddresses, now: int
     ) -> None:
-        """Replace cache entry addresses and mark it dirty."""
+        """Replace cache entry and mark it dirty."""
         self._create_entry(key, addresses, now, dirty=True)
 
     def _update_entry_addresses(
         self, key: str, addresses: IPListAddresses, now: int
     ) -> None:
-        """Update cache entry addresses and mark it dirty."""
+        """Update addresses in cache entry and mark it dirty."""
         self._ensure_entry(key)
         self[key]['dirty'] = True
         self[key]['refresh'] = now
         self[key]['ip'].update(addresses)
 
     def _reset_entry(self, key: str, now: int) -> None:
-        """Initialize a cache entry as empty and clean."""
+        """Initialize cache entry as empty and clean."""
         self._create_entry(key, {}, now, dirty=False)
 
-    def build_iplist(
-        self, iplist_name: str, sources: typing.Iterable[str], now: int
-    ) -> None:
-        """Build iplist entry from cached and static sources."""
-        self._reset_entry(iplist_name, now)
-        static_addresses = []
-        for source in sources:
-            if get_ip_family(source, allow_negative=False):
-                static_addresses.append(source)
-            else:
-                self._copy_ip(source, iplist_name)
-        for address in static_addresses:
-            self[iplist_name]['ip'][address] = self.expire_forever
-        if static_addresses:
-            self[iplist_name]['dirty'] = True
-        self._copy_ip(f'manual.{iplist_name}', iplist_name)
-
-    def is_dirty(self, iplist_name: str) -> bool:
-        """Return whether an iplist has unsaved changes."""
-        return self[iplist_name].get('dirty', False)
-
-    def addresses(self, iplist_name: str) -> IPListAddresses:
-        """Return an iplist's addresses as dict of address: timeout."""
-        return self[iplist_name]['ip']
-
     def write(self) -> None:
-        """Remove transient metadata and save cache to disk."""
-        for key in self:
+        """Remove transient metadata and save source cache to disk."""
+        for key in list(self):
             self[key].pop('dirty', None)
-            if key.startswith(('@', 'manual.@')):
+            if key.startswith('manual.@'):
                 del self[key]['refresh']
 
         save_file(state_file('iplist_cache_file'), self.data)
@@ -4747,7 +4710,7 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def add_manual(
         self, iplist_name: str, addresses: typing.Iterable[str], timeout: int
     ) -> None:
-        """Add addresses or update the timeout used by following addresses."""
+        """Add addresses to manual source and update timeouts."""
         now = int(time.time())
         expire = self._normalize_expire(now, timeout)
         key = f'manual.{iplist_name}'
@@ -4765,7 +4728,7 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def delete_manual(
         self, iplist_name: str, addresses: typing.Iterable[str]
     ) -> None:
-        """Delete addresses from a manually managed iplist."""
+        """Delete addresses from manual source."""
         key = f'manual.{iplist_name}'
         self._ensure_entry(key)
         for address in addresses:
@@ -4773,11 +4736,11 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
         self[key]['dirty'] = True
 
     def flush_manual(self, iplist_name: str) -> None:
-        """Delete all addresses from a manually managed iplist."""
+        """Delete all addresses from manual source."""
         self._clear_entry(f'manual.{iplist_name}')
 
     def _clear_entry(self, key: str) -> None:
-        """Remove addresses from a cache entry and mark it dirty."""
+        """Remove addresses from cache entry and mark it dirty."""
         self._ensure_entry(key)
         self[key]['ip'].clear()
         self[key]['dirty'] = True
@@ -4785,7 +4748,7 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def _expire_or_use_cache(
         self, key: str, options: IPListSourceOptions, now: int
     ) -> bool:
-        """Expire timed out cache entry, or return True if it is fresh."""
+        """Expire timed-out cache entry, or return True when fresh."""
         entry = self.get(key, {})
         addresses = entry.get('ip', {})
         refresh = entry.get('refresh')
@@ -4802,7 +4765,7 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def refresh_url_or_file(
         self, source: str, options: IPListSourceOptions
     ) -> None:
-        """Refresh URL or file content with cache check."""
+        """Refresh URL or file source with cache check."""
         now = int(time.time())
         if self._expire_or_use_cache(source, options, now):
             return
@@ -4834,7 +4797,7 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
     def resolve_hostnames(
         self, hostnames: typing.Mapping[str, IPListSourceOptions]
     ) -> None:
-        """Resolve hostnames to IP addresses and save them to cache."""
+        """Resolve hostnames and save their addresses to cache."""
         # Collect list of hostnames to resolve
         now = int(time.time())
         todo = set()
@@ -4912,8 +4875,8 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
                 self[key]['ip'][items[6]] = timeout
 
     @classmethod
-    def read(cls, iplists: typing.Iterable[str]) -> 'IPListCache':
-        """Read current iplist cache entries from disk."""
+    def read(cls, iplists: typing.Iterable[str]) -> 'IPListSourceCache':
+        """Read persistent source cache from disk."""
         self = cls()
         filename = state_file('iplist_cache_file')
         try:
@@ -4928,12 +4891,15 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
         now = int(time.time())
 
         for key in list(self):
+            if key.startswith('@'):
+                del self[key]
+                verbose(f'Deleting legacy iplist "{key}" from cache')
+                continue
+
             # Delete cache entries which are not in config iplists
             if (
-                (key.startswith('@') and key not in iplists)
-                or (key.startswith('manual.@') and key[7:] not in iplists)
-                or 'ip' not in self[key]
-            ):
+                key.startswith('manual.@') and key[7:] not in iplists
+            ) or 'ip' not in self[key]:
                 # Iplist in cache, not in config
                 del self[key]
                 verbose(f'Deleting iplist "{key}" from cache, not in config')
@@ -4958,6 +4924,49 @@ class IPListCache(collections.UserDict[str, IPListCacheEntry]):
             # Don't keep empty cache entries
             if not self[key]['ip']:
                 del self[key]
+        return self
+
+
+@dataclasses.dataclass(eq=False)
+class IPListValue:
+    """Hold transient iplist addresses value."""
+
+    name: str
+    addresses: IPListAddresses = dataclasses.field(default_factory=dict)
+    dirty: bool = False
+
+    def _copy_addresses(
+        self, source_cache: IPListSourceCache, source: str
+    ) -> None:
+        """Copy addresses from a source cache entry."""
+        if source not in source_cache:
+            return
+        if source_cache[source].get('dirty'):
+            self.dirty = True
+        for address, timeout in source_cache[source]['ip'].items():
+            old_timeout = self.addresses.get(address, timeout)
+            self.addresses[address] = max(old_timeout, timeout)
+
+    @classmethod
+    def from_sources(
+        cls,
+        source_cache: IPListSourceCache,
+        name: str,
+        sources: typing.Iterable[str],
+    ) -> 'IPListValue':
+        """Build a transient iplist from cached and static sources."""
+        self = cls(name=name)
+        static_addresses: list[str] = []
+        for source in sources:
+            if get_ip_family(source, allow_negative=False):
+                static_addresses.append(source)
+            else:
+                self._copy_addresses(source_cache, source)
+        for address in static_addresses:
+            self.addresses[address] = IPListSourceCache.expire_forever
+        if static_addresses:
+            self.dirty = True
+        self._copy_addresses(source_cache, f'manual.{name}')
         return self
 
 
@@ -5080,8 +5089,8 @@ def iplist_collect_resolve_list(iplists: IPLists) -> tuple:
     return sources, hostnames
 
 
-def iplist_output_add_element(cache: IPListCache, iplist_name, now):
-    """Output nft commands to update iplist values to sets.
+def iplist_output_add_element(iplist: IPListValue, now: int):
+    """Output nft commands for a transient iplist.
 
     Auto-merge in nftables set requires that adds are done set by set, not
     mixing foo_4 and foo_6 adds.
@@ -5091,7 +5100,7 @@ def iplist_output_add_element(cache: IPListCache, iplist_name, now):
         4: set(),
         6: set(),
     }
-    for address, timeout in cache.addresses(iplist_name).items():
+    for address, timeout in iplist.addresses.items():
         if ':' in address:
             updates[6].add((address, timeout))
         else:
@@ -5099,15 +5108,16 @@ def iplist_output_add_element(cache: IPListCache, iplist_name, now):
 
     # Output add to sets
     out('')
+    set_name = iplist.name.removeprefix('@')
     for ipv in (4, 6):
-        out(f'flush set inet foomuuri {iplist_name[1:]}_{ipv}')
+        out(f'flush set inet foomuuri {set_name}_{ipv}')
         if not updates[ipv]:
             continue
 
-        out(f'add element inet foomuuri {iplist_name[1:]}_{ipv} {{')
+        out(f'add element inet foomuuri {set_name}_{ipv} {{')
         for address, timeout in sorted(updates[ipv]):
             seconds = max(1, timeout - now)
-            if seconds > IPListCache.expire_max:
+            if seconds > IPListSourceCache.expire_max:
                 out(f'{address},')
             else:
                 out(f'{address} timeout {seconds}s,')
@@ -5116,18 +5126,18 @@ def iplist_output_add_element(cache: IPListCache, iplist_name, now):
 
 def iplist_output_values(
     iplists: IPLists,
-    cache: IPListCache,
+    source_cache: IPListSourceCache,
     currently_active: set[str],
     update_only: set[str],
 ) -> int:
-    """Output and apply nft commands to add iplist entries."""
+    """Output and apply nft commands to add iplist values."""
     now = int(time.time())
     error = 0
     for iplist_name in sorted(iplists):
         sources = iplists[iplist_name].sources
 
-        # Build iplist addresses from its sources
-        cache.build_iplist(iplist_name, sources, now)
+        # Build transient iplist from its sources
+        iplist = IPListValue.from_sources(source_cache, iplist_name, sources)
 
         # Check that this set should be updated
         if update_only and iplist_name not in update_only:
@@ -5138,16 +5148,12 @@ def iplist_output_values(
                 f'firewall'
             )
             continue
-        if not cache.is_dirty(iplist_name) and INTERNAL.force < 0:
+        if not iplist.dirty and INTERNAL.force < 0:
             verbose(f'Iplist "{iplist_name}" is clean, skipping update')
             continue
 
         # Print error if set had values, but result is empty
-        if (
-            sources
-            and not cache.addresses(iplist_name)
-            and INTERNAL.command == 'iplist'
-        ):
+        if sources and not iplist.addresses and INTERNAL.command == 'iplist':
             if all('|missing-ok' in source for source in sources):
                 warning(f'Iplist "{iplist_name}" is empty')
             else:
@@ -5156,21 +5162,21 @@ def iplist_output_values(
         else:
             verbose(
                 f'Updating iplist "{iplist_name}", '
-                f'{len(cache.addresses(iplist_name))} entries'
+                f'{len(iplist.addresses)} entries'
             )
 
         # Add elements to sets
-        iplist_output_add_element(cache, iplist_name, now)
+        iplist_output_add_element(iplist, now)
 
-    return iplist_apply_values(cache) | error
+    return iplist_apply_values(source_cache) | error
 
 
-def iplist_apply_values(cache: IPListCache):
-    """Save iplist changes to disk and use nft to apply it."""
+def iplist_apply_values(source_cache: IPListSourceCache):
+    """Save source cache changes to disk and use nft to apply them."""
     if INTERNAL.command != 'iplist' or not OUT:
         return 0
 
-    cache.write()
+    source_cache.write()
     lines = '\n'.join(save_final(None))
     ret = run_program_rc(CONFIG.nft_bin + ['--file', '-'], stdin=lines)
     if ret:
@@ -5191,7 +5197,7 @@ def command_iplist_refresh(
     sources, hostnames = iplist_collect_resolve_list(iplists)
 
     # Read URLs and files to cache
-    cache = IPListCache.read(iplists)
+    cache = IPListSourceCache.read(iplists)
     for source, options in sources.items():
         cache.refresh_url_or_file(source, options)
 
