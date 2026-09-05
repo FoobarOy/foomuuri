@@ -9,6 +9,10 @@
     },
     "refresh": 1800000000
   },
+  "./iplist_empty.txt|missing-ok": {
+    "ip": {},
+    "refresh": 1800000000
+  },
   "localhost": {
     "ip": {
       "127.0.0.1": 4000000000

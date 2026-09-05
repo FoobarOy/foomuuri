@@ -4668,10 +4668,13 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
 
     def write(self) -> None:
         """Remove transient metadata and save source cache to disk."""
-        for key, entry in self.items():
+        for source in list(self):
+            entry = self[source]
             entry.pop('dirty', None)
-            if key.startswith('manual.@'):
+            if source.startswith('manual.@'):
                 entry.pop('refresh', None)
+            if '|missing-ok' not in source and not entry.get('ip'):
+                self.pop(source, None)
 
         save_file(state_file('iplist_cache_file'), self.data)
 
@@ -4891,8 +4894,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                 verbose(f'Deleting expired iplist "{key}" entry "{addr}"')
                 del self[key]['ip'][addr]
 
-            # Don't keep empty cache entries
-            if not self[key]['ip']:
+            # Don't keep empty cache entries, when not marked with |missing-ok
+            if '|missing-ok' not in key and not self[key]['ip']:
                 del self[key]
         return self
 

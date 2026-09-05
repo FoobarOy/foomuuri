@@ -11,8 +11,8 @@ import foomuuri
 class TestIPListSourceCacheRead(unittest.TestCase):
     """Test IPListSourceCache.read()."""
 
-    def test_ignore_removed_entries(self):
-        """Test ignore unknown and legacy transient cache entries."""
+    def test_read_removes_entries(self):
+        """Test read removes unknown, broken, and empty cache entries."""
         data = {
             '@unknown': {
                 'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_forever},
@@ -29,6 +29,22 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 'ip': {'10.0.0.3': foomuuri.IPListSourceCache.expire_forever},
                 'refresh': 1,
             },
+            'https://foo.bar/empty.txt': {
+                'ip': {},
+                'refresh': 100,
+            },
+            'manual.@empty': {
+                'ip': {},
+                'refresh': 100,
+            },
+            'https://foo.bar/empty.txt|missing-ok': {
+                'ip': {},
+                'refresh': 100,
+            },
+            'https://foo.bar/list.txt|missing-ok': {
+                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_forever},
+                'refresh': 100,
+            },
         }
         filename = unittest.mock.Mock()
         filename.read_text.return_value = json.dumps(data)
@@ -39,5 +55,24 @@ class TestIPListSourceCacheRead(unittest.TestCase):
         ):
             cache = foomuuri.IPListSourceCache.read({'@known'})
 
-        self.assertEqual(set(cache), {'manual.@known'})
-        self.assertEqual(cache['manual.@known'], data['manual.@known'])
+        self.assertEqual(
+            cache,
+            {
+                'manual.@known': {
+                    'ip': {
+                        '10.0.0.4': foomuuri.IPListSourceCache.expire_forever
+                    },
+                    'refresh': 1,
+                },
+                'https://foo.bar/empty.txt|missing-ok': {
+                    'ip': {},
+                    'refresh': 100,
+                },
+                'https://foo.bar/list.txt|missing-ok': {
+                    'ip': {
+                        '10.0.0.1': foomuuri.IPListSourceCache.expire_forever
+                    },
+                    'refresh': 100,
+                },
+            },
+        )
