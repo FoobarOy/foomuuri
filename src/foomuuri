@@ -395,11 +395,6 @@ class Internal(TypedConfig):
         }
     )  # Retries count and redirect behaviour
 
-    # Iplist expire constants (in seconds)
-    # Expire values over expire_max are normalized to expire_forever
-    expire_max: int = 2 * 365 * 86400  # "Forever" borderline value
-    expire_forever: int = 4_000_000_000  # Actual "forever" value (year 2096)
-
 
 @dataclasses.dataclass
 class IPListOptions(TypedConfig):
@@ -4284,13 +4279,6 @@ def iplist_verify_filters(name, values, fileline):
                 )
 
 
-def normalize_expire(now: int, timeout: int) -> int:
-    """Add timeout to now. If it is too large return "forever"."""
-    if timeout > Internal.expire_max:
-        return Internal.expire_forever
-    return now + timeout
-
-
 def resolve_one_hostname(hostname):
     """Resolve hostname and return its IP addresses."""
     ret = set()
@@ -4299,57 +4287,6 @@ def resolve_one_hostname(hostname):
             if item[4] and item[4][0]:
                 ret.add(item[4][0])
     return ret
-
-
-def resolve_all_hostnames(resolve, cache):
-    """Resolve hostnames to IP addresses and save them to cache."""
-    # Collect list of hostnames to resolve
-    now = int(time.time())
-    todo = set()
-    for hostname, options in resolve.items():
-        cachevalue = cache.get(hostname, {}).get('ip', {})
-        cacherefresh = cache.get(hostname, {}).get('refresh')
-        if cachevalue and cacherefresh:
-            if now >= cacherefresh + options.timeout:  # Expired entry
-                cache[hostname]['ip'] = {}
-                cache[hostname]['dirty'] = True
-            elif now < cacherefresh + options.refresh and INTERNAL.force < 0:
-                verbose(f'Using cached value for "{remove_filters(hostname)}"')
-                continue
-        todo.add(hostname)
-    if not todo:
-        return
-
-    # Resolve them
-    verbose(f'DNS lookup for: {", ".join(todo)}')
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        jobs = {
-            executor.submit(resolve_one_hostname, hostname): hostname
-            for hostname in todo
-        }
-        for future in concurrent.futures.as_completed(jobs):
-            hostname = jobs[future]
-            addrlist = future.result()
-            if addrlist:
-                # Append/update addresses, don't replace whole list.
-                # Some cloud services will change server IP a lot, and some
-                # will return only partial list of addresses. By appending
-                # old addresses will still work until lookup timeout.
-                iplist_cache_init(cache, hostname)
-                cache[hostname]['dirty'] = True
-                cache[hostname]['refresh'] = now
-                expire = normalize_expire(now, resolve[hostname].timeout)
-                for addr in addrlist:
-                    cache[hostname]['ip'][addr] = expire
-                verbose(
-                    f'Hostname "{remove_filters(hostname)}" resolved '
-                    f'to: {", ".join(addrlist)}'
-                )
-            elif '|missing-ok' not in hostname:
-                warning(
-                    f'No IP address found for hostname '
-                    f'"{remove_filters(hostname)}" in iplist'
-                )
 
 
 def active_sets():
@@ -4510,16 +4447,16 @@ def command_iplist_status():
     known = parse_config_iplist(config)
     table = [('Iplist', 'Entries')]
     error = 0
-    for setname in INTERNAL.parameters[1:] or sorted(known):
-        setname = setname.removeprefix('@')
-        if setname.endswith(('_4', '_6')):
-            data4 = nft_json(f'list set inet foomuuri {setname}')
+    for iplist_name in INTERNAL.parameters[1:] or sorted(known):
+        iplist_name = iplist_name.removeprefix('@')
+        if iplist_name.endswith(('_4', '_6')):
+            data4 = nft_json(f'list set inet foomuuri {iplist_name}')
             data6 = {}
         else:
-            data4 = nft_json(f'list set inet foomuuri {setname}_4')
-            data6 = nft_json(f'list set inet foomuuri {setname}_6')
+            data4 = nft_json(f'list set inet foomuuri {iplist_name}_4')
+            data6 = nft_json(f'list set inet foomuuri {iplist_name}_6')
         if data4 is None and data6 is None:
-            warning(f'Unknown iplist: @{setname}')
+            warning(f'Unknown iplist: @{iplist_name}')
             error = 1
             continue
         count = len(
@@ -4529,7 +4466,7 @@ def command_iplist_status():
                 )
             )
         )
-        table.append((f'@{setname}', int_to_human(count)))
+        table.append((f'@{iplist_name}', int_to_human(count)))
 
     print_table(data=table, align='<>', header=True)
     return error
@@ -4541,27 +4478,27 @@ def command_iplist_list():
     known = parse_config_iplist(config)
     table = [('Iplist', 'IPAddress', 'Timeout')]
     error = 0
-    for setname in INTERNAL.parameters[1:] or sorted(known):
-        setname = setname.removeprefix('@')
-        if setname.endswith(('_4', '_6')):
-            data4 = nft_json(f'list set inet foomuuri {setname}')
+    for iplist_name in INTERNAL.parameters[1:] or sorted(known):
+        iplist_name = iplist_name.removeprefix('@')
+        if iplist_name.endswith(('_4', '_6')):
+            data4 = nft_json(f'list set inet foomuuri {iplist_name}')
             data6 = {}
         else:
-            data4 = nft_json(f'list set inet foomuuri {setname}_4')
-            data6 = nft_json(f'list set inet foomuuri {setname}_6')
+            data4 = nft_json(f'list set inet foomuuri {iplist_name}_4')
+            data6 = nft_json(f'list set inet foomuuri {iplist_name}_6')
         if data4 is None and data6 is None:
-            warning(f'Unknown iplist: @{setname}')
+            warning(f'Unknown iplist: @{iplist_name}')
             error = 1
             continue
         elems = sorted(iterate_set_elements(data4)) + sorted(
             iterate_set_elements(data6)
         )
         if not elems:
-            table.append((f'@{setname}', '', ''))
+            table.append((f'@{iplist_name}', '', ''))
         else:
             table.extend(
                 (
-                    f'@{setname}',
+                    f'@{iplist_name}',
                     elem,
                     '-' if timeout is None else seconds_to_duration(timeout),
                 )
@@ -4576,94 +4513,74 @@ def command_iplist_add():
     """Add entries to iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = read_iplist_cache(iplists)
-    setname = INTERNAL.parameters[1]
-    if not setname.startswith('@'):
-        setname = f'@{setname}'
-    if setname not in iplists:
-        fail(f'Unknown iplist name: {setname}')
-    timeout = iplists[setname].options.element_timeout
+    cache = IPListSourceCache.read(iplists)
+    iplist_name = INTERNAL.parameters[1]
+    if not iplist_name.startswith('@'):
+        iplist_name = f'@{iplist_name}'
+    if iplist_name not in iplists:
+        fail(f'Unknown iplist name: {iplist_name}')
+    timeout = iplists[iplist_name].options.element_timeout
     if not timeout:
         timeout = max(
-            iplists[setname].options.url_timeout,
-            iplists[setname].options.dns_timeout,
+            iplists[iplist_name].options.url_timeout,
+            iplists[iplist_name].options.dns_timeout,
         )
-    now = int(time.time())
-    expire = normalize_expire(now, timeout)
-
     # Add entries to cache and apply it
-    iplist_cache_init(cache, f'manual.{setname}')
-    for address in INTERNAL.parameters[2:]:
-        ipv = get_ip_family(address, allow_negative=False)
-        if ipv:
-            cache[f'manual.{setname}']['ip'][address] = expire
-            cache[f'manual.{setname}']['dirty'] = True
-        else:
-            timeout = parse_duration(address, 0)
-            if not timeout:
-                fail(f'Invalid IP address {address}')
-            expire = normalize_expire(now, timeout)
-
-    return iplist_output_values(iplists, cache, {setname}, {setname})
+    cache.add_manual(iplist_name, INTERNAL.parameters[2:], timeout)
+    return iplist_output_values(iplists, cache, {iplist_name}, {iplist_name})
 
 
 def command_iplist_del():
     """Delete entries from iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = read_iplist_cache(iplists)
-    setname = INTERNAL.parameters[1]
-    if not setname.startswith('@'):
-        setname = f'@{setname}'
-    if setname not in iplists:
-        fail(f'Unknown iplist name: {setname}')
+    cache = IPListSourceCache.read(iplists)
+    iplist_name = INTERNAL.parameters[1]
+    if not iplist_name.startswith('@'):
+        iplist_name = f'@{iplist_name}'
+    if iplist_name not in iplists:
+        fail(f'Unknown iplist name: {iplist_name}')
 
     # Delete entries from cache and apply it
-    iplist_cache_init(cache, f'manual.{setname}')
-    for address in INTERNAL.parameters[2:]:
-        cache[f'manual.{setname}']['ip'].pop(address, None)
-        cache[f'manual.{setname}']['dirty'] = True
-
-    return iplist_output_values(iplists, cache, {setname}, {setname})
+    cache.delete_manual(iplist_name, INTERNAL.parameters[2:])
+    return iplist_output_values(iplists, cache, {iplist_name}, {iplist_name})
 
 
 def command_iplist_flush():
     """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    cache = read_iplist_cache(iplists)
+    cache = IPListSourceCache.read(iplists)
     update_only = set()
     target = set(INTERNAL.parameters[1:] or iplists)
 
-    for setname in target:
-        if not setname.startswith('@'):
-            setname = f'@{setname}'
-        if setname not in iplists:
-            fail(f'Unknown iplist name: {setname}')
+    for iplist_name in target:
+        if not iplist_name.startswith('@'):
+            iplist_name = f'@{iplist_name}'
+        if iplist_name not in iplists:
+            fail(f'Unknown iplist name: {iplist_name}')
 
-        update_only.add(setname)
-        iplist_cache_init(cache, f'manual.{setname}')
-        cache[f'manual.{setname}']['ip'] = {}
-        cache[f'manual.{setname}']['dirty'] = True
+        update_only.add(iplist_name)
+        cache.flush_manual(iplist_name)
 
     return iplist_output_values(iplists, cache, update_only, update_only)
 
 
-def lxml_parser(url, parser, path, text):
+def lxml_parser(source, parser, path, text):
     """Parse html/xml text with lxml."""
     # pylint: disable=c-extension-no-member
     try:
         root = lxml.etree.fromstring(text, parser)
         nodes = root.xpath(path)
     except lxml.etree.LxmlError as error:
-        warning(f'Failed to parse iplist xml/html "{url}": {error}')
+        warning(f'Failed to parse iplist xml/html "{source}": {error}')
         return None
     return '\n'.join(nodes)
 
 
-def iplist_url_filters(url, text):
-    """Apply filters to downloaded iplist content."""
-    for spec in url.split('|')[1:]:
+def iplist_apply_filters(source, text):
+    """Apply filters to iplist content."""
+    for spec in source.split('|')[1:]:
         if not text:
             break
 
@@ -4675,22 +4592,24 @@ def iplist_url_filters(url, text):
         elif spec.startswith('html:'):
             if HAVE_LXML:
                 text = lxml_parser(
-                    url, lxml.etree.HTMLParser(), spec[5:], text
+                    source, lxml.etree.HTMLParser(), spec[5:], text
                 )
             else:
                 warning('No python-lxml installed')
         elif spec.startswith('xml:'):
             if HAVE_LXML:
-                text = lxml_parser(url, lxml.etree.XMLParser(), spec[4:], text)
+                text = lxml_parser(
+                    source, lxml.etree.XMLParser(), spec[4:], text
+                )
             else:
                 warning('No python-lxml installed')
     return text
 
 
-def iplist_cleanup_file(url: str, text: str) -> list[str]:
-    """Parse downloaded iplist file to list of IP addresses."""
+def iplist_parse_content(source: str, text: str) -> list[str]:
+    """Parse downloaded iplist content to list of IP addresses."""
     # Apply filters
-    text = iplist_url_filters(url, text)
+    text = iplist_apply_filters(source, text)
     if not text:
         return []
 
@@ -4703,46 +4622,8 @@ def iplist_cleanup_file(url: str, text: str) -> list[str]:
             if get_ip_family(value, allow_negative=False):
                 addresses.append(value)
             else:
-                warning(f'Unknown entry in iplist "{url}": {value}')
+                warning(f'Unknown entry in iplist "{source}": {value}')
     return addresses
-
-
-def get_url_or_file(
-    url: str, options: IPListSourceOptions, cache: dict
-) -> None:
-    """Get URL or file content with cache check."""
-    now = int(time.time())
-    cachevalue = cache.get(url, {}).get('ip', {})
-    cacherefresh = cache.get(url, {}).get('refresh')
-    if cachevalue and cacherefresh:
-        if now >= cacherefresh + options.timeout:  # Expired entry
-            cache[url]['ip'] = {}
-            cache[url]['dirty'] = True
-        elif now < cacherefresh + options.refresh and INTERNAL.force < 0:
-            verbose(f'Using cached value for "{url}"')
-            return
-
-    value = (
-        get_url(url, options.max_size)
-        if url.startswith(('https:', 'http:'))
-        else get_file(url)
-    )
-
-    if value is not None:
-        # Replace list, don't append. These lists are always complete
-        # address lists.
-        expire = normalize_expire(now, options.timeout)
-        cache[url] = {
-            'ip': dict.fromkeys(iplist_cleanup_file(url, value), expire),
-            'dirty': True,
-            'refresh': now,
-        }
-        verbose(
-            f'Iplist content for "{url}" refreshed, '
-            f'{len(cache[url]["ip"])} entries'
-        )
-        if not cache[url]['ip'] and '|missing-ok' not in url:
-            warning(f'No IP addresses listed in "{remove_filters(url)}"')
 
 
 def str_to_time(timestamp):
@@ -4752,100 +4633,314 @@ def str_to_time(timestamp):
     return int(obj.timestamp())
 
 
-def read_old_iplist_format(cache):
-    """Read old iplist.fw (v0.27) files and convert them to new cache format.
+# Map IP addresses to expiration timestamps.
+IPListAddresses = dict[str, int]
 
-    Example entries:
 
-    # add element inet foomuuri fi_6 { 2a13:aec0::/32 timeout 10d }
-    add element inet foomuuri foo_4 { 10.0.9.98 timeout 24h }
-    add element inet foomuuri dynamic_4 { 10.0.0.4 timeout
-      798169s } # 2024-12-11T17:16:28
-    """
-    for file_key in ('resolve_file', 'iplist_file', 'iplist_manual_file'):
-        try:
-            manual = state_file(file_key).read_text('utf-8')
-        except OSError:
-            continue  # Silently ignore all errors
+class IPListSourceCacheEntry(typing.TypedDict, total=False):
+    """Store persistent source cache entry."""
 
-        for line in manual.splitlines():
-            line = line.removeprefix('# ')
-            items = line.split()
-            if (
-                not line.startswith('add element inet')
-                or len(items) not in {10, 12}
-                or not get_ip_family(items[6])
-            ):
+    ip: IPListAddresses
+    dirty: bool
+    refresh: int
+
+
+class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
+    """Manage persistent source cache entries."""
+
+    # Timeouts over expire_max are normalized to expire_forever.
+    expire_max = 2 * 365 * 86400
+    expire_forever = 4_000_000_000
+
+    @staticmethod
+    def _normalize_expire(now: int, timeout: int) -> int:
+        """Add timeout to now, or return "forever" for large timeouts."""
+        if timeout > IPListSourceCache.expire_max:
+            return IPListSourceCache.expire_forever
+        return now + timeout
+
+    def _ensure_entry(self, key: str) -> IPListSourceCacheEntry:
+        """Return cache entry, creating it if missing."""
+        return self.setdefault(
+            key,
+            {'ip': {}, 'dirty': False, 'refresh': int(time.time())},
+        )
+
+    def write(self) -> None:
+        """Remove transient metadata and save source cache to disk."""
+        for source in list(self):
+            entry = self[source]
+            entry.pop('dirty', None)
+            if source.startswith('manual.@'):
+                entry.pop('refresh', None)
+            if '|missing-ok' not in source and not entry.get('ip'):
+                self.pop(source, None)
+
+        save_file(state_file('iplist_cache_file'), self.data)
+
+    def add_manual(
+        self, iplist_name: str, addresses: typing.Iterable[str], timeout: int
+    ) -> None:
+        """Add addresses to manual source and update timeouts."""
+        now = int(time.time())
+        expire = self._normalize_expire(now, timeout)
+        key = f'manual.{iplist_name}'
+        entry = self._ensure_entry(key)
+        for address in addresses:
+            if get_ip_family(address, allow_negative=False):
+                entry['ip'][address] = expire
+                entry['dirty'] = True
                 continue
-            setname = f'manual.@{items[4][:-2]}'
+            parsed_timeout = parse_duration(address, 0)
+            if not parsed_timeout:
+                fail(f'Invalid IP address {address}')
+            expire = self._normalize_expire(now, parsed_timeout)
 
-            if len(items) == 12:
-                # iplist_manual_file has expire stamp.
-                timeout = str_to_time(items[11])
-            else:
-                timeout = int(time.time()) + parse_duration(items[8], 0)
-            iplist_cache_init(cache, setname)
-            cache[setname]['ip'][items[6]] = timeout
+    def delete_manual(
+        self, iplist_name: str, addresses: typing.Iterable[str]
+    ) -> None:
+        """Delete addresses from manual source."""
+        entry = self._ensure_entry(f'manual.{iplist_name}')
+        for address in addresses:
+            entry['ip'].pop(address, None)
+        entry['dirty'] = True
 
+    def flush_manual(self, iplist_name: str) -> None:
+        """Delete all addresses from manual source."""
+        self._clear_entry(f'manual.{iplist_name}')
 
-def read_iplist_cache(iplist):
-    """Read current iplist values from cache."""
-    cache = {}
-    filename = state_file('iplist_cache_file')
-    try:
-        cache = json.loads(filename.read_text('utf-8'))
-    except json.decoder.JSONDecodeError as error:
-        warning(f'File {filename}: Broken JSON format: {error}')
-    except PermissionError as error:
-        fail(f"File {filename}: Can't read: {error}")
-    except FileNotFoundError:
-        read_old_iplist_format(cache)
+    def _clear_entry(self, key: str) -> None:
+        """Remove addresses from cache entry and mark it dirty."""
+        entry = self._ensure_entry(key)
+        entry['ip'].clear()
+        entry['dirty'] = True
 
-    now = int(time.time())
-    for key in list(cache):
-        if (
-            (key.startswith('@') and key not in iplist)
-            or (key.startswith('manual.@') and key[7:] not in iplist)
-            or 'ip' not in cache[key]
-        ):
-            # Iplist in cache, not in config
-            del cache[key]
-            verbose(f'Deleting iplist "{key}" from cache, not in config')
-            continue
+    def _expire_or_use_cache(
+        self, key: str, options: IPListSourceOptions, now: int
+    ) -> bool:
+        """Expire timed-out cache entry, or return True when fresh."""
+        entry = self.get(key, {})
+        addresses = entry.get('ip', {})
+        refresh = entry.get('refresh')
+        if not addresses or not refresh:
+            return False
+        if now >= refresh + options.timeout:
+            self._clear_entry(key)
+            return False
+        if now < refresh + options.refresh and INTERNAL.force < 0:
+            verbose(f'Using cached value for "{remove_filters(key)}"')
+            return True
+        return False
 
-        # Check top level refresh. Missing or invalid value is ok.
+    def refresh_url_or_file(
+        self, source: str, options: IPListSourceOptions
+    ) -> None:
+        """Refresh URL or file source with cache check."""
+        now = int(time.time())
+        if self._expire_or_use_cache(source, options, now):
+            return
+
+        value = (
+            get_url(source, options.max_size)
+            if source.startswith(('https:', 'http:'))
+            else get_file(source)
+        )
+
+        if value is not None:
+            # Replace list, don't append. These lists are always complete
+            # address lists.
+            expire = self._normalize_expire(now, options.timeout)
+            addresses = dict.fromkeys(
+                iplist_parse_content(source, value), expire
+            )
+            self[source] = {
+                'ip': addresses,
+                'dirty': True,
+                'refresh': now,
+            }
+            verbose(
+                f'Iplist content for "{source}" refreshed, '
+                f'{len(addresses)} entries'
+            )
+            if not addresses and '|missing-ok' not in source:
+                warning(
+                    f'No IP addresses listed in "{remove_filters(source)}"'
+                )
+
+    def resolve_hostnames(
+        self, hostnames: typing.Mapping[str, IPListSourceOptions]
+    ) -> None:
+        """Resolve hostnames and save their addresses to cache."""
+        # Collect list of hostnames to resolve
+        now = int(time.time())
+        todo = set()
+        for hostname, options in hostnames.items():
+            if self._expire_or_use_cache(hostname, options, now):
+                continue
+            todo.add(hostname)
+        if not todo:
+            return
+
+        # Resolve them
+        verbose(f'DNS lookup for: {", ".join(todo)}')
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            jobs = {
+                executor.submit(resolve_one_hostname, hostname): hostname
+                for hostname in todo
+            }
+            for future in concurrent.futures.as_completed(jobs):
+                hostname = jobs[future]
+                addrlist = future.result()
+                if addrlist:
+                    # Append/update addresses, don't replace whole list.
+                    # Some cloud services will change server IP a lot, and some
+                    # will return only partial list of addresses. By appending
+                    # old addresses will still work until lookup timeout.
+                    expire = self._normalize_expire(
+                        now, hostnames[hostname].timeout
+                    )
+                    entry = self._ensure_entry(hostname)
+                    entry['ip'].update(dict.fromkeys(addrlist, expire))
+                    entry['dirty'] = True
+                    entry['refresh'] = now
+                    verbose(
+                        f'Hostname "{remove_filters(hostname)}" resolved '
+                        f'to: {", ".join(addrlist)}'
+                    )
+                elif '|missing-ok' not in hostname:
+                    warning(
+                        f'No IP address found for hostname '
+                        f'"{remove_filters(hostname)}" in iplist'
+                    )
+
+    def _read_old_format(self) -> None:
+        """Read old iplist.fw (v0.27) files and convert them to new format.
+
+        Example entries:
+
+        # add element inet foomuuri fi_6 { 2a13:aec0::/32 timeout 10d }
+        add element inet foomuuri foo_4 { 10.0.9.98 timeout 24h }
+        add element inet foomuuri dynamic_4 { 10.0.0.4 timeout
+          798169s } # 2024-12-11T17:16:28
+        """
+        for file_key in ('resolve_file', 'iplist_file', 'iplist_manual_file'):
+            try:
+                content = state_file(file_key).read_text('utf-8')
+            except OSError:
+                continue  # Silently ignore all errors
+
+            for line in content.splitlines():
+                line = line.removeprefix('# ')
+                items = line.split()
+                if (
+                    not line.startswith('add element inet')
+                    or len(items) not in {10, 12}
+                    or not get_ip_family(items[6])
+                ):
+                    continue
+                key = f'manual.@{items[4][:-2]}'
+
+                if len(items) == 12:
+                    # iplist_manual_file has expire stamp.
+                    timeout = str_to_time(items[11])
+                else:
+                    timeout = int(time.time()) + parse_duration(items[8], 0)
+                self._ensure_entry(key)['ip'][items[6]] = timeout
+
+    @classmethod
+    def read(cls, iplists: typing.Iterable[str]) -> 'IPListSourceCache':
+        """Read persistent source cache from disk."""
+        self = cls()
+        filename = state_file('iplist_cache_file')
         try:
-            if isinstance(cache[key]['refresh'], str):
-                cache[key]['refresh'] = str_to_time(cache[key]['refresh'])
-        except KeyError:
-            cache[key]['refresh'] = now
+            self.update(json.loads(filename.read_text('utf-8')))
+        except (json.decoder.JSONDecodeError, UnicodeDecodeError) as error:
+            warning(f'File {filename}: Broken JSON format: {error}')
+        except FileNotFoundError:
+            self._read_old_format()
+        except OSError as error:
+            fail(f"File {filename}: Can't read: {error}")
 
-        # Check IP address timeouts
-        dellist = set()
-        for addr, timeout in cache[key]['ip'].items():
-            if isinstance(timeout, str):
-                timeout = str_to_time(timeout)
-                cache[key]['ip'][addr] = timeout
-            if now >= timeout:
-                dellist.add(addr)
-        for addr in dellist:
-            verbose(f'Deleting expired iplist "{key}" entry "{addr}"')
-            del cache[key]['ip'][addr]
+        now = int(time.time())
 
-        # Don't keep empty sets
-        if not cache[key]['ip']:
-            del cache[key]
-    return cache
+        for key in list(self):
+            if key.startswith('@'):
+                del self[key]
+                verbose(f'Deleting legacy iplist "{key}" from cache')
+                continue
+
+            # Delete cache entries which are not in config iplists
+            if (
+                key.startswith('manual.@') and key[7:] not in iplists
+            ) or 'ip' not in self[key]:
+                # Iplist in cache, not in config
+                del self[key]
+                verbose(f'Deleting iplist "{key}" from cache, not in config')
+                continue
+
+            # Top level refresh must be present
+            if self[key].get('refresh') is None:
+                self[key]['refresh'] = now
+
+            # Find expired addresses
+            dellist = {
+                addr
+                for addr, timeout in self[key]['ip'].items()
+                if now >= timeout
+            }
+
+            # Delete expired addresses
+            for addr in dellist:
+                verbose(f'Deleting expired iplist "{key}" entry "{addr}"')
+                del self[key]['ip'][addr]
+
+            # Don't keep empty cache entries, when not marked with |missing-ok
+            if '|missing-ok' not in key and not self[key]['ip']:
+                del self[key]
+        return self
 
 
-def write_iplist_cache(cache):
-    """Write iplist cache to disk for next run."""
-    for key in cache:
-        cache[key].pop('dirty', None)
-        if key.startswith(('@', 'manual.@')):
-            del cache[key]['refresh']
+@dataclasses.dataclass(eq=False)
+class IPListValue:
+    """Hold transient iplist addresses value."""
 
-    save_file(state_file('iplist_cache_file'), cache)
+    name: str
+    addresses: IPListAddresses = dataclasses.field(default_factory=dict)
+    dirty: bool = False
+
+    def _copy_addresses(
+        self, source_cache: IPListSourceCache, source: str
+    ) -> None:
+        """Copy addresses from a source cache entry."""
+        if source not in source_cache:
+            return
+        if source_cache[source].get('dirty'):
+            self.dirty = True
+        for address, timeout in source_cache[source]['ip'].items():
+            old_timeout = self.addresses.get(address, timeout)
+            self.addresses[address] = max(old_timeout, timeout)
+
+    @classmethod
+    def from_sources(
+        cls,
+        source_cache: IPListSourceCache,
+        name: str,
+        sources: typing.Iterable[str],
+    ) -> 'IPListValue':
+        """Build a transient iplist from cached and static sources."""
+        self = cls(name=name)
+        static_addresses: list[str] = []
+        for source in sources:
+            if get_ip_family(source, allow_negative=False):
+                static_addresses.append(source)
+            else:
+                self._copy_addresses(source_cache, source)
+        for address in static_addresses:
+            self.addresses[address] = IPListSourceCache.expire_forever
+        if static_addresses:
+            self.dirty = True
+        self._copy_addresses(source_cache, f'manual.{name}')
+        return self
 
 
 def parse_config_iplist(config) -> IPLists:
@@ -4947,13 +5042,13 @@ def iplist_collect_resolve_list(iplists: IPLists) -> tuple:
         # Use cached entries only.
         return {}, {}
 
-    urls = collections.defaultdict(IPListSourceOptions)
+    sources = collections.defaultdict(IPListSourceOptions)
     hostnames = collections.defaultdict(IPListSourceOptions)
     for iplist in iplists.values():
         for source in iplist.sources:
             if source.startswith(('https://', 'http://', '.', '/')):
                 for option in ('timeout', 'refresh', 'max_size'):
-                    urls[source].update_if_less(
+                    sources[source].update_if_less(
                         option, iplist.options[f'url_{option}']
                     )
             elif not get_ip_family(source, allow_negative=False):
@@ -4962,36 +5057,13 @@ def iplist_collect_resolve_list(iplists: IPLists) -> tuple:
                         option, iplist.options[f'dns_{option}']
                     )
     if CONFIG.verbose >= 2:
-        verbose(f'URLs:      {urls}')
+        verbose(f'Sources:   {sources}')
         verbose(f'Hostnames: {hostnames}')
-    return urls, hostnames
+    return sources, hostnames
 
 
-def iplist_cache_init(cache, setname):
-    """Add empty setname to cache."""
-    if setname in cache:
-        return
-    cache[setname] = {
-        'ip': {},
-        'refresh': int(time.time()),
-    }
-
-
-def iplist_cache_copy_ip(cache, source, destination):
-    """Copy IP addresses from cache[source] to cache[destination]."""
-    if source not in cache:
-        return
-    if cache[source].get('dirty'):
-        cache[destination]['dirty'] = True
-    for address, timeout in cache[source]['ip'].items():
-        # Choose maximum timeout if both dynamic (resolved from hostname)
-        # and manually added address exists.
-        old_timeout = cache[destination]['ip'].get(address, timeout)
-        cache[destination]['ip'][address] = max(old_timeout, timeout)
-
-
-def iplist_output_add_element(cache, setname, now):
-    """Output nft commands to update iplist values to sets.
+def iplist_output_add_element(iplist: IPListValue, now: int):
+    """Output nft commands for a transient iplist.
 
     Auto-merge in nftables set requires that adds are done set by set, not
     mixing foo_4 and foo_6 adds.
@@ -5001,24 +5073,24 @@ def iplist_output_add_element(cache, setname, now):
         4: set(),
         6: set(),
     }
-    for address in cache[setname]['ip']:
+    for address, timeout in iplist.addresses.items():
         if ':' in address:
-            updates[6].add(address)
+            updates[6].add((address, timeout))
         else:
-            updates[4].add(address)
+            updates[4].add((address, timeout))
 
     # Output add to sets
     out('')
+    set_name = iplist.name.removeprefix('@')
     for ipv in (4, 6):
-        out(f'flush set inet foomuuri {setname[1:]}_{ipv}')
+        out(f'flush set inet foomuuri {set_name}_{ipv}')
         if not updates[ipv]:
             continue
 
-        out(f'add element inet foomuuri {setname[1:]}_{ipv} {{')
-        for address in sorted(updates[ipv]):
-            timeout = cache[setname]['ip'][address]
+        out(f'add element inet foomuuri {set_name}_{ipv} {{')
+        for address, timeout in sorted(updates[ipv]):
             seconds = max(1, timeout - now)
-            if seconds > 2 * 365 * 86400:  # More than 2 years is forever
+            if seconds > IPListSourceCache.expire_max:
                 out(f'{address},')
             else:
                 out(f'{address} timeout {seconds}s,')
@@ -5027,76 +5099,57 @@ def iplist_output_add_element(cache, setname, now):
 
 def iplist_output_values(
     iplists: IPLists,
-    cache: dict,
+    source_cache: IPListSourceCache,
     currently_active: set[str],
     update_only: set[str],
 ) -> int:
-    """Output and apply nft commands to add iplist entries."""
+    """Output and apply nft commands to add iplist values."""
     now = int(time.time())
     error = 0
-    for setname in sorted(iplists):
-        setvalues = iplists[setname].sources
+    for iplist_name in sorted(iplists):
+        sources = iplists[iplist_name].sources
 
-        # Collect new values to cache[@setname]
-        cache[setname] = {
-            'ip': {},
-            'refresh': now,
-        }
-        for value in setvalues:
-            # Static IP address doesn't need refresh, so timeout is forever
-            if get_ip_family(value, allow_negative=False):
-                cache[setname]['ip'][value] = Internal.expire_forever
-                cache[setname]['dirty'] = True
-                continue
-
-            # Add IPs from URL/hostname
-            iplist_cache_copy_ip(cache, value, setname)
-
-        # Add manually added IPs
-        iplist_cache_copy_ip(cache, f'manual.{setname}', setname)
+        # Build transient iplist from its sources
+        iplist = IPListValue.from_sources(source_cache, iplist_name, sources)
 
         # Check that this set should be updated
-        if update_only and setname not in update_only:
+        if update_only and iplist_name not in update_only:
             continue  # Filtered away by command line parameter
-        if setname not in currently_active:
+        if iplist_name not in currently_active:
             warning(
-                f'Iplist "{setname}" does not exist in currently active '
+                f'Iplist "{iplist_name}" does not exist in currently active '
                 f'firewall'
             )
             continue
-        if not cache[setname].get('dirty') and INTERNAL.force < 0:
-            verbose(f'Iplist "{setname}" is clean, skipping update')
+        if not iplist.dirty and INTERNAL.force < 0:
+            verbose(f'Iplist "{iplist_name}" is clean, skipping update')
             continue
 
         # Print error if set had values, but result is empty
-        if (
-            setvalues
-            and not cache[setname]['ip']
-            and INTERNAL.command == 'iplist'
-        ):
-            if all('|missing-ok' in name for name in setvalues):
-                warning(f'Iplist "{setname}" is empty')
+        if sources and not iplist.addresses and INTERNAL.command == 'iplist':
+            if all('|missing-ok' in source for source in sources):
+                warning(f'Iplist "{iplist_name}" is empty')
             else:
-                fail(f'Iplist "{setname}" is empty', False)
+                fail(f'Iplist "{iplist_name}" is empty', False)
                 error = 2
         else:
             verbose(
-                f'Updating iplist "{setname}", '
-                f'{len(cache[setname]["ip"])} entries'
+                f'Updating iplist "{iplist_name}", '
+                f'{len(iplist.addresses)} entries'
             )
 
         # Add elements to sets
-        iplist_output_add_element(cache, setname, now)
+        iplist_output_add_element(iplist, now)
 
-    return iplist_apply_values(cache) | error
+    return iplist_apply_values(source_cache) | error
 
 
-def iplist_apply_values(cache):
-    """Save iplist changes to disk and use nft to apply it."""
+def iplist_apply_values(source_cache: IPListSourceCache):
+    """Save source cache changes to disk and use nft to apply them."""
     if INTERNAL.command != 'iplist' or not OUT:
         return 0
 
-    write_iplist_cache(cache)
+    source_cache.write()
     lines = '\n'.join(save_final(None))
     ret = run_program_rc(CONFIG.nft_bin + ['--file', '-'], stdin=lines)
     if ret:
@@ -5114,15 +5167,15 @@ def command_iplist_refresh(
     if not iplists:
         config = minimal_config()
         iplists = parse_config_iplist(config)
-    urls, hostnames = iplist_collect_resolve_list(iplists)
+    sources, hostnames = iplist_collect_resolve_list(iplists)
 
     # Read URLs and files to cache
-    cache = read_iplist_cache(iplists)
-    for url, options in urls.items():
-        get_url_or_file(url, options, cache)
+    cache = IPListSourceCache.read(iplists)
+    for source, options in sources.items():
+        cache.refresh_url_or_file(source, options)
 
     # Resolve hostnames to cache
-    resolve_all_hostnames(hostnames, cache)
+    cache.resolve_hostnames(hostnames)
 
     # Read active set names from nft if not provided by "foomuuri start"
     if currently_active is None:
@@ -5139,7 +5192,7 @@ def command_iplist_refresh(
         update_only = override_update_only
     else:
         # Default is to update all iplists (empty set).
-        # This can be filtered with "foomuuri iplist refresh setname...".
+        # This can be filtered with "foomuuri iplist refresh IPLIST...".
         update_only = {
             name if name.startswith('@') else f'@{name}'
             for name in INTERNAL.parameters[1:]
