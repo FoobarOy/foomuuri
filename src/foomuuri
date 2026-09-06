@@ -4906,11 +4906,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
 
             entry = self[source]
 
-            # Check top level refresh. Missing or invalid value is ok.
-            try:
-                if isinstance(entry['refresh'], str):
-                    entry['refresh'] = str_to_time(entry['refresh'])
-            except KeyError:
+            # Top level refresh must be present
+            if entry.get('refresh') is None:
                 entry['refresh'] = now
 
             # Find and delete expired addresses
