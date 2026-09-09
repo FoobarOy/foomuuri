@@ -14,12 +14,13 @@
   * DNS resolution or URL/file download fails.
   * Resolution/download succeeds, but the content is empty.
   Without `|missing-ok`, any of these conditions causes an error.
+* Add `prometheus-rasdaemon` macro to default services.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
 * Fix: Support numeric ranges in `uid` and `gid` matchers. (#214)
 * Fix: Don't add `fib daddr type multicast drop` after rule `multicast accept`.
   It is unneeded and confuses `nft --optimize`. (#207)
-* Fix: Add a warning if `zonemap` creates loop. (#225)
+* Fix: Add a warning if `zonemap` creates a loop. (#225)
 
 ## 0.33 (2026-06-03)
 
