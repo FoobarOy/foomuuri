@@ -36,22 +36,22 @@ class TestIPListSourceCacheRead(unittest.TestCase):
         """Test cache read removes legacy and unconfigured sources."""
         data = {
             '@unknown': {
-                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_never},
             },
             'manual.@unknown': {
-                'ip': {'10.0.0.2': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.2': foomuuri.IPListSourceCache.expire_never},
             },
             'manual.@known': {
-                'ip': {'10.0.0.4': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.4': foomuuri.IPListSourceCache.expire_never},
                 'refresh': 1,
             },
             'broken': {'dirty': False},
             '@known': {
-                'ip': {'10.0.0.3': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.3': foomuuri.IPListSourceCache.expire_never},
                 'refresh': 1,
             },
             'https://foo.bar/removed.txt': {
-                'ip': {'10.0.0.9': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.9': foomuuri.IPListSourceCache.expire_never},
                 'refresh': 100,
             },
             'https://foo.bar/empty.txt': {
@@ -67,7 +67,7 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 'refresh': 100,
             },
             'https://foo.bar/list.txt|missing-ok': {
-                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_forever},
+                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_never},
                 'refresh': 100,
             },
         }
@@ -111,7 +111,7 @@ class TestIPListSourceCacheRead(unittest.TestCase):
             {
                 'manual.@known': {
                     'ip': {
-                        '10.0.0.4': foomuuri.IPListSourceCache.expire_forever
+                        '10.0.0.4': foomuuri.IPListSourceCache.expire_never
                     },
                     'refresh': 1,
                 },
@@ -121,7 +121,7 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 },
                 'https://foo.bar/list.txt|missing-ok': {
                     'ip': {
-                        '10.0.0.1': foomuuri.IPListSourceCache.expire_forever
+                        '10.0.0.1': foomuuri.IPListSourceCache.expire_never
                     },
                     'refresh': 100,
                 },

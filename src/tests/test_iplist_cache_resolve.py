@@ -58,8 +58,8 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         warning.assert_not_called()
         verbose.assert_any_call('Hostname "foo.bar" resolved to: 10.0.0.5')
 
-    def test_resolve_hostname_expire_forever(self, *_):
-        """Test very large timeout sets expiry to "forever"."""
+    def test_resolve_hostname_expire_never(self, *_):
+        """Test very large timeout sets expiry to "never"."""
         cache, _, _ = self.run_resolve(
             {
                 'foo.bar': self.source_options(
@@ -71,7 +71,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         )
         self.assertEqual(
             cache['foo.bar']['ip']['10.0.0.9'],
-            foomuuri.IPListSourceCache.expire_forever,
+            foomuuri.IPListSourceCache.expire_never,
         )
 
     def test_resolve_hostname_failed_warns(self, *_):

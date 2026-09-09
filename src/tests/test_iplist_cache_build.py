@@ -22,8 +22,8 @@ class TestIPListValueBuild(unittest.TestCase):
         self.assertEqual(
             iplist.addresses,
             {
-                '10.0.0.1': foomuuri.IPListSourceCache.expire_forever,
-                '2001:db8::1': foomuuri.IPListSourceCache.expire_forever,
+                '10.0.0.1': foomuuri.IPListSourceCache.expire_never,
+                '2001:db8::1': foomuuri.IPListSourceCache.expire_never,
             },
         )
         self.assertTrue(iplist.dirty)
@@ -68,7 +68,7 @@ class TestIPListValueBuild(unittest.TestCase):
         self.assertEqual(
             iplist.addresses,
             {
-                '10.0.0.1': foomuuri.IPListSourceCache.expire_forever,
+                '10.0.0.1': foomuuri.IPListSourceCache.expire_never,
                 '192.0.2.1': 300,
                 '2001:db8::2': 400,
             },

@@ -4642,21 +4642,21 @@ class IPListSourceCacheEntry(typing.TypedDict, total=False):
 
     ip: IPListAddresses
     dirty: bool
-    refresh: int
+    refresh: int  # Timestamp when this entry was created
 
 
 class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
     """Manage persistent source cache entries."""
 
-    # Timeouts over expire_max are normalized to expire_forever.
+    # Timeouts over expire_max are normalized to expire_never.
     expire_max = 2 * 365 * 86400
-    expire_forever = 4_000_000_000
+    expire_never = 4_000_000_000
 
     @staticmethod
     def _normalize_expire(now: int, timeout: int) -> int:
-        """Add timeout to now, or return "forever" for large timeouts."""
+        """Add timeout to now, or return "never" for large timeouts."""
         if timeout > IPListSourceCache.expire_max:
-            return IPListSourceCache.expire_forever
+            return IPListSourceCache.expire_never
         return now + timeout
 
     def _ensure_entry(self, source: str) -> IPListSourceCacheEntry:
@@ -4959,7 +4959,7 @@ class IPListValue:
             else:
                 self._copy_addresses(source_cache, source)
         for address in static_addresses:
-            self.addresses[address] = IPListSourceCache.expire_forever
+            self.addresses[address] = IPListSourceCache.expire_never
         if static_addresses:
             self.dirty = True
         self._copy_addresses(source_cache, f'manual.{name}')
