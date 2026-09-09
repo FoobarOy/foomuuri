@@ -4284,14 +4284,14 @@ def iplist_verify_filters(name, values, fileline):
                 )
 
 
-def resolve_one_hostname(hostname):
+def resolve_one_hostname(hostname: str) -> typing.Optional[set]:
     """Resolve hostname and return its IP addresses."""
-    ret = set()
     with contextlib.suppress(socket.gaierror):
-        for item in socket.getaddrinfo(remove_filters(hostname), None):
-            if item[4] and item[4][0]:
-                ret.add(item[4][0])
-    return ret
+        return {
+            addr[4][0]
+            for addr in socket.getaddrinfo(remove_filters(hostname), None)
+        }
+    return None
 
 
 def active_sets():
