@@ -619,7 +619,7 @@ SpecialChainKey = tuple[str, typing.Optional[str], typing.Optional[str]]
 ZonePairRules = dict[ZonePairKey, RuleList]
 SpecialChainRules = dict[SpecialChainKey, RuleList]
 Macros = dict[str, list[str]]  # macro name -> expansion values
-Zones = dict[str, dict[str, list[str]]]  # zone name -> interface list mapping
+Zones = dict[str, list[str]]  # zone name -> interface list mapping
 
 
 CONFIG = Config()
@@ -1389,7 +1389,7 @@ def parse_config_zones(config: dict) -> Zones:
         if line[0] in zones:
             fail(f'{fileline}Zone is already defined: {line[0]}')
         interface = [item for item in line[1:] if item != '*']
-        zones[line[0]] = {'interface': interface}
+        zones[line[0]] = interface
         if '*' in line[1:]:
             if INTERNAL.catch_all_interface_zone:
                 fail(
@@ -1981,16 +1981,16 @@ def verify_config(config: dict, zones: Zones, rules: ZonePairRules) -> None:
 
     localhost = CONFIG.localhost_zone
     if localhost not in zones:
-        zones[localhost] = {'interface': []}
+        zones[localhost] = []
         warning(
             f'{config["_section_line"]["zone"]}Zone "{localhost}" '
             f'is missing from zone{{}}, adding it'
         )
 
-    if zones[localhost]['interface']:
+    if zones[localhost]:
         fail(
             f'{config["_section_line"]["zone"]}Zone "{localhost}" has '
-            f'interfaces "{" ".join(zones[localhost]["interface"])}", '
+            f'interfaces "{" ".join(zones[localhost])}", '
             f'it must be empty'
         )
 
@@ -2956,9 +2956,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     # Vmap must have interval-flag if there is wildcard-interface ("eth*").
     localhost = CONFIG.localhost_zone
     has_wildcard = any(
-        '*' in interface
-        for value in zones.values()
-        for interface in value['interface']
+        '*' in interface for value in zones.values() for interface in value
     )
 
     # Incoming zones
@@ -2969,7 +2967,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     out('elements = {')
     out('"lo" : accept,')
     for zone, value in zones.items():
-        for interface in value['interface']:
+        for interface in value:
             out(f'"{interface}" : jump {zone}-{localhost},')
     out('}')
     out('}')
@@ -2985,7 +2983,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     else:
         out('"lo" : accept,')
     for zone, value in zones.items():
-        for interface in value['interface']:
+        for interface in value:
             out(f'"{interface}" : jump {localhost}-{zone},')
     out('}')
     out('}')
@@ -2999,8 +2997,8 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     out('"lo" . "lo" : accept,')
     for szone, svalue in zones.items():
         for dzone, dvalue in zones.items():
-            for sinterface in svalue['interface']:
-                for dinterface in dvalue['interface']:
+            for sinterface in svalue:
+                for dinterface in dvalue:
                     out(
                         f'"{sinterface}" . "{dinterface}" : '
                         f'jump {szone}-{dzone},'
@@ -3018,7 +3016,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
         out('elements = {')
         out('"lo" : accept,')
         for zone, value in zones.items():
-            for interface in value['interface']:
+            for interface in value:
                 out(
                     f'"{interface}" : jump '
                     f'{zone}-{INTERNAL.catch_all_interface_zone},'
@@ -3034,7 +3032,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
         out('elements = {')
         out('"lo" : accept,')
         for zone, value in zones.items():
-            for interface in value['interface']:
+            for interface in value:
                 out(
                     f'"{interface}" : jump '
                     f'{INTERNAL.catch_all_interface_zone}-{zone},'
@@ -3631,8 +3629,8 @@ def print_assembled_config(
     print_section(
         'zone',
         [
-            f'{zone} {" ".join(statement["interface"])}'
-            for zone, statement in zones.items()
+            f'{zone} {" ".join(interfaces)}'
+            for zone, interfaces in zones.items()
         ],
     )
 
@@ -4029,7 +4027,7 @@ if HAVE_DBUS:
 
             # Fallback to zones section, or to foomuuri.dbus_zone
             for key, value in self.zones.items():
-                if interface in value['interface']:
+                if interface in value:
                     return key
             return CONFIG.dbus_zone
 
