@@ -863,7 +863,7 @@ def nft_json(cmd: str) -> typing.Optional[dict]:
         return None
 
 
-def daemonize():
+def daemonize() -> None:
     """Fork as a background daemon. Silently ignore errors."""
     # Enabled in config?
     if not CONFIG.fork:
@@ -4376,7 +4376,7 @@ def resolve_one_hostname(hostname: str) -> typing.Optional[set]:
     return None
 
 
-def active_sets():
+def active_sets() -> set[str]:
     """Return set names in currently active firewall."""
     ret = set()
     data = nft_json('list sets table inet foomuuri')
@@ -4633,7 +4633,7 @@ def command_iplist_del():
     return iplist_output_values(iplists, cache, {iplist_name}, {iplist_name})
 
 
-def command_iplist_flush():
+def command_iplist_flush() -> int:
     """Delete all IP addresses from all or specific iplist(s)."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
@@ -5255,7 +5255,7 @@ def iplist_output_values(
     return iplist_apply_values(source_cache) | error
 
 
-def iplist_apply_values(source_cache: IPListSourceCache):
+def iplist_apply_values(source_cache: IPListSourceCache) -> int:
     """Save source cache changes to disk and use nft to apply them."""
     if INTERNAL.command != 'iplist' or not OUT:
         return 0
@@ -6078,7 +6078,7 @@ def monitor_write_statistics(targets, groups):
     save_file(state_file('monitor_statistics_file'), stats)
 
 
-def command_monitor():
+def command_monitor() -> int:
     """Monitor targets and run command when their state changes up or down."""
     INTERNAL.keep_going = 1
     while INTERNAL.keep_going:
