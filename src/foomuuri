@@ -3010,6 +3010,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
 
     # Forward with catch all interface
     if INTERNAL.catch_all_interface_zone:
+        # From eth0 to *
         out('map forward_catchall_input_zones {')
         out('type ifname : verdict')
         if has_wildcard:
@@ -3025,6 +3026,7 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
         out('}')
         out('}')
 
+        # From * to eth0
         out('map forward_catchall_output_zones {')
         out('type ifname : verdict')
         if has_wildcard:
@@ -3251,8 +3253,12 @@ def output_header(chain_rules: SpecialChainRules) -> None:
         out('flow add @fastpath')
     out('iifname . oifname vmap @forward_zones')
     if INTERNAL.catch_all_interface_zone:
-        out('iifname vmap @forward_catchall_input_zones')
-        out('oifname vmap @forward_catchall_output_zones')
+        out('iifname vmap @forward_catchall_input_zones')  # eth0 -> *
+        out('oifname vmap @forward_catchall_output_zones')  # * -> eth0
+        out(  # * -> *
+            f'jump {INTERNAL.catch_all_interface_zone}-'
+            f'{INTERNAL.catch_all_interface_zone}'
+        )
     output_static_chain_logging('forward', 'drop')
     out('drop')
     out('}')
