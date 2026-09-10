@@ -21,6 +21,8 @@
 * Fix: Don't add `fib daddr type multicast drop` after rule `multicast accept`.
   It is unneeded and confuses `nft --optimize`. (#207)
 * Fix: Add a warning if `zonemap` creates a loop. (#225)
+* Fix: Catch all interface `*` was not handled correctly when forwarding
+  packets. (#238)
 
 ## 0.33 (2026-06-03)
 

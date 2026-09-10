@@ -2951,14 +2951,15 @@ def output_zone(
 def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     """Output interface verdict maps to jump to correct zone-zone."""
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
 
-    # Vmap must have interval-flag if there is wildcard-interface.
+    # Vmap must have interval-flag if there is wildcard-interface ("eth*").
     localhost = CONFIG.localhost_zone
-    has_wildcard = False
-    for value in zones.values():
-        for interface in value['interface']:
-            if '*' in interface:
-                has_wildcard = True
+    has_wildcard = any(
+        '*' in interface
+        for value in zones.values()
+        for interface in value['interface']
+    )
 
     # Incoming zones
     out('map input_zones {')
@@ -3006,6 +3007,38 @@ def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
                     )
     out('}')
     out('}')
+
+    # Forward with catch all interface
+    if INTERNAL.catch_all_interface_zone:
+        out('map forward_catchall_input_zones {')
+        out('type ifname : verdict')
+        if has_wildcard:
+            out('flags interval')
+        out('elements = {')
+        out('"lo" : accept,')
+        for zone, value in zones.items():
+            for interface in value['interface']:
+                out(
+                    f'"{interface}" : jump '
+                    f'{zone}-{INTERNAL.catch_all_interface_zone},'
+                )
+        out('}')
+        out('}')
+
+        out('map forward_catchall_output_zones {')
+        out('type ifname : verdict')
+        if has_wildcard:
+            out('flags interval')
+        out('elements = {')
+        out('"lo" : accept,')
+        for zone, value in zones.items():
+            for interface in value['interface']:
+                out(
+                    f'"{interface}" : jump '
+                    f'{INTERNAL.catch_all_interface_zone}-{zone},'
+                )
+        out('}')
+        out('}')
 
 
 def output_zone2zone_rules(rules: ZonePairRules, zonemap: RuleList) -> None:
@@ -3218,10 +3251,8 @@ def output_header(chain_rules: SpecialChainRules) -> None:
         out('flow add @fastpath')
     out('iifname . oifname vmap @forward_zones')
     if INTERNAL.catch_all_interface_zone:
-        out(
-            f'jump {INTERNAL.catch_all_interface_zone}-'
-            f'{INTERNAL.catch_all_interface_zone}'
-        )
+        out('iifname vmap @forward_catchall_input_zones')
+        out('oifname vmap @forward_catchall_output_zones')
     output_static_chain_logging('forward', 'drop')
     out('drop')
     out('}')
@@ -3866,29 +3897,36 @@ if HAVE_DBUS:
 
             # Remove from input and output
             out(
-                f'delete element inet foomuuri input_zones '
-                f'{{ "{interface}" : jump '
-                f'{zone}-{CONFIG.localhost_zone} }}'
+                f'delete element inet foomuuri input_zones {{ "{interface}" }}'
             )
             out(
                 f'delete element inet foomuuri output_zones '
-                f'{{ "{interface}" : jump '
-                f'{CONFIG.localhost_zone}-{zone} }}'
+                f'{{ "{interface}" }}'
             )
 
             # Remove from forward
-            for other, otherzone in interface_zone.items():
+            for other in interface_zone:
                 out(
                     f'delete element inet foomuuri forward_zones '
-                    f'{{ "{other}" . "{interface}" : jump '
-                    f'{otherzone}-{zone} }}'
+                    f'{{ "{other}" . "{interface}" }}'
                 )
                 if other != interface:
                     out(
                         f'delete element inet foomuuri forward_zones '
-                        f'{{ "{interface}" . "{other}" : '
-                        f'jump {zone}-{otherzone} }}'
+                        f'{{ "{interface}" . "{other}" }}'
                     )
+
+            # Remove from catch all
+            if INTERNAL.catch_all_interface_zone:
+                out(
+                    f'delete element inet foomuuri '
+                    f'forward_catchall_input_zones {{ "{interface}" }}'
+                )
+                out(
+                    f'delete element inet foomuuri '
+                    f'forward_catchall_output_zones {{ "{interface}" }}'
+                )
+
             return zone
 
         @staticmethod
@@ -3927,6 +3965,21 @@ if HAVE_DBUS:
                 f'{{ "{interface}" . "{interface}" : jump {zone}-{zone} }}'
             )
 
+            # Add to catch all
+            if INTERNAL.catch_all_interface_zone:
+                out(
+                    f'add element inet foomuuri '
+                    f'forward_catchall_input_zones '
+                    f'{{ "{interface}" : jump '
+                    f'{zone}-{INTERNAL.catch_all_interface_zone} }}'
+                )
+                out(
+                    f'add element inet foomuuri '
+                    f'forward_catchall_output_zones '
+                    f'{{ "{interface}" : jump '
+                    f'{INTERNAL.catch_all_interface_zone}-{zone} }}'
+                )
+
         def change_interface_zone(self, interface, new_zone):
             """Change interface to new_zone, or delete if new_zone is empty."""
             interface, new_zone = str(interface), str(new_zone)
@@ -3945,6 +3998,11 @@ if HAVE_DBUS:
                         f'Can\'t change interface "lo" to zone "{new_zone}"'
                     )
                 return '', ''
+            if interface == '*':
+                warning('Can\'t modify catch all interface "*"')
+                raise FoomuuriDbusException(
+                    'Can\'t modify catch all interface "*"'
+                )
             OUT.clear()
             interface_zone = parse_active_interface_zone()
             old_zone = self.remove_interface(interface_zone, interface)

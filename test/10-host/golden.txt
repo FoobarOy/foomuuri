@@ -86,7 +86,8 @@ table inet foomuuri {
 	chain forward {
 		type filter hook forward priority filter + 5
 		iifname . oifname vmap @forward_zones
-		jump public-public
+		iifname vmap @forward_catchall_input_zones
+		oifname vmap @forward_catchall_output_zones
 		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "FORWARD DROP " level info flags skuid
 		drop
@@ -110,6 +111,20 @@ table inet foomuuri {
 		type ifname . ifname : verdict
 		elements = {
 			"lo" . "lo" : accept,
+		}
+	}
+
+	map forward_catchall_input_zones {
+		type ifname : verdict
+		elements = {
+			"lo" : accept,
+		}
+	}
+
+	map forward_catchall_output_zones {
+		type ifname : verdict
+		elements = {
+			"lo" : accept,
 		}
 	}
 
