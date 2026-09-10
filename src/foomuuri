@@ -64,14 +64,14 @@ class Validators:
     """Validators collection."""
 
     @staticmethod
-    def str_zone_name(value: str):
+    def str_zone_name(value: str) -> bool:
         """Assert value is a valid zone name."""
         return all(
             [value.isascii(), re.fullmatch(r'[a-zA-Z][a-zA-Z_0-9./]*', value)]
         )
 
     @staticmethod
-    def str_iplist_name(value: str):
+    def str_iplist_name(value: str) -> bool:
         """Assert value is a valid iplist name, including @."""
         return all(
             [
@@ -81,7 +81,7 @@ class Validators:
         )
 
     @staticmethod
-    def str_interface_name(value: str):
+    def str_interface_name(value: str) -> bool:
         r"""Assert value is a valid network interface name.
 
         Linux accepts also \\ and " characters. Reject them here as they
@@ -101,22 +101,22 @@ class Validators:
         return len(value) >= 1
 
     @staticmethod
-    def int_positive_or_zero(value: int):
+    def int_positive_or_zero(value: int) -> bool:
         """Assert value is not negative."""
         return value >= 0
 
     @staticmethod
-    def int_positive(value: int):
+    def int_positive(value: int) -> bool:
         """Assert value is positive."""
         return value > 0
 
     @staticmethod
-    def str_yes_no(value: str):
+    def str_yes_no(value: str) -> bool:
         """Assert value is either 'yes' or 'no'."""
         return value in {'yes', 'no'}
 
     @staticmethod
-    def str_comparison_operator(value: str):
+    def str_comparison_operator(value: str) -> bool:
         """Assert value is comparison operator."""
         return value in {'==', '!=', '<', '>', '<=', '>='}
 
@@ -486,7 +486,7 @@ class IPList:
     """Container of iplist options and sources."""
 
     options: IPListOptions = dataclasses.field(default_factory=IPListOptions)
-    sources: list = dataclasses.field(default_factory=list)
+    sources: list[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass(eq=False)
@@ -495,27 +495,27 @@ class IPLists:
 
     _entries: dict[str, IPList] = dataclasses.field(default_factory=dict)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> IPList:
         """Get iplist value via index operator."""
         return self._entries[name]
 
-    def __setitem__(self, name, value):
+    def __setitem__(self, name: str, value: IPList) -> None:
         """Set iplist value via index operator."""
         self._entries[name] = value
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
         """Iterate over iplist names."""
         return iter(self._entries)
 
-    def items(self):
+    def items(self) -> typing.ItemsView[str, IPList]:
         """Return iterable of iplist mapping."""
         return self._entries.items()
 
-    def values(self):
+    def values(self) -> typing.ValuesView[IPList]:
         """Return iterable of iplist mapping values."""
         return self._entries.values()
 
-    def filter_names_by(self, option: str, required_value) -> set[str]:
+    def filter_names_by(self, option: str, required_value: bool) -> set[str]:
         """Return set of iplist names with required option value."""
         return {
             name
@@ -618,6 +618,8 @@ ZonePairKey = tuple[str, str]
 SpecialChainKey = tuple[str, typing.Optional[str], typing.Optional[str]]
 ZonePairRules = dict[ZonePairKey, RuleList]
 SpecialChainRules = dict[SpecialChainKey, RuleList]
+Macros = dict[str, list[str]]  # macro name -> expansion values
+Zones = dict[str, dict[str, list[str]]]  # zone name -> interface list mapping
 
 
 CONFIG = Config()
@@ -734,7 +736,12 @@ def syslog_open_or_close() -> None:
 
 
 def run_program_rc(
-    args: list, *, env=None, stdin=None, print_output=True, quiet=False
+    args: list,
+    *,
+    env: typing.Optional[dict[str, str]] = None,
+    stdin: typing.Optional[str] = None,
+    print_output: bool = True,
+    quiet: bool = False,
 ) -> int:
     """Run external program and return its errorcode. Print its output."""
     if not args:
@@ -820,7 +827,7 @@ def run_program_shell(args: str, fileline: str) -> str:
     return proc.stdout.rstrip()
 
 
-def nft_command(cmd, **kwargs):
+def nft_command(cmd: str, **kwargs: typing.Any) -> int:
     """Run "nft cmd", wrapper to run_program_rc()."""
     return run_program_rc(CONFIG.nft_bin + [cmd], **kwargs)
 
@@ -890,7 +897,7 @@ def daemonize():
         os.dup2(devnull, stream.fileno())
 
 
-def shell_expansion(content, fileline):
+def shell_expansion(content: str, fileline: str) -> str:
     """Expand $(shell command) in configuration file.
 
     This is the first expansion done. Failure in command is fatal.
@@ -905,7 +912,9 @@ def shell_expansion(content, fileline):
     return content
 
 
-def find_config_files(basedir, mask):
+def find_config_files(
+    basedir: pathlib.PosixPath, mask: str
+) -> list[pathlib.PosixPath]:
     """Find all config files in basedir, ignoring hidden and backups."""
     files = sorted(basedir.rglob(mask))
     return [item for item in files if not item.name.startswith(('.', '#'))]
@@ -1082,7 +1091,9 @@ def read_config(require_etc_config: bool) -> dict:
     return config
 
 
-def parse_config_templates(config, macros, macroline):
+def parse_config_templates(
+    config: dict, macros: Macros, macroline: dict[str, str]
+) -> None:
     """Parse "template foo { ... }" rules and convert them to macros."""
     names = [item for item in config if item.startswith('template ')]
     for name in names:
@@ -1099,7 +1110,7 @@ def parse_config_templates(config, macros, macroline):
             macros[macro_name].extend(line[1])
 
 
-def parse_config_macros(config):
+def parse_config_macros(config: dict) -> Macros:
     """Parse macro{} from config. Recursively expand macro in macro{}."""
     # pylint: disable=too-many-branches
     # Parse macro{} to dict
@@ -1174,14 +1185,16 @@ def parse_config_macros(config):
             return macros
 
 
-def macro_isdigit(word, separator):
+def macro_isdigit(word: str, separator: str) -> bool:
     """Check if word contains number after separator."""
     if word.count(separator) != 1:
         return False
     return word.split(separator)[1].isdigit()
 
 
-def change_template_to_macro_in_rule(fileline, line, macros):
+def change_template_to_macro_in_rule(
+    fileline: str, line: list[str], macros: Macros
+) -> None:
     """Change "template foo" to "_template_foo"."""
     pos = 0
     while pos < len(line) - 1:
@@ -1194,7 +1207,11 @@ def change_template_to_macro_in_rule(fileline, line, macros):
         pos += 1
 
 
-def expand_single_line(fileline, line, macros):
+def expand_single_line(
+    fileline: str,
+    line: list[str],
+    macros: Macros,
+) -> typing.Optional[list[tuple[str, list[str]]]]:
     """Expand first macro in line. Repeat call to expand all.
 
     Expansion can return multiple lines.
@@ -1252,7 +1269,7 @@ def expand_single_line(fileline, line, macros):
     return None
 
 
-def expand_macros(config):
+def expand_macros(config: dict) -> None:
     """Expand all macros in all config sections."""
     macros = parse_config_macros(config)
     for section, orig_lines in config.items():
@@ -1296,7 +1313,7 @@ def expand_macros(config):
         config[section] = new_lines
 
 
-def remove_quotes(config):
+def remove_quotes(config: dict) -> None:
     """Change "foo" and 'foo' to foo in config files.
 
     This function is called after macro expansion so that "ssh" is
@@ -1314,7 +1331,7 @@ def remove_quotes(config):
                     line[index] = item[1:-1]
 
 
-def parse_config_foomuuri(config):
+def parse_config_foomuuri(config: dict) -> None:
     """Parse foomuuri{} from config to CONFIG{}."""
     # pylint: disable=too-many-branches
     for fileline, line in config.pop('foomuuri', []):
@@ -1362,7 +1379,7 @@ def parse_config_foomuuri(config):
             CONFIG[key] += ' packets'
 
 
-def parse_config_zones(config):
+def parse_config_zones(config: dict) -> Zones:
     """Parse zone{} from config."""
     zones = {}
     INTERNAL.catch_all_interface_zone = ''
@@ -1384,7 +1401,7 @@ def parse_config_zones(config):
     return zones
 
 
-def parse_config_zonemap(config, zones):
+def parse_config_zonemap(config: dict, zones: Zones) -> RuleList:
     """Parse zonemap{} rules from config."""
     zonemap = []
     for fileline, line in config.pop('zonemap', []):
@@ -1406,7 +1423,7 @@ def parse_config_zonemap(config, zones):
     return zonemap
 
 
-def parse_config_special_chains(config):
+def parse_config_special_chains(config: dict) -> SpecialChainRules:
     """Parse snat{}, dnat{}, prerouting{} etc. rules from config."""
     chain_rules = {
         # output+mangle is needed for mark restore in output_special_chains()
@@ -1454,7 +1471,7 @@ def parse_config_special_chains(config):
     return chain_rules
 
 
-def parse_config_hook(config):
+def parse_config_hook(config: dict) -> None:
     """Parse hook{} from config."""
     for fileline, line in config.pop('hook', []):
         if line[0] not in {
@@ -1467,7 +1484,7 @@ def parse_config_hook(config):
         INTERNAL[line[0]] = line[1:]
 
 
-def minimal_config(require_etc_config=True):
+def minimal_config(require_etc_config: bool = True) -> dict:
     """Read and parse minimal config."""
     config = read_config(require_etc_config)
     expand_macros(config)
@@ -1476,7 +1493,7 @@ def minimal_config(require_etc_config=True):
     return config
 
 
-def get_ip_family(value: str, *, allow_negative=True) -> int:
+def get_ip_family(value: str, *, allow_negative: bool = True) -> int:
     """Detect if value is an IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
@@ -1857,7 +1874,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
     return rule
 
 
-def parse_config_rules(config):
+def parse_config_rules(config: dict) -> ZonePairRules:
     """Parse "zone-zone" rules from config.
 
     All other sections must be already parsed and removed from config.
@@ -1937,7 +1954,7 @@ def insert_single_any(
         rules[szone, dzone] = filtered + rules.get((szone, dzone), [])
 
 
-def insert_any_zones(zones: dict, rules: ZonePairRules) -> None:
+def insert_any_zones(zones: Zones, rules: ZonePairRules) -> None:
     """Insert "any-zone", "zone-any" and "any-any" rules to "zone-zone" rules.
 
     These are inserted to beginning of zone-zone rules.
@@ -1957,7 +1974,7 @@ def insert_any_zones(zones: dict, rules: ZonePairRules) -> None:
             insert_single_any(any_rules, rules, szone, dzone)
 
 
-def verify_config(config: dict, zones: dict, rules: ZonePairRules) -> None:
+def verify_config(config: dict, zones: Zones, rules: ZonePairRules) -> None:
     """Verify config data."""
     if not zones:
         fail('No zones defined in section zone{}')
@@ -2047,7 +2064,7 @@ def output_rate_names(rules: ZonePairRules) -> None:
                     out('}')
 
 
-def suffix_mask(value, compare):
+def suffix_mask(value: str, compare: str) -> str:
     """Convert suffix mask "IP/-mask" to nft."""
     if not compare:
         compare = '== '
@@ -2114,7 +2131,7 @@ def single_or_set(
     return f'{compare}{{ {", ".join(sorted(set(values)))} }}'
 
 
-def netmask_to_and(masklist, ipv, fileline):
+def netmask_to_and(masklist: str, ipv: int, fileline: str) -> str:
     """Parse "masklist 24 56" rule and return "and 255.255.255.0 " string.
 
     First value is mask for IPv4 and second is for IPv6.
@@ -2133,7 +2150,7 @@ def netmask_to_and(masklist, ipv, fileline):
     return f'and {ipaddr.netmask} '
 
 
-def limit_rate_or_ct(rate):
+def limit_rate_or_ct(rate: str) -> str:
     """Return "limit rate x" or "ct count x" according to rate."""
     if rate.startswith('ct '):
         return f'{rate} '
@@ -2931,7 +2948,7 @@ def output_zone(
     out('}')
 
 
-def output_zone_vmaps(zones: dict, rules: ZonePairRules) -> None:
+def output_zone_vmaps(zones: Zones, rules: ZonePairRules) -> None:
     """Output interface verdict maps to jump to correct zone-zone."""
     # pylint: disable=too-many-branches
 
@@ -3092,7 +3109,7 @@ def output_special_chains(chain_rules: SpecialChainRules) -> None:
             out('}')
 
 
-def output_static_chain_logging(chain, statement):
+def output_static_chain_logging(chain: str, statement: str) -> None:
     """Output logging rules for input/output/forward/invalid/smurfs chains."""
     lograte = CONFIG[f'log_{chain}']  # Enabled in foomuuri{}
     if lograte == 'no':
@@ -3223,7 +3240,7 @@ MERGES = [
 ]
 
 
-def merge_accepts(accepts, linenum):
+def merge_accepts(accepts: list[str], linenum: int) -> int:
     """Sort and merge found accept rules."""
     merge = {key: [] for key in MERGES[::-1]}
     ret = 0
@@ -3250,7 +3267,7 @@ def merge_accepts(accepts, linenum):
     return ret
 
 
-def optimize_accepts():
+def optimize_accepts() -> None:
     """Optimize ruleset accepts.
 
     This will change multiple accepts to single accept using set.
@@ -3289,7 +3306,7 @@ def optimize_accepts():
             accepts = []
 
 
-def optimize_jumps():
+def optimize_jumps() -> None:
     """Optimize lograte jumps in ruleset.
 
     This will change zone-zone's final "drop log" rule to optimized version.
@@ -3305,7 +3322,7 @@ def optimize_jumps():
         linenum += 1
 
 
-def optimize_final_rules():
+def optimize_final_rules() -> None:
     """Remove unreachable rules from chain after "drop" without matcher."""
     linenum = 0
     while linenum < len(OUT):
@@ -3315,7 +3332,7 @@ def optimize_final_rules():
         linenum += 1
 
 
-def output_logrates():
+def output_logrates() -> None:
     """Output non-optimized lograte entries as chains."""
     for logname, (log_nft, statement) in INTERNAL.logrates.items():
         out(f'chain {logname} {{')
@@ -3373,7 +3390,7 @@ def output_named_counters(
         out('}')
 
 
-def output_helpers():
+def output_helpers() -> None:
     """Output helpers."""
     # Convert helper list to helper->proto->set(ports) dict
     helpers = {}
@@ -3410,7 +3427,7 @@ def output_helpers():
     out('}')
 
 
-def output_rpfilter():
+def output_rpfilter() -> None:
     """Prerouting chain to check rpfilter."""
     if 'no' in CONFIG.rpfilter:
         return
@@ -3429,12 +3446,15 @@ def output_rpfilter():
     out('}')
 
 
-def output_footer():
+def output_footer() -> None:
     """Output generic ruleset footer."""
     out('}')
 
 
-def save_file(filename, lines):
+def save_file(
+    filename: pathlib.PosixPath,
+    lines: typing.Union[dict, typing.Iterable[str]],
+) -> None:
     """Write lines to file. Use temporary file to make this atomic."""
     if str(filename) == '/dev/null':
         return
@@ -3454,7 +3474,7 @@ def save_file(filename, lines):
         warning(f"File {filename}: Can't write: {error}")
 
 
-def env_cleanup(text):
+def env_cleanup(text: str) -> str:
     """Allow only letters and numbers in text for environment variable."""
     # Convert ä->a as isalpha('ä') is true
     value = unicodedata.normalize('NFKD', text)
@@ -3464,7 +3484,7 @@ def env_cleanup(text):
     return ''.join(char if char.isalnum() else '_' for char in value)
 
 
-def save_final(filename):
+def save_final(filename: typing.Optional[pathlib.PosixPath]) -> list[str]:
     """Save final ruleset to file."""
     # Convert to indented lines
     indent = 0
@@ -3503,7 +3523,7 @@ def signal_childs():
             os.kill(pid, signal.SIGHUP)
 
 
-def apply_final():
+def apply_final() -> int:
     """Use final ruleset."""
     # Check config
     good_file = state_file('good_file')
@@ -3547,7 +3567,7 @@ def apply_final():
 
 def print_assembled_config(
     config: dict,
-    zones: dict,
+    zones: Zones,
     zonemap: RuleList,
     rules: ZonePairRules,
     chain_rules: SpecialChainRules,
@@ -3613,7 +3633,7 @@ def print_assembled_config(
     print('EOF')
 
 
-def command_start():
+def command_start() -> int:
     """Process "start" or "check" command."""
     # Read full config
     config = minimal_config()
@@ -3668,7 +3688,7 @@ def command_start():
     return apply_final()
 
 
-def command_stop():
+def command_stop() -> int:
     """Process "stop" command. This will remove all foomuuri rules."""
     config = minimal_config()  # Needed for pre_stop and post_stop hooks
     parse_config_hook(config)
@@ -3678,7 +3698,7 @@ def command_stop():
     return apply_final()
 
 
-def command_block():
+def command_block() -> int:
     """Load "block all traffic" ruleset."""
     minimal_config()
     return run_program_rc(
@@ -3686,7 +3706,7 @@ def command_block():
     )
 
 
-def parse_active_interface_zone():
+def parse_active_interface_zone() -> dict[str, str]:
     """Parse current interface->zone mapping from active nft ruleset."""
     data = nft_json('list map inet foomuuri input_zones')
     if not data:
@@ -3700,7 +3720,7 @@ def parse_active_interface_zone():
     return ret
 
 
-def command_status():
+def command_status() -> int:
     """Print if Foomuuri is running, zone<->mapping, etc."""
     # Get minimal config and interface status
     config = minimal_config()
@@ -4266,12 +4286,12 @@ else:  # HAVE_DBUS is false
         fail('No python-dbus installed')
 
 
-def remove_filters(text):
+def remove_filters(text: str) -> str:
     """Remove tailing flags and filters from hostname or URL."""
-    return text.split('|')[0]
+    return text.split('|', maxsplit=1)[0]
 
 
-def iplist_verify_filters(name, values, fileline):
+def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
     """Verify that iplist entry's filter is known."""
     for value in values:
         for spec in value.split('|')[1:]:
@@ -4309,7 +4329,9 @@ def active_sets():
 def get_url(url: str, max_size: int) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
 
-    def get_response_content(response, max_size: int) -> io.BytesIO:
+    def get_response_content(
+        response: typing.Any, max_size: int
+    ) -> io.BytesIO:
         """Validate and return response content."""
         if response.status != 200:
             raise ValueError(f'status code: {response.status}')
@@ -4364,7 +4386,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             response.release_conn()
 
 
-def get_file(wildcard):
+def get_file(wildcard: str) -> typing.Optional[str]:
     """Read all files and return them as single text."""
     wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
@@ -4386,7 +4408,7 @@ def get_file(wildcard):
     return text
 
 
-def parse_duration(timespec, fallback):
+def parse_duration(timespec: str, fallback: int) -> int:
     """Parse timespec 1w2d3h4m5s to seconds."""
     units = (
         ('w', 'weeks'),
@@ -4425,7 +4447,9 @@ def seconds_to_duration(seconds: int) -> str:
     return f'{seconds}s'
 
 
-def iterate_set_elements(data):
+def iterate_set_elements(
+    data: typing.Optional[dict],
+) -> typing.Iterator[tuple[str, typing.Optional[int]]]:
     """Iterate elements from "nft --json list set" output."""
     for toplevel in (data or {}).get('nftables', []):
         for elem in toplevel.get('set', {}).get('elem', []):
@@ -4446,7 +4470,7 @@ def iterate_set_elements(data):
                 )
 
 
-def command_iplist_status():
+def command_iplist_status() -> int:
     """List iplist(s) name and entries count."""
     config = minimal_config()
     known = parse_config_iplist(config)
@@ -4477,7 +4501,7 @@ def command_iplist_status():
     return error
 
 
-def command_iplist_list():
+def command_iplist_list() -> int:
     """List iplist entries."""
     config = minimal_config()
     known = parse_config_iplist(config)
@@ -4514,7 +4538,7 @@ def command_iplist_list():
     return error
 
 
-def command_iplist_add():
+def command_iplist_add() -> int:
     """Add entries to iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
@@ -5058,7 +5082,9 @@ def parse_config_iplist(config) -> IPLists:
     return iplists
 
 
-def iplist_collect_resolve_list(iplists: IPLists) -> tuple:
+def iplist_collect_resolve_list(
+    iplists: IPLists,
+) -> tuple[dict[str, IPListSourceOptions], dict[str, IPListSourceOptions]]:
     """Collect URLs and hostnames to be resolved."""
     if INTERNAL.command != 'iplist':
         # Don't resolve anything if called as "foomuuri start".
@@ -5408,7 +5434,7 @@ def command_list() -> int:
     return command_ruleset_list()
 
 
-def command_reload():
+def command_reload() -> int:
     """Run start and refresh iplist."""
     # Use same args
     args = [sys.argv[0]]
@@ -5422,12 +5448,12 @@ def command_reload():
     return 0
 
 
-def alarm_handler(_dummy_signum, _dummy_frame):
+def alarm_handler(_dummy_signum: int, _dummy_frame: typing.Any) -> None:
     """Signal handler to catch input timeout."""
     raise KeyboardInterrupt
 
 
-def input_timeout(prompt, timeout):
+def input_timeout(prompt: str, timeout: int) -> str:
     """Ask something from user with timeout."""
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.signal(signal.SIGHUP, alarm_handler)
@@ -5444,7 +5470,7 @@ def input_timeout(prompt, timeout):
     return ''
 
 
-def command_try_reload():
+def command_try_reload() -> int:
     """Reload, ask confirmation, optionally revert to previous rules.
 
     Revert is not fail safe. Things can break if:
@@ -5503,7 +5529,7 @@ def command_try_reload():
     )
 
 
-def seconds_to_human(seconds):
+def seconds_to_human(seconds: int) -> str:
     """Convert seconds int to human readable "19 days, 18:37" format."""
     day = seconds // 86400
     hour = (seconds // 3600) % 24
@@ -6040,7 +6066,7 @@ def command_monitor():
     return 0
 
 
-def command_help(error=True):
+def command_help(error: bool = True) -> int:
     """Print command line help."""
     print(f"""Foomuuri {VERSION}
 
@@ -6099,7 +6125,7 @@ Internally used commands:
     return 0
 
 
-def parse_command_line():
+def parse_command_line() -> None:
     """Parse command line to INTERNAL.command and INTERNAL.parameters."""
     # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
@@ -6185,10 +6211,10 @@ def run_command() -> int:
         return fail(f'Unknown command: {INTERNAL.command}')
     if INTERNAL.parameters and not allow_parameters:
         return command_help()
-    return handler()
+    return handler() or 0
 
 
-def main():
+def main() -> int:
     """Parse command line and run command."""
     parse_command_line()
     return run_command()
