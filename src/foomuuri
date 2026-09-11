@@ -5186,11 +5186,14 @@ def parse_config_iplist(config) -> IPLists:
 
 def iplist_collect_resolve_list(
     iplists: IPLists,
+    update_only: set[str],
 ) -> tuple[dict[str, IPListSourceOptions], dict[str, IPListSourceOptions]]:
     """Collect URLs and hostnames to be resolved."""
     sources = collections.defaultdict(IPListSourceOptions)
     hostnames = collections.defaultdict(IPListSourceOptions)
-    for iplist in iplists.values():
+    for iplist_name, iplist in iplists.items():
+        if iplist_name not in update_only:
+            continue
         for source in iplist.sources:
             if source.startswith(('https://', 'http://', '.', '/')):
                 for option in ('timeout', 'refresh', 'max_size'):
@@ -5336,24 +5339,6 @@ def command_iplist_refresh() -> int:
     # Read minimal config and parse it
     config = minimal_config()
     iplists = parse_config_iplist(config)
-    sources, hostnames = iplist_collect_resolve_list(iplists)
-
-    # Read URLs and files to cache
-    cache = IPListSourceCache.read(iplists)
-    for source, options in sources.items():
-        cache.refresh_url_or_file(source, options)
-
-    # Resolve hostnames to cache
-    cache.resolve_hostnames(hostnames)
-
-    # Read active set names from currently running ruleset
-    currently_active = active_sets()
-
-    # Special case for testing (non-root) or faked nft_bin
-    if not currently_active and (
-        not INTERNAL.root_power or CONFIG.nft_bin == ['true']
-    ):
-        currently_active = set(iplists)
 
     # Parse which iplists should be updated. Default is to update all iplists.
     # This can be filtered with "foomuuri iplist refresh IPLIST...".
@@ -5369,6 +5354,24 @@ def command_iplist_refresh() -> int:
             if iplist_name not in iplists:
                 warning(f'Unknown iplist: {iplist_name}')
                 ret = 1
+
+    # Read URLs and files to cache
+    cache = IPListSourceCache.read(iplists)
+    sources, hostnames = iplist_collect_resolve_list(iplists, update_only)
+    for source, options in sources.items():
+        cache.refresh_url_or_file(source, options)
+
+    # Resolve hostnames to cache
+    cache.resolve_hostnames(hostnames)
+
+    # Read active set names from currently running ruleset
+    currently_active = active_sets()
+
+    # Special case for testing (non-root) or faked nft_bin
+    if not currently_active and (
+        not INTERNAL.root_power or CONFIG.nft_bin == ['true']
+    ):
+        currently_active = set(iplists)
 
     # Make sure systemd's TimeoutStartSec doesn't trigger while updating
     # ruleset or writing cache file.
