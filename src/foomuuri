@@ -4360,7 +4360,15 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
     for value in values:
         for spec in value.split('|')[1:]:
             if not spec.startswith(
-                ('missing-ok', 'shell:', 'json:', 'html:', 'xml:')
+                (
+                    'missing-ok',
+                    'append',
+                    'replace',
+                    'shell:',
+                    'json:',
+                    'html:',
+                    'xml:',
+                )
             ):
                 warning(
                     f'{fileline}Unknown filter "|{spec}" in iplist '
@@ -4844,6 +4852,27 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         verbose(f'Using cached value for "{remove_filters(source)}"')
         return True
 
+    def _append_or_replace(
+        self,
+        source: str,
+        addresses: dict[str, int],
+        default_is_append: bool,
+        now: int,
+    ) -> None:
+        """Append or replace addresses to source."""
+        append_mode = default_is_append
+        if '|append' in source:
+            append_mode = True
+        if '|replace' in source:
+            append_mode = False
+        entry = self._ensure_entry(source)
+        if append_mode:
+            entry['ip'].update(addresses)
+        else:
+            entry['ip'] = addresses
+        entry['dirty'] = True
+        entry['refresh'] = now
+
     def refresh_url_or_file(
         self, source: str, options: IPListSourceOptions
     ) -> None:
@@ -4865,11 +4894,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             addresses = dict.fromkeys(
                 iplist_parse_content(source, value), expire
             )
-            self[source] = {
-                'ip': addresses,
-                'dirty': True,
-                'refresh': now,
-            }
+            self._append_or_replace(source, addresses, False, now)
             verbose(
                 f'Iplist content for "{source}" refreshed, '
                 f'{len(addresses)} entries'
@@ -4911,10 +4936,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                     expire = self._normalize_expire(
                         now, hostnames[hostname].timeout
                     )
-                    entry = self._ensure_entry(hostname)
-                    entry['ip'].update(dict.fromkeys(addrlist, expire))
-                    entry['dirty'] = True
-                    entry['refresh'] = now
+                    addresses = dict.fromkeys(addrlist, expire)
+                    self._append_or_replace(hostname, addresses, True, now)
                     verbose(
                         f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}'
