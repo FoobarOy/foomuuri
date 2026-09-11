@@ -370,55 +370,31 @@ table inet foomuuri {
 	}
 
 }
-
-flush set inet foomuuri dns_4
 add element inet foomuuri dns_4 {
 	127.0.0.1,
 }
-flush set inet foomuuri dns_6
-
-flush set inet foomuuri empty_4
-flush set inet foomuuri empty_6
-
-flush set inet foomuuri empty_file_4
-flush set inet foomuuri empty_file_6
-
-flush set inet foomuuri empty_no_merge_4
-flush set inet foomuuri empty_no_merge_6
-
-flush set inet foomuuri file_4
 add element inet foomuuri file_4 {
 	10.1.0.1,
 	10.1.0.2,
 	10.1.0.3,
 }
-flush set inet foomuuri file_6
 add element inet foomuuri file_6 {
 	ff00::10,
 	ff00::20,
 }
-
-flush set inet foomuuri one_4
 add element inet foomuuri one_4 {
 	10.0.0.1,
 }
-flush set inet foomuuri one_6
-
-flush set inet foomuuri three_4
 add element inet foomuuri three_4 {
 	10.0.0.4,
 	10.0.0.5,
 }
-flush set inet foomuuri three_6
 add element inet foomuuri three_6 {
 	ff00::1,
 }
-
-flush set inet foomuuri two_4
 add element inet foomuuri two_4 {
 	10.0.0.1,
 }
-flush set inet foomuuri two_6
 add element inet foomuuri two_6 {
 	ff00::1,
 }

@@ -36,19 +36,16 @@ class TestIPListOutputValues(unittest.TestCase):
         foomuuri.INTERNAL.force = force
         iplists = foomuuri.IPLists()
         iplists[iplist_name] = foomuuri.IPList(sources=sources)
-        update_only = set()
+        update_only = {iplist_name}
         currently_active = {iplist_name}
         with (
             unittest.mock.patch('foomuuri.warning') as warning,
             unittest.mock.patch('foomuuri.fail') as fail,
             unittest.mock.patch('foomuuri.verbose') as verbose,
             unittest.mock.patch('foomuuri.OUT', new=[]),
-            unittest.mock.patch(
-                'foomuuri.iplist_apply_values', return_value=0
-            ),
         ):
             ret = foomuuri.iplist_output_values(
-                iplists, cache, currently_active, update_only
+                iplists, cache, currently_active, update_only, True
             )
         return ret, warning, fail, verbose
 

@@ -296,6 +296,3 @@ table inet foomuuri {
 	}
 
 }
-
-flush set inet foomuuri knock_4
-flush set inet foomuuri knock_6

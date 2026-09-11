@@ -3705,10 +3705,12 @@ def command_start() -> int:
     # Add iplist elements from cache to output. Include only iplists
     # that are marked with "start=yes".
     if iplists_add_on_start := iplists.filter_names_by('start', True):
-        command_iplist_refresh(
-            iplists=iplists,
-            currently_active=set(iplists),
-            override_update_only=iplists_add_on_start,
+        iplist_output_values(
+            iplists,
+            IPListSourceCache.read(iplists),
+            set(iplists),  # All iplists are currently active
+            iplists_add_on_start,
+            False,
         )
 
     # Print assembled configuration
@@ -4607,7 +4609,7 @@ def command_iplist_add() -> int:
     cache = IPListSourceCache.read(iplists)
     iplist_name = Converters.canonical_iplist_name(INTERNAL.parameters[1])
     if iplist_name not in iplists:
-        fail(f'Unknown iplist name: {iplist_name}')
+        fail(f'Unknown iplist: {iplist_name}')
     timeout = iplists[iplist_name].options.element_timeout
     if not timeout:
         timeout = max(
@@ -4616,7 +4618,12 @@ def command_iplist_add() -> int:
         )
     # Add entries to cache and apply it
     cache.add_manual(iplist_name, INTERNAL.parameters[2:], timeout)
-    return iplist_output_values(iplists, cache, {iplist_name}, {iplist_name})
+    return iplist_output_and_apply(
+        iplists,
+        cache,
+        {iplist_name},
+        {iplist_name},
+    )
 
 
 def command_iplist_del():
@@ -4626,11 +4633,16 @@ def command_iplist_del():
     cache = IPListSourceCache.read(iplists)
     iplist_name = Converters.canonical_iplist_name(INTERNAL.parameters[1])
     if iplist_name not in iplists:
-        fail(f'Unknown iplist name: {iplist_name}')
+        fail(f'Unknown iplist: {iplist_name}')
 
     # Delete entries from cache and apply it
     cache.delete_manual(iplist_name, INTERNAL.parameters[2:])
-    return iplist_output_values(iplists, cache, {iplist_name}, {iplist_name})
+    return iplist_output_and_apply(
+        iplists,
+        cache,
+        {iplist_name},
+        {iplist_name},
+    )
 
 
 def command_iplist_flush() -> int:
@@ -4644,12 +4656,12 @@ def command_iplist_flush() -> int:
     for name in target:
         iplist_name = Converters.canonical_iplist_name(name)
         if iplist_name not in iplists:
-            fail(f'Unknown iplist name: {iplist_name}')
+            fail(f'Unknown iplist: {iplist_name}')
 
         update_only.add(iplist_name)
         cache.flush_manual(iplist_name)
 
-    return iplist_output_values(iplists, cache, update_only, update_only)
+    return iplist_output_and_apply(iplists, cache, update_only, update_only)
 
 
 def lxml_parser(source, parser, path, text):
@@ -5153,11 +5165,6 @@ def iplist_collect_resolve_list(
     iplists: IPLists,
 ) -> tuple[dict[str, IPListSourceOptions], dict[str, IPListSourceOptions]]:
     """Collect URLs and hostnames to be resolved."""
-    if INTERNAL.command != 'iplist':
-        # Don't resolve anything if called as "foomuuri start".
-        # Use cached entries only.
-        return {}, {}
-
     sources = collections.defaultdict(IPListSourceOptions)
     hostnames = collections.defaultdict(IPListSourceOptions)
     for iplist in iplists.values():
@@ -5178,7 +5185,11 @@ def iplist_collect_resolve_list(
     return sources, hostnames
 
 
-def iplist_output_add_element(iplist: IPListValue, now: int) -> None:
+def iplist_output_add_element(
+    iplist: IPListValue,
+    cmd_is_refresh: bool,
+    now: int,
+) -> None:
     """Output nft commands for a transient iplist.
 
     Auto-merge in nftables set requires that adds are done set by set, not
@@ -5196,15 +5207,18 @@ def iplist_output_add_element(iplist: IPListValue, now: int) -> None:
             updates[4].add((address, timeout))
 
     # Output add commands
-    out('')
     set_name = iplist.name.removeprefix('@')
     for ipv, addresses in updates.items():
-        out(f'flush set inet foomuuri {set_name}_{ipv}')
+        if cmd_is_refresh:
+            out(f'flush set inet foomuuri {set_name}_{ipv}')
         if not addresses:
             continue
 
         out(f'add element inet foomuuri {set_name}_{ipv} {{')
         for address, timeout in sorted(addresses):
+            # nft doesn't support "timeout 0s" so use "1s". This can happen
+            # if address is expired after cache read and before writing it
+            # to output.
             seconds = max(1, timeout - now)
             if seconds > IPListSourceCache.expire_max:
                 out(f'{address},')
@@ -5218,19 +5232,20 @@ def iplist_output_values(
     source_cache: IPListSourceCache,
     currently_active: set[str],
     update_only: set[str],
+    cmd_is_refresh: bool,
 ) -> int:
-    """Output and apply nft commands to add iplist values."""
+    """Output nft commands to add iplist values."""
     now = int(time.time())
     error = 0
     for iplist_name in sorted(iplists):
-        sources = iplists[iplist_name].sources
+        if iplist_name not in update_only:
+            continue  # Filtered away by command line parameter
 
         # Build transient iplist from its sources
+        sources = iplists[iplist_name].sources
         iplist = IPListValue.from_sources(source_cache, iplist_name, sources)
 
         # Check that this set should be updated
-        if update_only and iplist_name not in update_only:
-            continue  # Filtered away by command line parameter
         if iplist_name not in currently_active:
             warning(
                 f'Iplist "{iplist_name}" does not exist in currently active '
@@ -5241,8 +5256,9 @@ def iplist_output_values(
             verbose(f'Iplist "{iplist_name}" is clean, skipping update')
             continue
 
-        # Print error if set had values, but result is empty
-        if sources and not iplist.addresses and INTERNAL.command == 'iplist':
+        # Print error if set had values, but result is empty.
+        # Don't print if called from "foomuuri start".
+        if sources and not iplist.addresses and cmd_is_refresh:
             if all('|missing-ok' in source for source in sources):
                 warning(f'Iplist "{iplist_name}" is empty')
             else:
@@ -5255,34 +5271,48 @@ def iplist_output_values(
             )
 
         # Add elements to sets
-        iplist_output_add_element(iplist, now)
+        iplist_output_add_element(iplist, cmd_is_refresh, now)
 
-    return iplist_apply_values(source_cache) | error
-
-
-def iplist_apply_values(source_cache: IPListSourceCache) -> int:
-    """Save source cache changes to disk and use nft to apply them."""
-    if INTERNAL.command != 'iplist' or not OUT:
-        return 0
-
-    source_cache.write()
-    lines = '\n'.join(save_final(None))
-    ret = run_program_rc(CONFIG.nft_bin + ['--file', '-'], stdin=lines)
-    if ret:
-        fail(f'Failed to update iplists, nftables error code {ret}', False)
-    return ret
+    return error
 
 
-def command_iplist_refresh(
-    iplists: typing.Optional[IPLists] = None,
-    currently_active: typing.Optional[set[str]] = None,
-    override_update_only: typing.Optional[set[str]] = None,
+def iplist_output_and_apply(
+    iplists: IPLists,
+    source_cache: IPListSourceCache,
+    currently_active: set[str],
+    update_only: set[str],
 ) -> int:
-    """Refresh iplist{} entries."""
+    """Output and apply iplist values, save cache."""
+    # Generate nft commands
+    output_error = iplist_output_values(
+        iplists,
+        source_cache,
+        currently_active,
+        update_only,
+        True,
+    )
+    if not OUT:  # Nothing to do
+        return output_error
+
+    # There was some updates. Save cache to disk.
+    source_cache.write()
+
+    # Apply nft commands
+    lines = '\n'.join(save_final(None))
+    nft_error = run_program_rc(CONFIG.nft_bin + ['--file', '-'], stdin=lines)
+    if nft_error:
+        fail(
+            f'Failed to update iplists, nftables error code {nft_error}',
+            False,
+        )
+    return output_error | nft_error
+
+
+def command_iplist_refresh() -> int:
+    """Refresh iplist entries."""
     # Read minimal config and parse it
-    if not iplists:
-        config = minimal_config()
-        iplists = parse_config_iplist(config)
+    config = minimal_config()
+    iplists = parse_config_iplist(config)
     sources, hostnames = iplist_collect_resolve_list(iplists)
 
     # Read URLs and files to cache
@@ -5293,33 +5323,41 @@ def command_iplist_refresh(
     # Resolve hostnames to cache
     cache.resolve_hostnames(hostnames)
 
-    # Read active set names from nft if not provided by "foomuuri start"
-    if currently_active is None:
-        currently_active = active_sets()
+    # Read active set names from currently running ruleset
+    currently_active = active_sets()
 
-        # Special case for testing (non-root) or faked nft_bin
-        if not currently_active and (
-            not INTERNAL.root_power or CONFIG.nft_bin == ['true']
-        ):
-            currently_active = set(iplists)
+    # Special case for testing (non-root) or faked nft_bin
+    if not currently_active and (
+        not INTERNAL.root_power or CONFIG.nft_bin == ['true']
+    ):
+        currently_active = set(iplists)
 
-    # Parse which iplists should be updated.
-    if override_update_only:
-        update_only = override_update_only
+    # Parse which iplists should be updated. Default is to update all iplists.
+    # This can be filtered with "foomuuri iplist refresh IPLIST...".
+    ret = 0
+    if len(INTERNAL.parameters) == 1:
+        update_only = set(iplists)
     else:
-        # Default is to update all iplists (empty set).
-        # This can be filtered with "foomuuri iplist refresh IPLIST...".
         update_only = {
             Converters.canonical_iplist_name(name)
             for name in INTERNAL.parameters[1:]
         }
+        for iplist_name in update_only:
+            if iplist_name not in iplists:
+                warning(f'Unknown iplist: {iplist_name}')
+                ret = 1
 
     # Make sure systemd's TimeoutStartSec doesn't trigger while updating
     # ruleset or writing cache file.
     notify('EXTEND_TIMEOUT_USEC=120000000')  # 2 minutes
 
     # Apply updates to ruleset
-    ret = iplist_output_values(iplists, cache, currently_active, update_only)
+    ret |= iplist_output_and_apply(
+        iplists,
+        cache,
+        currently_active,
+        update_only,
+    )
     notify('READY=1')
     notify('STOPPING=1')
     return ret

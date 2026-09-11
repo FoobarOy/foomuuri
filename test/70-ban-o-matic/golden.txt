@@ -384,12 +384,6 @@ table inet foomuuri {
 	}
 
 }
-
-flush set inet foomuuri banned_4
-flush set inet foomuuri banned_6
-
-flush set inet foomuuri good_4
 add element inet foomuuri good_4 {
 	192.168.0.0/24,
 }
-flush set inet foomuuri good_6
