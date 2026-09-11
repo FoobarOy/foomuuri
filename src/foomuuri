@@ -5173,7 +5173,7 @@ def iplist_collect_resolve_list(
     return sources, hostnames
 
 
-def iplist_output_add_element(iplist: IPListValue, now: int):
+def iplist_output_add_element(iplist: IPListValue, now: int) -> None:
     """Output nft commands for a transient iplist.
 
     Auto-merge in nftables set requires that adds are done set by set, not
@@ -5190,16 +5190,16 @@ def iplist_output_add_element(iplist: IPListValue, now: int):
         else:
             updates[4].add((address, timeout))
 
-    # Output add to sets
+    # Output add commands
     out('')
     set_name = iplist.name.removeprefix('@')
-    for ipv in (4, 6):
+    for ipv, addresses in updates.items():
         out(f'flush set inet foomuuri {set_name}_{ipv}')
-        if not updates[ipv]:
+        if not addresses:
             continue
 
         out(f'add element inet foomuuri {set_name}_{ipv} {{')
-        for address, timeout in sorted(updates[ipv]):
+        for address, timeout in sorted(addresses):
             seconds = max(1, timeout - now)
             if seconds > IPListSourceCache.expire_max:
                 out(f'{address},')
