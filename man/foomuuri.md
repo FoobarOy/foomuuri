@@ -109,7 +109,8 @@ iplist{} section, for example "4h".
 : Delete all added IP addresses from all or specified IPLIST(s).
 
 **iplist refresh [IPLIST]...**
-: Refresh all or specified IPLIST(s) now.
+: Refresh all or specified IPLIST(s) now. With the **-\-soft** option, the
+refresh interval is checked before fetching new values from the URL or DNS.
 
 **set interface INTERFACE zone {ZONE | -}**
 : Change INTERFACE to ZONE, or remove from all zones.

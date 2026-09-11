@@ -4756,7 +4756,12 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
     def _should_discard_empty(
         source: str, entry: IPListSourceCacheEntry
     ) -> bool:
-        """Return True when source is empty and lacks |missing-ok."""
+        """Return True when source is empty and lacks |missing-ok.
+
+        Empty |missing-ok sources are kept in cache so that their
+        "refresh" timestamp is saved to cache. They will be then
+        refreshed on normal intervals, not on every run.
+        """
         return '|missing-ok' not in source and not entry.get('ip')
 
     def write(self) -> None:
