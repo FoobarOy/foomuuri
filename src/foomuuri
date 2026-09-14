@@ -454,6 +454,9 @@ class IPListOptions(TypedConfig):
     dynamic: bool = dataclasses.field(
         default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # dynamic flag, implies merge=no and no interval
+    overwrite: typing.Optional[bool] = dataclasses.field(
+        default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    )  # overwrite or append source entries, None uses default value
 
     def parse_option(self, option: str):
         """Parse and set iplist option value from option.
@@ -530,6 +533,7 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     timeout: int = sys.maxsize
     refresh: int = sys.maxsize
     max_size: int = sys.maxsize
+    overwrite: typing.Optional[bool] = None
 
     def update_if_less(self, name: str, new_value: int) -> None:
         """Update attribute value if new value is less than current."""
@@ -4362,8 +4366,6 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
             if not spec.startswith(
                 (
                     'missing-ok',
-                    'append',
-                    'replace',
                     'shell:',
                     'json:',
                     'html:',
@@ -4852,24 +4854,27 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         verbose(f'Using cached value for "{remove_filters(source)}"')
         return True
 
-    def _append_or_replace(
+    def _append_or_overwrite(
         self,
         source: str,
         addresses: dict[str, int],
-        default_is_append: bool,
+        options: IPListSourceOptions,
+        default_is_overwrite: bool,
         now: int,
     ) -> None:
-        """Append or replace addresses to source."""
-        append_mode = default_is_append
-        if '|append' in source:
-            append_mode = True
-        if '|replace' in source:
-            append_mode = False
-        entry = self._ensure_entry(source)
-        if append_mode:
-            entry['ip'].update(addresses)
+        """Append or overwrite addresses to source."""
+        # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-positional-arguments
+
+        if options.overwrite is None:
+            overwrite_mode = default_is_overwrite
         else:
+            overwrite_mode = options.overwrite
+        entry = self._ensure_entry(source)
+        if overwrite_mode:
             entry['ip'] = addresses
+        else:
+            entry['ip'].update(addresses)
         entry['dirty'] = True
         entry['refresh'] = now
 
@@ -4894,7 +4899,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             addresses = dict.fromkeys(
                 iplist_parse_content(source, value), expire
             )
-            self._append_or_replace(source, addresses, False, now)
+            self._append_or_overwrite(source, addresses, options, True, now)
             verbose(
                 f'Iplist content for "{source}" refreshed, '
                 f'{len(addresses)} entries'
@@ -4937,7 +4942,13 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                         now, hostnames[hostname].timeout
                     )
                     addresses = dict.fromkeys(addrlist, expire)
-                    self._append_or_replace(hostname, addresses, True, now)
+                    self._append_or_overwrite(
+                        hostname,
+                        addresses,
+                        hostnames[hostname],
+                        False,
+                        now,
+                    )
                     verbose(
                         f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}'
@@ -5200,11 +5211,13 @@ def iplist_collect_resolve_list(
                     sources[source].update_if_less(
                         option, iplist.options[f'url_{option}']
                     )
+                sources[source].overwrite = iplist.options.overwrite
             elif not get_ip_family(source, allow_negative=False):
                 for option in ('timeout', 'refresh'):
                     hostnames[source].update_if_less(
                         option, iplist.options[f'dns_{option}']
                     )
+                hostnames[source].overwrite = iplist.options.overwrite
     if CONFIG.verbose >= 2:
         verbose(f'Sources:   {sources}')
         verbose(f'Hostnames: {hostnames}')
@@ -5266,23 +5279,23 @@ def iplist_output_values(
     for iplist_name in sorted(iplists):
         if iplist_name not in update_only:
             continue  # Filtered away by command line parameter
-
-        # Build transient iplist from its sources
-        sources = iplists[iplist_name].sources
-        iplist = IPListValue.from_sources(source_cache, iplist_name, sources)
-
-        # Check that this set should be updated
         if iplist_name not in currently_active:
             warning(
                 f'Iplist "{iplist_name}" does not exist in currently active '
                 f'firewall'
             )
             continue
+
+        # Build transient iplist from its sources
+        sources = iplists[iplist_name].sources
+        iplist = IPListValue.from_sources(source_cache, iplist_name, sources)
+
+        # Check that this iplist should be updated
         if not iplist.dirty and INTERNAL.force < 0:
             verbose(f'Iplist "{iplist_name}" is clean, skipping update')
             continue
 
-        # Print error if set had values, but result is empty.
+        # Print error if iplist had sources, but result is empty.
         # Don't print if called from "foomuuri start".
         if sources and not iplist.addresses and cmd_is_refresh:
             if all('|missing-ok' in source for source in sources):
