@@ -20,11 +20,12 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         self.now = int(time.time())
 
     @staticmethod
-    def source_options(timeout=1000, missing_ok=False):
+    def source_options(timeout=1000, missing_ok=None, overwrite=None):
         """Return IPListSourceOptions instance."""
         options = foomuuri.IPListSourceOptions()
         options.timeout = timeout
         options.missing_ok = missing_ok
+        options.overwrite = overwrite
         return options
 
     @staticmethod
@@ -49,7 +50,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
     def test_resolve_hostname_ok(self, *_):
         """Test hostname resolution and IP address caching."""
         cache, warning, verbose = self.run_resolve(
-            {'foo.bar': self.source_options()},
+            {'foo.bar': self.source_options(missing_ok=None)},
             cache=foomuuri.IPListSourceCache(),
             addresses={'foo.bar': {'10.0.0.5'}},
         )
@@ -78,7 +79,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
     def test_resolve_hostname_failed_warns(self, *_):
         """Test warning when hostname resolves to nothing."""
         cache, warning, _ = self.run_resolve(
-            {'foo.bar': self.source_options()},
+            {'foo.bar': self.source_options(missing_ok=None)},
             cache=foomuuri.IPListSourceCache(),
         )
         self.assertNotIn('foo.bar', cache)
@@ -87,7 +88,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         )
 
     def test_resolve_hostname_failed_missing_ok(self, *_):
-        """Test no warning when missing-ok hostname resolves to nothing."""
+        """Test no warning when missing_ok hostname resolves to nothing."""
         cache, warning, _ = self.run_resolve(
             {'foo.bar': self.source_options(missing_ok=True)},
             cache=foomuuri.IPListSourceCache(),

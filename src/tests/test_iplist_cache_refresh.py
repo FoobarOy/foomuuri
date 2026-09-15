@@ -29,7 +29,6 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         """Prepare test fixtures."""
         self.now = int(time.time())
         self.url = 'https://foo.bar/iplist'
-        self.url_missing_ok = f'{self.url}-missing_ok'
 
     @staticmethod
     def run_refresh(  # pylint: disable=too-many-arguments
@@ -40,13 +39,16 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         *,
         timeout=1000,
         refresh=1000,
+        missing_ok=None,
+        overwrite=None,
     ):
         """Call IPListSourceCache.refresh_url_or_file()."""
         foomuuri.INTERNAL.force = force
         options = foomuuri.IPListSourceOptions()
         options.timeout = timeout
         options.refresh = refresh
-        options.missing_ok = 'missing_ok' in source
+        options.missing_ok = missing_ok
+        options.overwrite = overwrite
         with (
             unittest.mock.patch(
                 'foomuuri.get_url', return_value=content
@@ -58,27 +60,27 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         return cache.get(source), warning, verbose, get_url
 
     def test_empty_url_missing_ok(self, *_):
-        """Test no warning for empty source with |missing-ok."""
+        """Test no warning for empty source with missing_ok=yes."""
         cache = source_cache(
-            self.url_missing_ok, ip={'10.0.0.1': self.now}, refresh=self.now
+            self.url, ip={'10.0.0.1': self.now}, refresh=self.now
         )
         entry, warning, verbose, _ = self.run_refresh(
-            source=self.url_missing_ok, cache=cache, content=''
+            source=self.url, cache=cache, content='', missing_ok=True
         )
         self.assertFalse(entry['ip'])
         self.assertTrue(entry['dirty'])
         warning.assert_not_called()
         verbose.assert_called_once_with(
-            f'Iplist content for "{self.url_missing_ok}" refreshed, 0 entries'
+            f'Iplist content for "{self.url}" refreshed, 0 entries'
         )
 
     def test_empty_url_no_missing_ok(self, *_):
-        """Test warning for empty source without |missing-ok."""
+        """Test warning for empty source without missing_ok."""
         cache = source_cache(
             self.url, ip={'10.0.0.1': self.now}, refresh=self.now
         )
         entry, warning, verbose, _ = self.run_refresh(
-            source=self.url, cache=cache, content=''
+            source=self.url, cache=cache, content='', missing_ok=None
         )
         self.assertFalse(entry['ip'])
         self.assertTrue(entry['dirty'])
@@ -90,13 +92,14 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         )
 
     def test_empty_no_missing_ok_soft(self, *_):
-        """Test empty cache without |missing-ok is fetched, --soft(force<0)."""
+        """Test empty cache without missing_ok is fetched, --soft(force<0)."""
         cache = source_cache(self.url, refresh=self.now)
         entry, warning, verbose, get_url = self.run_refresh(
             source=self.url,
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
+            missing_ok=None,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
@@ -107,70 +110,72 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         )
 
     def test_empty_missing_ok_cached(self, *_):
-        """Test empty cache with |missing-ok is reused, --soft(force<0)."""
-        cache = source_cache(self.url_missing_ok, refresh=self.now)
+        """Test empty cache with missing_ok is reused, --soft(force<0)."""
+        cache = source_cache(self.url, refresh=self.now)
         entry, warning, verbose, get_url = self.run_refresh(
-            source=self.url_missing_ok,
+            source=self.url,
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
+            missing_ok=True,
         )
         self.assertFalse(entry['ip'])
         self.assertFalse(entry['dirty'])
         get_url.assert_not_called()
         warning.assert_not_called()
-        verbose.assert_called_once_with(
-            f'Using cached value for "{self.url_missing_ok}"'
-        )
+        verbose.assert_called_once_with(f'Using cached value for "{self.url}"')
 
     def test_empty_missing_ok_force(self, *_):
-        """Test forced empty |missing-ok source refresh (force>=0)."""
-        cache = source_cache(self.url_missing_ok, refresh=self.now)
+        """Test forced empty missing_ok source refresh (force>=0)."""
+        cache = source_cache(self.url, refresh=self.now)
         entry, warning, verbose, get_url = self.run_refresh(
-            source=self.url_missing_ok,
+            source=self.url,
             cache=cache,
             content='10.0.0.9\n',
+            missing_ok=True,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
         get_url.assert_called_once()
         warning.assert_not_called()
         verbose.assert_called_once_with(
-            f'Iplist content for "{self.url_missing_ok}" refreshed, 1 entries'
+            f'Iplist content for "{self.url}" refreshed, 1 entries'
         )
 
     def test_empty_missing_ok_timeout(self, *_):
-        """Test timeout expiry of empty |missing-ok cache, --soft(force<0)."""
-        cache = source_cache(self.url_missing_ok, refresh=self.now - 2000)
+        """Test timeout expiry of empty missing_ok cache, --soft(force<0)."""
+        cache = source_cache(self.url, refresh=self.now - 2000)
         entry, warning, verbose, get_url = self.run_refresh(
-            source=self.url_missing_ok,
+            source=self.url,
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
+            missing_ok=True,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
         get_url.assert_called_once()
         warning.assert_not_called()
         verbose.assert_called_once_with(
-            f'Iplist content for "{self.url_missing_ok}" refreshed, 1 entries'
+            f'Iplist content for "{self.url}" refreshed, 1 entries'
         )
 
     def test_empty_missing_ok_past_refresh(self, *_):
-        """Test refresh expiry of empty |missing-ok cache, --soft(force<0)."""
-        cache = source_cache(self.url_missing_ok, refresh=self.now - 2000)
+        """Test refresh expiry of empty missing_ok cache, --soft(force<0)."""
+        cache = source_cache(self.url, refresh=self.now - 2000)
         entry, warning, verbose, get_url = self.run_refresh(
-            source=self.url_missing_ok,
+            source=self.url,
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
+            missing_ok=True,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
         get_url.assert_called_once()
         warning.assert_not_called()
         verbose.assert_called_once_with(
-            f'Iplist content for "{self.url_missing_ok}" refreshed, 1 entries'
+            f'Iplist content for "{self.url}" refreshed, 1 entries'
         )
 
     def test_nonempty_url_no_missing_ok(self, *_):
