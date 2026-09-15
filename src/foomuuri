@@ -549,13 +549,20 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
         new_value: typing.Optional[bool],
         source: str,
     ) -> None:
-        """Set attribute value with warning if value changes True->False."""
+        """Set attribute value. Print warning if conflicting value is given.
+
+        Print a warning if value changes:
+        - True -> False
+        - False -> True
+        - True or False -> None (unset, default value)
+        """
         old_value = getattr(self, name)
         if old_value is not None and old_value != new_value:
             warning(
                 f'Conflicting iplist source option "{name}" for "{source}"'
             )
-        setattr(self, name, new_value)
+        if new_value is not None:  # Don't change from True/False to None
+            setattr(self, name, new_value)
 
 
 @dataclasses.dataclass
