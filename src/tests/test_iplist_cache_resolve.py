@@ -96,6 +96,24 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         self.assertNotIn('foo.bar', cache)
         warning.assert_not_called()
 
+    def test_resolve_hostname_overwrite_replaces(self, *_):
+        """Test overwrite=yes replace cached addresses instead of append."""
+        cache = foomuuri.IPListSourceCache(
+            {
+                'foo.bar': {
+                    'ip': {'10.0.0.1': 0},
+                    'dirty': False,
+                    'refresh': self.now,
+                }
+            }
+        )
+        cache, _, _ = self.run_resolve(
+            {'foo.bar': self.source_options(overwrite=True)},
+            cache=foomuuri.IPListSourceCache(cache),
+            addresses={'foo.bar': {'10.0.0.9'}},
+        )
+        self.assertEqual(set(cache['foo.bar']['ip']), {'10.0.0.9'})
+
     def test_resolve_hostname_appends(self, *_):
         """Test hostname resolution appends IP addresses to cache."""
         cache = foomuuri.IPListSourceCache(

@@ -178,6 +178,25 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             f'Iplist content for "{self.url}" refreshed, 1 entries'
         )
 
+    def test_overwrite_false_appends(self, *_):
+        """Test overwrite=no appends fetched addresses to cached ones."""
+        cache = source_cache(
+            self.url, ip={'10.0.0.1': self.now}, refresh=self.now
+        )
+        entry, warning, verbose, _ = self.run_refresh(
+            source=self.url,
+            cache=cache,
+            content='10.0.0.9\n',
+            overwrite=False,
+        )
+        self.assertIn('10.0.0.1', entry['ip'])
+        self.assertIn('10.0.0.9', entry['ip'])
+        self.assertTrue(entry['dirty'])
+        warning.assert_not_called()
+        verbose.assert_called_once_with(
+            f'Iplist content for "{self.url}" refreshed, 1 entries'
+        )
+
     def test_nonempty_url_no_missing_ok(self, *_):
         """Test forced refresh of non-empty cache (force>=0)."""
         cache = source_cache(
