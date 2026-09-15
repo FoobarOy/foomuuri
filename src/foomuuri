@@ -457,8 +457,8 @@ class IPListOptions(TypedConfig):
     overwrite: typing.Optional[bool] = dataclasses.field(
         default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # overwrite or append source entries, None uses default value
-    missing_ok: bool = dataclasses.field(
-        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    missing_ok: typing.Optional[bool] = dataclasses.field(
+        default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # allow empty/failed URL download or DNS resolve
 
     def parse_option(self, option: str):
@@ -537,11 +537,25 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     refresh: int = sys.maxsize
     max_size: int = sys.maxsize
     overwrite: typing.Optional[bool] = None
-    missing_ok: bool = False
+    missing_ok: typing.Optional[bool] = None
 
     def update_if_less(self, name: str, new_value: int) -> None:
         """Update attribute value if new value is less than current."""
         setattr(self, name, min(new_value, getattr(self, name)))
+
+    def set_option(
+        self,
+        name: str,
+        new_value: typing.Optional[bool],
+        source: str,
+    ) -> None:
+        """Set attribute value with warning if value changes True->False."""
+        old_value = getattr(self, name)
+        if old_value is not None and old_value != new_value:
+            warning(
+                f'Conflicting iplist source option "{name}" for "{source}"'
+            )
+        setattr(self, name, new_value)
 
 
 @dataclasses.dataclass
@@ -5219,15 +5233,23 @@ def iplist_collect_resolve_list(
                     sources[source].update_if_less(
                         option, iplist.options[f'url_{option}']
                     )
-                sources[source].overwrite = iplist.options.overwrite
-                sources[source].missing_ok = iplist.options.missing_ok
+                sources[source].set_option(
+                    'overwrite', iplist.options.overwrite, source
+                )
+                sources[source].set_option(
+                    'missing_ok', iplist.options.missing_ok, source
+                )
             elif not get_ip_family(source, allow_negative=False):
                 for option in ('timeout', 'refresh'):
                     hostnames[source].update_if_less(
                         option, iplist.options[f'dns_{option}']
                     )
-                hostnames[source].overwrite = iplist.options.overwrite
-                hostnames[source].missing_ok = iplist.options.missing_ok
+                hostnames[source].set_option(
+                    'overwrite', iplist.options.overwrite, source
+                )
+                hostnames[source].set_option(
+                    'missing_ok', iplist.options.missing_ok, source
+                )
     if CONFIG.verbose >= 2:
         verbose(f'Sources:   {sources}')
         verbose(f'Hostnames: {hostnames}')
