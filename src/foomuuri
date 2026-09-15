@@ -457,6 +457,9 @@ class IPListOptions(TypedConfig):
     overwrite: typing.Optional[bool] = dataclasses.field(
         default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # overwrite or append source entries, None uses default value
+    missing_ok: bool = dataclasses.field(
+        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    )  # allow empty/failed URL download or DNS resolve
 
     def parse_option(self, option: str):
         """Parse and set iplist option value from option.
@@ -534,6 +537,7 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     refresh: int = sys.maxsize
     max_size: int = sys.maxsize
     overwrite: typing.Optional[bool] = None
+    missing_ok: bool = False
 
     def update_if_less(self, name: str, new_value: int) -> None:
         """Update attribute value if new value is less than current."""
@@ -4400,7 +4404,7 @@ def active_sets() -> set[str]:
     return ret
 
 
-def get_url(url: str, max_size: int) -> typing.Optional[str]:
+def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
 
     def get_response_content(
@@ -4440,7 +4444,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
         ) as response:
             return (
-                get_response_content(response, max_size)
+                get_response_content(response, options.max_size)
                 .getvalue()
                 .decode('utf-8', errors='ignore')
             )
@@ -4450,7 +4454,7 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             f'No python-urllib3 installed'
         )
     except (ValueError, urllib3.exceptions.HTTPError) as error:
-        if '|missing-ok' not in url:
+        if not options.missing_ok:
             warning(
                 f'Can\'t download iplist URL "{remove_filters(url)}": {error}'
             )
@@ -4460,12 +4464,15 @@ def get_url(url: str, max_size: int) -> typing.Optional[str]:
             response.release_conn()
 
 
-def get_file(wildcard: str) -> typing.Optional[str]:
+def get_file(
+    wildcard: str,
+    options: IPListSourceOptions,
+) -> typing.Optional[str]:
     """Read all files and return them as single text."""
     wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
     if not filenames:
-        if '|missing-ok' not in wildcard:
+        if not options.missing_ok:
             warning(
                 f'Can\'t read iplist file "{remove_filters(wildcard)}": '
                 f'No such file'
@@ -4774,26 +4781,27 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             {'ip': {}, 'dirty': False, 'refresh': int(time.time())},
         )
 
-    @staticmethod
-    def _should_discard_empty(
-        source: str, entry: IPListSourceCacheEntry
-    ) -> bool:
-        """Return True when source is empty and lacks |missing-ok.
-
-        Empty |missing-ok sources are kept in cache so that their
-        "refresh" timestamp is saved to cache. They will be then
-        refreshed on normal intervals, not on every run.
-        """
-        return '|missing-ok' not in source and not entry.get('ip')
-
-    def write(self) -> None:
+    def write(self, iplists: IPLists) -> None:
         """Remove transient metadata and save source cache to disk."""
+        # Remove empty sources that don't have missing_ok.
+        # Empty missing_ok sources are kept in cache so that their
+        # "refresh" timestamp is saved to cache. They will be then
+        # refreshed on normal intervals, not on every run.
+        for iplist in iplists.values():
+            if iplist.options.missing_ok:
+                continue
+            for source in iplist.sources:
+                if source in self and not self[source]['ip']:
+                    verbose(f'Deleting empty "{source}" from iplist cache')
+                    del self[source]
+
+        # Remove metadata and empty manual-lists
         for source, entry in list(self.items()):
             entry.pop('dirty', None)
             if source.startswith('manual.@'):
                 entry.pop('refresh', None)
-            if self._should_discard_empty(source, entry):
-                self.pop(source, None)
+                if not entry['ip']:
+                    del self[source]
 
         save_file(state_file('iplist_cache_file'), self.data)
 
@@ -4844,10 +4852,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         if now >= refresh + options.timeout:
             self._clear_entry(source)
             return False
-        # Empty |missing-ok source is used unless refresh is forced
-        if not entry['ip'] and (
-            '|missing-ok' not in source or INTERNAL.force >= 0
-        ):
+        # Empty missing_ok source is used unless refresh is forced
+        if not entry['ip'] and (not options.missing_ok or INTERNAL.force >= 0):
             return False
         if now >= refresh + options.refresh or INTERNAL.force >= 0:
             return False
@@ -4887,9 +4893,9 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             return
 
         value = (
-            get_url(source, options.max_size)
+            get_url(source, options)
             if source.startswith(('https:', 'http:'))
-            else get_file(source)
+            else get_file(source, options)
         )
 
         if value is not None:
@@ -4904,7 +4910,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                 f'Iplist content for "{source}" refreshed, '
                 f'{len(addresses)} entries'
             )
-            if not addresses and '|missing-ok' not in source:
+            if not addresses and not options.missing_ok:
                 warning(
                     f'No IP addresses listed in "{remove_filters(source)}"'
                 )
@@ -4953,7 +4959,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                         f'Hostname "{remove_filters(hostname)}" resolved '
                         f'to: {", ".join(addrlist)}'
                     )
-                elif '|missing-ok' not in hostname:
+                elif not hostnames[hostname].missing_ok:
                     warning(
                         f'No IP address found for hostname '
                         f'"{remove_filters(hostname)}" in iplist'
@@ -5053,10 +5059,6 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             ]:
                 verbose(f'Deleting expired iplist "{source}" entry "{addr}"')
                 del entry['ip'][addr]
-
-            # Don't keep empty cache entries, when not marked with |missing-ok
-            if self._should_discard_empty(source, entry):
-                del self[source]
         return self
 
 
@@ -5187,6 +5189,12 @@ def parse_config_iplist(config) -> IPLists:
 
             # Add as a source
             iplists[name].sources.append(option)
+            if '|missing-ok' in option:  # Parse old style |filter
+                iplists[name].options.missing_ok = True
+                warning(
+                    f'{fileline}iplist{{}} filter "|missing-ok" in "{name}" '
+                    f'is obsolete, use "missing_ok=yes" instead'
+                )
 
         iplist_verify_filters(name, iplists[name].sources, fileline)
     if CONFIG.verbose >= 2:
@@ -5212,12 +5220,14 @@ def iplist_collect_resolve_list(
                         option, iplist.options[f'url_{option}']
                     )
                 sources[source].overwrite = iplist.options.overwrite
+                sources[source].missing_ok = iplist.options.missing_ok
             elif not get_ip_family(source, allow_negative=False):
                 for option in ('timeout', 'refresh'):
                     hostnames[source].update_if_less(
                         option, iplist.options[f'dns_{option}']
                     )
                 hostnames[source].overwrite = iplist.options.overwrite
+                hostnames[source].missing_ok = iplist.options.missing_ok
     if CONFIG.verbose >= 2:
         verbose(f'Sources:   {sources}')
         verbose(f'Hostnames: {hostnames}')
@@ -5298,7 +5308,7 @@ def iplist_output_values(
         # Print error if iplist had sources, but result is empty.
         # Don't print if called from "foomuuri start".
         if sources and not iplist.addresses and cmd_is_refresh:
-            if all('|missing-ok' in source for source in sources):
+            if iplists[iplist_name].options.missing_ok:
                 warning(f'Iplist "{iplist_name}" is empty')
             else:
                 fail(f'Iplist "{iplist_name}" is empty', False)
@@ -5334,7 +5344,7 @@ def iplist_output_and_apply(
         return output_error
 
     # There was some updates. Save cache to disk.
-    source_cache.write()
+    source_cache.write(iplists)
 
     # Apply nft commands
     lines = '\n'.join(save_final(None))

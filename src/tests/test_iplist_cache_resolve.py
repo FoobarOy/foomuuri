@@ -20,10 +20,11 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         self.now = int(time.time())
 
     @staticmethod
-    def source_options(timeout=1000):
+    def source_options(timeout=1000, missing_ok=False):
         """Return IPListSourceOptions instance."""
         options = foomuuri.IPListSourceOptions()
         options.timeout = timeout
+        options.missing_ok = missing_ok
         return options
 
     @staticmethod
@@ -86,19 +87,19 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         )
 
     def test_resolve_hostname_failed_missing_ok(self, *_):
-        """Test no warning when |missing-ok hostname resolves to nothing."""
+        """Test no warning when missing-ok hostname resolves to nothing."""
         cache, warning, _ = self.run_resolve(
-            {'foo.bar|missing-ok': self.source_options()},
+            {'foo.bar': self.source_options(missing_ok=True)},
             cache=foomuuri.IPListSourceCache(),
         )
-        self.assertNotIn('foo.bar|missing-ok', cache)
+        self.assertNotIn('foo.bar', cache)
         warning.assert_not_called()
 
     def test_resolve_hostname_appends(self, *_):
         """Test hostname resolution appends IP addresses to cache."""
         cache = foomuuri.IPListSourceCache(
             {
-                'foo.bar|missing-ok': {
+                'foo.bar': {
                     'ip': {'10.0.0.1': 0},
                     'dirty': False,
                     'refresh': self.now,
@@ -106,13 +107,13 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
             }
         )
         cache, _, _ = self.run_resolve(
-            {'foo.bar|missing-ok': self.source_options()},
+            {'foo.bar': self.source_options(missing_ok=True)},
             cache=foomuuri.IPListSourceCache(cache),
-            addresses={'foo.bar|missing-ok': {'10.0.0.9'}},
+            addresses={'foo.bar': {'10.0.0.9'}},
         )
-        self.assertIn('10.0.0.1', cache['foo.bar|missing-ok']['ip'])
-        self.assertIn('10.0.0.9', cache['foo.bar|missing-ok']['ip'])
-        self.assertTrue(cache['foo.bar|missing-ok']['dirty'])
+        self.assertIn('10.0.0.1', cache['foo.bar']['ip'])
+        self.assertIn('10.0.0.9', cache['foo.bar']['ip'])
+        self.assertTrue(cache['foo.bar']['dirty'])
 
     def test_resolve_hostname_expired_cleared(self, *_):
         """Test resolution clears expired cached IP addresses."""
@@ -159,7 +160,7 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
         """Test no resolution with fresh cache and --soft(force<0)."""
         cache = foomuuri.IPListSourceCache(
             {
-                'foo.bar|missing-ok': {
+                'foo.bar': {
                     'ip': {'10.0.0.1': 0},
                     'dirty': False,
                     'refresh': self.now,
@@ -167,12 +168,12 @@ class TestSourceCacheResolveHostnames(unittest.TestCase):
             }
         )
         cache, warning, verbose = self.run_resolve(
-            {'foo.bar|missing-ok': self.source_options()},
+            {'foo.bar': self.source_options(missing_ok=True)},
             cache=foomuuri.IPListSourceCache(cache),
-            addresses={'foo.bar|missing-ok': {'10.0.0.9'}},
+            addresses={'foo.bar': {'10.0.0.9'}},
             force=-1,
         )
-        self.assertEqual(cache['foo.bar|missing-ok']['ip'], {'10.0.0.1': 0})
+        self.assertEqual(cache['foo.bar']['ip'], {'10.0.0.1': 0})
         verbose.assert_called_once_with('Using cached value for "foo.bar"')
         warning.assert_not_called()
 

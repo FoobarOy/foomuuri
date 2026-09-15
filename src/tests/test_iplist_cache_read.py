@@ -62,11 +62,11 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 'ip': {},
                 'refresh': 100,
             },
-            'https://foo.bar/empty.txt|missing-ok': {
+            'https://foo.bar/empty.txt-missing_ok': {
                 'ip': {},
                 'refresh': 100,
             },
-            'https://foo.bar/list.txt|missing-ok': {
+            'https://foo.bar/list.txt-missing_ok': {
                 'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_never},
                 'refresh': 100,
             },
@@ -75,8 +75,8 @@ class TestIPListSourceCacheRead(unittest.TestCase):
             data,
             [
                 'https://foo.bar/empty.txt',
-                'https://foo.bar/empty.txt|missing-ok',
-                'https://foo.bar/list.txt|missing-ok',
+                'https://foo.bar/empty.txt-missing_ok',
+                'https://foo.bar/list.txt-missing_ok',
             ],
         )
         verbose.assert_has_calls(
@@ -115,11 +115,15 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                     },
                     'refresh': 1,
                 },
-                'https://foo.bar/empty.txt|missing-ok': {
+                'https://foo.bar/empty.txt': {
                     'ip': {},
                     'refresh': 100,
                 },
-                'https://foo.bar/list.txt|missing-ok': {
+                'https://foo.bar/empty.txt-missing_ok': {
+                    'ip': {},
+                    'refresh': 100,
+                },
+                'https://foo.bar/list.txt-missing_ok': {
                     'ip': {
                         '10.0.0.1': foomuuri.IPListSourceCache.expire_never
                     },
@@ -178,51 +182,6 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 },
                 'https://foo.bar/empty.txt|missing-ok': {
                     'ip': {},
-                    'refresh': 1,
-                },
-            },
-        )
-
-    def test_cache_read_removes_empty_sources(self):
-        """Test cache read removes empty sources without |missing-ok."""
-        data = {
-            'https://foo.bar/empty.txt': {
-                'ip': {},
-                'refresh': 1,
-            },
-            'https://foo.bar/empty.txt|missing-ok': {
-                'ip': {},
-                'refresh': 1,
-            },
-            'manual.@known': {
-                'ip': {},
-                'refresh': 1,
-            },
-            'https://foo.bar/list.txt': {
-                'ip': {
-                    '10.0.0.1': self.now + 3600,
-                },
-                'refresh': 1,
-            },
-        }
-        cache, verbose = self._read(
-            data,
-            [
-                'https://foo.bar/empty.txt',
-                'https://foo.bar/empty.txt|missing-ok',
-                'https://foo.bar/list.txt',
-            ],
-        )
-        verbose.assert_not_called()
-        self.assertEqual(
-            cache,
-            {
-                'https://foo.bar/empty.txt|missing-ok': {
-                    'ip': {},
-                    'refresh': 1,
-                },
-                'https://foo.bar/list.txt': {
-                    'ip': {'10.0.0.1': self.now + 3600},
                     'refresh': 1,
                 },
             },

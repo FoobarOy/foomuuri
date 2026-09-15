@@ -29,7 +29,7 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         """Prepare test fixtures."""
         self.now = int(time.time())
         self.url = 'https://foo.bar/iplist'
-        self.url_missing_ok = f'{self.url}|missing-ok'
+        self.url_missing_ok = f'{self.url}-missing_ok'
 
     @staticmethod
     def run_refresh(  # pylint: disable=too-many-arguments
@@ -46,6 +46,7 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         options = foomuuri.IPListSourceOptions()
         options.timeout = timeout
         options.refresh = refresh
+        options.missing_ok = 'missing_ok' in source
         with (
             unittest.mock.patch(
                 'foomuuri.get_url', return_value=content
@@ -118,7 +119,9 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         self.assertFalse(entry['dirty'])
         get_url.assert_not_called()
         warning.assert_not_called()
-        verbose.assert_called_once_with(f'Using cached value for "{self.url}"')
+        verbose.assert_called_once_with(
+            f'Using cached value for "{self.url_missing_ok}"'
+        )
 
     def test_empty_missing_ok_force(self, *_):
         """Test forced empty |missing-ok source refresh (force>=0)."""
@@ -280,7 +283,7 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         entry = cache[file_path]
         self.assertIn('10.0.0.7', entry['ip'])
         self.assertTrue(entry['dirty'])
-        get_file.assert_called_once_with(file_path)
+        get_file.assert_called_once_with(file_path, options)
         get_url.assert_not_called()
         warning.assert_not_called()
         verbose.assert_called_once_with(

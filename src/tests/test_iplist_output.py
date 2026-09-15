@@ -22,7 +22,7 @@ class TestIPListOutputValues(unittest.TestCase):
         """Prepare test fixtures."""
         self.now = int(time.time())
         self.url = 'https://foo.bar/iplist'
-        self.url_missing_ok = f'{self.url}|missing-ok'
+        self.url_missing_ok = f'{self.url}-missing_ok'
 
     @staticmethod
     def run_output(
@@ -35,7 +35,12 @@ class TestIPListOutputValues(unittest.TestCase):
         foomuuri.INTERNAL.command = 'iplist'
         foomuuri.INTERNAL.force = force
         iplists = foomuuri.IPLists()
-        iplists[iplist_name] = foomuuri.IPList(sources=sources)
+        options = foomuuri.IPListSourceOptions()
+        options.missing_ok = any('missing_ok' in source for source in sources)
+        iplists[iplist_name] = foomuuri.IPList(
+            options=options,
+            sources=sources,
+        )
         update_only = {iplist_name}
         currently_active = {iplist_name}
         with (
@@ -67,21 +72,6 @@ class TestIPListOutputValues(unittest.TestCase):
         cache = source_cache(self.url)
         ret, warning, fail, verbose = self.run_output(
             sources=[self.url],
-            cache=cache,
-            iplist_name='@foo',
-        )
-        self.assertEqual(ret, 2)
-        fail.assert_called_once_with('Iplist "@foo" is empty', False)
-        warning.assert_not_called()
-        verbose.assert_not_called()
-
-    def test_set_mixed_sources_empty(self, *_):
-        """Test fail and rc 2 for mixed sources with empty content."""
-        optional = self.url_missing_ok
-        required = 'https://required.example/list'
-        cache = source_cache(optional, required)
-        ret, warning, fail, verbose = self.run_output(
-            sources=[optional, required],
             cache=cache,
             iplist_name='@foo',
         )
