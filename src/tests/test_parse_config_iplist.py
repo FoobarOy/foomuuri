@@ -102,6 +102,26 @@ class TestIplistParseConfig(unittest.TestCase):
                 'value: dns_timeout='
             )
 
+    @unittest.mock.patch('foomuuri.warning')
+    def test_obsolete_missing_ok_filter(self, warning, *_):
+        """Test conversion of obsolete |missing-ok filter to option."""
+        with self.mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @foo https://foo.bar|missing-ok
+        """,
+        ) as config_file:
+            iplists = parse_config_iplist(minimal_config())
+            self.assertTrue(iplists['@foo'].options.missing_ok)
+            self.assertEqual(
+                iplists['@foo'].sources, ['https://foo.bar|missing-ok']
+            )
+            warning.assert_called_once_with(
+                f'File {config_file} line 4: iplist{{}} filter '
+                '"|missing-ok" in "@foo" is obsolete, '
+                'use "missing_ok=yes" instead'
+            )
+
     def test_empty_iplist_definition(self, *_):
         """Test empty iplist definition."""
         with self.mock_config_foomuuri(

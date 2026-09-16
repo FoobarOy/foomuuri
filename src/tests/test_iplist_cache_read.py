@@ -62,21 +62,13 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 'ip': {},
                 'refresh': 100,
             },
-            'https://foo.bar/empty.txt-missing_ok': {
-                'ip': {},
-                'refresh': 100,
-            },
-            'https://foo.bar/list.txt-missing_ok': {
-                'ip': {'10.0.0.1': foomuuri.IPListSourceCache.expire_never},
-                'refresh': 100,
-            },
         }
         cache, verbose = self._read(
             data,
             [
                 'https://foo.bar/empty.txt',
-                'https://foo.bar/empty.txt-missing_ok',
-                'https://foo.bar/list.txt-missing_ok',
+                'https://foo.bar/empty2.txt',
+                'https://foo.bar/list2.txt',
             ],
         )
         verbose.assert_has_calls(
@@ -119,16 +111,6 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                     'ip': {},
                     'refresh': 100,
                 },
-                'https://foo.bar/empty.txt-missing_ok': {
-                    'ip': {},
-                    'refresh': 100,
-                },
-                'https://foo.bar/list.txt-missing_ok': {
-                    'ip': {
-                        '10.0.0.1': foomuuri.IPListSourceCache.expire_never
-                    },
-                    'refresh': 100,
-                },
             },
         )
 
@@ -143,16 +125,11 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                 },
                 'refresh': 1,
             },
-            'https://foo.bar/empty.txt|missing-ok': {
-                'ip': {'10.0.0.4': 0},
-                'refresh': 1,
-            },
         }
         cache, verbose = self._read(
             data,
             [
                 'https://foo.bar/list.txt',
-                'https://foo.bar/empty.txt|missing-ok',
             ],
         )
         verbose.assert_has_calls(
@@ -165,23 +142,14 @@ class TestIPListSourceCacheRead(unittest.TestCase):
                     'Deleting expired iplist "https://foo.bar/list.txt" '
                     'entry "10.0.0.2"'
                 ),
-                unittest.mock.call(
-                    'Deleting expired iplist '
-                    '"https://foo.bar/empty.txt|missing-ok" '
-                    'entry "10.0.0.4"'
-                ),
             ]
         )
-        self.assertEqual(verbose.call_count, 3)
+        self.assertEqual(verbose.call_count, 2)
         self.assertEqual(
             cache,
             {
                 'https://foo.bar/list.txt': {
                     'ip': {'10.0.0.3': self.now + 3600},
-                    'refresh': 1,
-                },
-                'https://foo.bar/empty.txt|missing-ok': {
-                    'ip': {},
                     'refresh': 1,
                 },
             },

@@ -19,7 +19,12 @@ class TestSourceCacheWrite(unittest.TestCase):
                     'dirty': True,
                     'refresh': 100,
                 },
-                'https://foo.bar/missing_ok': {
+                'https://foo.bar/empty2.txt': {
+                    'ip': {},
+                    'dirty': True,
+                    'refresh': 100,
+                },
+                'https://foo.bar/keep.txt': {
                     'ip': {},
                     'dirty': True,
                     'refresh': 100,
@@ -43,7 +48,7 @@ class TestSourceCacheWrite(unittest.TestCase):
         )
 
         written_cache = {
-            'https://foo.bar/missing_ok': {'ip': {}, 'refresh': 100},
+            'https://foo.bar/keep.txt': {'ip': {}, 'refresh': 100},
             'https://foo.bar/list.txt': {
                 'ip': {'10.0.0.1': 200},
                 'refresh': 100,
@@ -55,11 +60,15 @@ class TestSourceCacheWrite(unittest.TestCase):
         iplists = foomuuri.IPLists()
         iplists['@missingok'] = foomuuri.IPList(
             options=foomuuri.IPListOptions(missing_ok=True),
-            sources=['https://foo.bar/missing_ok'],
+            sources=['https://foo.bar/keep.txt'],
         )
         iplists['@remove'] = foomuuri.IPList(
             options=foomuuri.IPListOptions(missing_ok=False),
             sources=['https://foo.bar/empty.txt'],
+        )
+        iplists['@remove2'] = foomuuri.IPList(
+            options=foomuuri.IPListOptions(missing_ok=None),
+            sources=['https://foo.bar/empty2.txt'],
         )
         with (
             unittest.mock.patch('foomuuri.state_file', return_value=filename),

@@ -22,7 +22,6 @@ class TestIPListOutputValues(unittest.TestCase):
         """Prepare test fixtures."""
         self.now = int(time.time())
         self.url = 'https://foo.bar/iplist'
-        self.url_missing_ok = f'{self.url}-missing_ok'
 
     @staticmethod
     def run_output(
@@ -30,13 +29,14 @@ class TestIPListOutputValues(unittest.TestCase):
         cache,
         iplist_name,
         force=0,
+        missing_ok=None,
     ):
         """Call iplist_output_values() with mocked IO."""
         foomuuri.INTERNAL.command = 'iplist'
         foomuuri.INTERNAL.force = force
         iplists = foomuuri.IPLists()
         options = foomuuri.IPListSourceOptions()
-        options.missing_ok = any('missing_ok' in source for source in sources)
+        options.missing_ok = missing_ok
         iplists[iplist_name] = foomuuri.IPList(
             options=options,
             sources=sources,
@@ -55,12 +55,13 @@ class TestIPListOutputValues(unittest.TestCase):
         return ret, warning, fail, verbose
 
     def test_set_single_missing_ok_empty(self, *_):
-        """Test warning and rc 0 for |missing-ok source with empty content."""
-        cache = source_cache(self.url_missing_ok)
+        """Test warning and rc 0 for missing_ok source with empty content."""
+        cache = source_cache(self.url)
         ret, warning, fail, verbose = self.run_output(
-            sources=[self.url_missing_ok],
+            sources=[self.url],
             cache=cache,
             iplist_name='@foo',
+            missing_ok=True,
         )
         self.assertEqual(ret, 0)
         warning.assert_called_once_with('Iplist "@foo" is empty')
