@@ -2,6 +2,23 @@
 
 ## 0.34 (20xx-xx-xx)
 
+* BREAKING CHANGE: Iplist filter `|missing-ok` is replaced by `missing_ok=yes`
+  setting. This setting can be defined globally or per iplist, old filter was
+  per hostname/URL. With setting `missing_ok=yes`, a warning is printed instead
+  of an error if:
+  * DNS resolution or URL/file download fails.
+  * Resolution/download succeeds, but the content is empty.
+  With default value `missing_ok=no`, any of these conditions causes an error.
+* New `overwrite=yes|no` iplist setting controls how resolved IP addresses or
+  URL content are applied to the iplist. With `yes`, old content is
+  removed and replaced with the new addresses. With `no`, old content is
+  kept until it expires, and new addresses are either added or have their
+  expiry timeout updated. The default `overwrite` value depends on the content
+  type as it was in version 0.33:
+  * URL/file content defaults to `overwrite=yes`
+  * DNS resolution defaults to `overwrite=no`
+* FUTURE BREAKING CHANGE: In next version 0.35, `overwrite`'s default value
+  will change to `overwrite=no` for all content types.
 * Add support for `==`, `!=`, `<`, `>`, `<=` and `>=` compare operators
   when matching numeric values. For example `tcp < 1024`.
 * Add support for `localhost-public { accept }` single line syntax.
@@ -9,11 +26,6 @@
   When enabled, named counter values are preserved across `foomuuri reload`.
   They are not preserved across a reboot.
 * Add `foomuuri counter reset` command to reset named counter values.
-* With iplist filter `|missing-ok`, a warning is printed instead of an
-  error if:
-  * DNS resolution or URL/file download fails.
-  * Resolution/download succeeds, but the content is empty.
-  Without `|missing-ok`, any of these conditions causes an error.
 * Add `prometheus-rasdaemon` macro to default services.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
