@@ -9,7 +9,7 @@
     },
     "refresh": 1800000000
   },
-  "./iplist_empty.txt|missing-ok": {
+  "./iplist_empty.txt": {
     "ip": {},
     "refresh": 1800000000
   },
