@@ -142,33 +142,17 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             f'Iplist content for "{self.url}" refreshed, 1 entries'
         )
 
-    def test_empty_missing_ok_timeout(self, *_):
-        """Test timeout expiry of empty missing_ok cache, --soft(force<0)."""
-        cache = source_cache(self.url, refresh=self.now - 2000)
-        entry, warning, verbose, get_url = self.run_refresh(
-            source=self.url,
-            cache=cache,
-            content='10.0.0.9\n',
-            force=-1,
-            missing_ok=True,
-        )
-        self.assertIn('10.0.0.9', entry['ip'])
-        self.assertTrue(entry['dirty'])
-        get_url.assert_called_once()
-        warning.assert_not_called()
-        verbose.assert_called_once_with(
-            f'Iplist content for "{self.url}" refreshed, 1 entries'
-        )
-
     def test_empty_missing_ok_past_refresh(self, *_):
         """Test refresh expiry of empty missing_ok cache, --soft(force<0)."""
-        cache = source_cache(self.url, refresh=self.now - 2000)
+        cache = source_cache(self.url, refresh=self.now - 1500)
         entry, warning, verbose, get_url = self.run_refresh(
             source=self.url,
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
             missing_ok=True,
+            timeout=2000,
+            refresh=1000,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
