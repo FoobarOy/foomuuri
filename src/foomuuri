@@ -3523,7 +3523,7 @@ def save_file(
     if str(filename) == '/dev/null':
         return
     if isinstance(lines, dict):
-        text = json.dumps(lines, indent=2, sort_keys=True) + '\n'
+        text = json.dumps(lines)
     else:
         text = '\n'.join(lines) + '\n'
     tmpfile = filename.with_suffix(f'{filename.suffix}.{os.getpid()}')
