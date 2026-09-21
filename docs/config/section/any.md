@@ -33,6 +33,15 @@ localhost-internal {
 }
 ```
 
+When traffic goes from `localhost` to `public`, the applicable sections are
+evaluated in the following order:
+
+1. `any-public` rules
+2. `localhost-any` rules
+3. `any-any` rules
+4. `localhost-public` rules (the final rule is added here even if
+   `localhost-public` is missing from the configuration)
+
 The `szone -public` matcher can be used in a rule to exclude it from
 `public-localhost`. Example:
 
