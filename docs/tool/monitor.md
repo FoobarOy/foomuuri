@@ -1,16 +1,17 @@
 # Foomuuri Monitor
 
-Foomuuri includes simple network connectivity monitor. It can monitor your
-internet connection by pinging some external server. Command can
-be run if network link goes up or down. Example
+Foomuuri includes a simple network connectivity monitor. It monitors your
+internet connection by pinging an external server, and can run a command
+whenever the network link goes up or down. An example
 [command](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor.event)
-to send an email notification to root is included in doc directory. Another
-examples are [multiple ISP](../example/multiple-isp.md) configurations and commands.
+that sends an email notification to root is included in the doc directory.
+Another example for [multiple ISP](../example/multiple-isp.md)
+configurations and commands, is also available.
 
 
 ## target
 
-Minimal configuration is:
+The minimal configuration is:
 
 ```
 target google {
@@ -18,11 +19,11 @@ target google {
 }
 ```
 
-This creates monitor called `google` and runs `fping` command pinging
-IP 8.8.4.4 every second. Foomuuri parses its output and logs up and down
-events. Multiple targets can be defined.
+This creates a monitor called `google` that runs the `fping` command,
+pinging IP address 8.8.4.4 every second. Foomuuri parses the output and
+logs up and down events. Multiple targets can be defined.
 
-Better real life example is:
+A more realistic example:
 
 ```
 target my-isp-router {
@@ -32,15 +33,15 @@ target my-isp-router {
 }
 ```
 
-This pings IP 172.25.31.149 every two seconds and runs `monitor.event`
-command when link goes up or down. That command sends an email notification
-to root.
+This pings IP address 172.25.31.149 every two seconds and runs the
+`monitor.event` command whenever the link goes up or down. That command
+sends an email notification to root.
 
-See `man fping` or its [website](https://www.fping.org/) for description
-of `fping` parameters. Foomuuri supports both `interval` and `squiet` modes.
-It is recommended to use full seconds in `--interval`.
+See `man fping` or the [fping website](https://www.fping.org/) for a
+description of `fping`'s parameters. Foomuuri supports both `interval` and
+`squiet` modes; it is recommended to use whole seconds in `--interval`.
 
-"Up" and "down" are defined with parameters:
+"Up" and "down" states are defined with the following parameters:
 
 ```
 target my-isp-router {
@@ -53,58 +54,60 @@ target my-isp-router {
 }
 ```
 
-Target is considered up if 80 of the last 100 pings were successful (allowing
-failures in between) and last 20 pings were successful (no failures allowed).
+A target is considered up if 80 of the last 100 pings succeeded (failures
+in between are allowed) or if the last 20 pings succeeded (no failures
+allowed).
 
-Target is considered down if 30 of the last 100 pings were failures or
-last 10 pings were failures.
+A target is considered down if 30 of the last 100 pings failed, or if the
+last 10 pings failed.
 
-`curl` and other programs can also be used instead of `fping`. See example
-[shell script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor-example-command.sh)
-how to use them.
+`curl` and other programs can also be used instead of `fping`. See the
+example [shell script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor-example-command.sh)
+for how to use them.
 
-It is recommended to use IP address instead of hostname as `fping` target.
-Hostname lookup will fail if network is down when `fping` starts. Foomuuri
-will handle this but it will cause 30 second delay and possible `fping`
-restart loop.
+It is recommended to use an IP address rather than a hostname as the
+`fping` target. Hostname lookups will fail if the network is down when
+`fping` starts. Foomuuri handles this case, but it causes a 30-second
+delay and a possible `fping` restart loop.
 
-Optional `command_down_interval` can be specified. Foomuuri will run it every
-`down_interval` seconds (default to 600, every 10 minutes). Example:
+The optional `command_down_interval` setting can be specified. Foomuuri
+will run it every `down_interval` seconds (default: 600, i.e., every 10
+minutes). Example:
 
 ```
 target my-isp-router {
    # Connectivity is still down. Ask NetworkManager to re-initialize
-   # eth0 connection.
+   # the eth0 connection.
    command_down_interval nmcli connection up eth0
 
-   # Run it every 15 minutes
+   # Run it every 15 minutes.
    down_interval 900
    ...
 }
 ```
 
-Up/down command receives status information in environment variables:
+The up/down command receives status information via environment variables:
 
-* `FOOMUURI_CHANGE_TYPE`: type `target` or `group`
-* `FOOMUURI_CHANGE_NAME`: name of target or group changing state
-* `FOOMUURI_CHANGE_STATE`: state `up` or `down`
-* `FOOMUURI_CHANGE_LOG`: extra logging information
-* `FOOMUURI_CHANGE_HISTORY`: list of `!` (error) or `.` (ok)
-   indicating status of last checks
+* `FOOMUURI_CHANGE_TYPE`: type, `target` or `group`
+* `FOOMUURI_CHANGE_NAME`: name of the target or group changing state
+* `FOOMUURI_CHANGE_STATE`: state, `up` or `down`
+* `FOOMUURI_CHANGE_LOG`: additional logging information
+* `FOOMUURI_CHANGE_HISTORY`: a list of `!` (error) or `.` (ok) characters
+  indicating the status of recent checks
 * `FOOMUURI_ALL_TARGET`: list of all configured targets
 * `FOOMUURI_ALL_GROUP`: list of all configured groups
-* `FOOMUURI_TARGET_xxx`: state `up` or `down` for target `xxx`
-* `FOOMUURI_GROUP_xxx`: state `up` or `down` for group `xxx`
+* `FOOMUURI_TARGET_xxx`: state (`up` or `down`) for target `xxx`
+* `FOOMUURI_GROUP_xxx`: state (`up` or `down`) for group `xxx`
 
-Only single command can be specified. If you need to run multiple commands
-use a shell wrapper script to run them.
+Only a single command can be specified. If you need to run multiple
+commands, use a shell wrapper script to run them.
 
 Monitor statistics are written to a file once a minute.
 
 
 ## group
 
-Multiple monitor [targets](monitor.md#target) can be grouped to single
+Multiple monitor [targets](monitor.md#target) can be grouped into a single
 monitor. Example:
 
 ```
@@ -115,10 +118,10 @@ group my-isp-group {
 }
 ```
 
-This creates a monitor called `my-isp-group` which includes two targets.
-Group is considered up if any of the targets is up. It is considered down
-if all of the targets are down. It is usually safer to run up and down
-commands in `group {}` with multiple targets than in single `target {}`.
+This creates a monitor called `my-isp-group` that includes two targets. A
+group is considered up if any of its targets is up, and down only if all
+of its targets are down. It is generally safer to run up/down commands in
+a `group` section with multiple targets than in a single `target` section.
 
-Optional `command_down_interval` and `down_interval` can also be defined.
-See [above](monitor.md#target) for description.
+The optional `command_down_interval` and `down_interval` settings can also
+be defined here; see [above](monitor.md#target) for details.

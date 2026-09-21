@@ -1,27 +1,27 @@
 # Multiple ISP
 
-Foomuuri supports multiple ISPs (aka multi-ISP aka multi-WAN aka multiple
-simultaneous uplink connections) with active-active (load balancing) or
-active-passive (failover) configuration.
+Foomuuri supports multiple ISPs (also known as multi-ISP, multi-WAN, or
+multiple simultaneous uplink connections), in either active-active (load
+balancing) or active-passive (failover) configurations.
 
 
-## Configuration with static ISP routes
+## Configuration with Static ISP Routes
 
-This example requires static ISP routes. It works with NetworkManager and
-systemd-networkd. Both active-active and active-passive configurations are
-supported. Both configuration types are very similar, with only one line
-changed.
+This example requires static ISP routes and works with both
+NetworkManager and systemd-networkd. Both active-active and active-passive
+configurations are supported; the two are very similar, differing by only
+one line.
 
 This example configuration assumes:
 
-* ISP #1 is network interface `enp1s0`, my own IP is 172.23.70.36/24, gateway
-  is 172.23.70.254. Traffic will be marked with value 0x100 and uses route
-  table 1001.
-* ISP #2 is network interface `enp2s0`, my own IP is 172.23.12.31/24, gateway
-  is 172.23.12.254. Traffic will be marked with value 0x200 and uses route
-  table 1002.
-* Zone `internal` network interface is `enp8s0`, with network 10.0.0.0/8.
-  Outgoing traffic to `public` zone is masqueraded.
+* ISP #1 is on network interface `enp1s0`, with local IP 172.23.70.36/24
+  and gateway 172.23.70.254. Its traffic is marked with value 0x100 and
+  uses route table 1001.
+* ISP #2 is on network interface `enp2s0`, with local IP 172.23.12.31/24
+  and gateway 172.23.12.254. Its traffic is marked with value 0x200 and
+  uses route table 1002.
+* The `internal` zone's network interface is `enp8s0`, with network
+  10.0.0.0/8. Outgoing traffic to the `public` zone is masqueraded.
 
 Example `foomuuri.conf` file:
 
@@ -47,37 +47,37 @@ snat {
   saddr 10.0.0.0/8 oifname enp2s0 masquerade
 }
 
-# Multi-ISP magic is here, using marks to select which ISP to use. Order
-# of the rules is important. Specific rules should be first, generic last.
+# The multi-ISP logic is here, using marks to select which ISP to use.
+# Rule order matters: specific rules should come first, generic ones last.
 
 prerouting {
-  # Accept if mark is already set (not zero). Existing mark will be used.
+  # Accept if a mark is already set (non-zero). The existing mark is used.
   mark_match -0x0000/0xff00
 
   # == Incoming traffic ==
 
-  # Mark traffic from enp1s0 as 0x100 (ISP1) and enp2s0 as 0x200 (ISP2).
-  # This is needed for correctly routing reply packets.
+  # Mark traffic from enp1s0 as 0x100 (ISP1) and from enp2s0 as 0x200 (ISP2).
+  # This is needed to correctly route reply packets.
   iifname enp1s0 mark_set 0x100/0xff00
   iifname enp2s0 mark_set 0x200/0xff00
 
   # == Outgoing traffic ==
 
-  # Specific rules should be added first. For example, uncomment next line to
-  # route all SSH traffic from internal to public via ISP2.
+  # Specific rules should be added first. For example, uncomment the next
+  # line to route all SSH traffic from internal to public via ISP2.
   #iifname enp8s0 ssh mark_set 0x200/0xff00
 
   # Similarly, some source IPs can always be routed via ISP1.
   #saddr 10.0.1.0/24 mark_set 0x100/0xff00
 
-  # For active-active configuration use following line. It uses random number
-  # generator to mark traffic with 0x100 or 0x200. This routes 60% (0-5)
-  # of outgoing traffic to ISP1 and 40% (6-9) to ISP2.
+  # For an active-active configuration, use the following line. It uses a
+  # random number generator to mark traffic with 0x100 or 0x200, routing
+  # 60% (0-5) of outgoing traffic to ISP1 and 40% (6-9) to ISP2.
   nft "meta mark set numgen random mod 10 map { 0-5: 0x100, 6-9: 0x200 } ct mark set meta mark accept"
 
-  # For active-passive configuration uncomment next line and add comment to
-  # above nft-line. It simply assigns mark 0x100 (ISP1) to all traffic and
-  # uses ISP2 only as fallback.
+  # For an active-passive configuration, uncomment the next line and
+  # comment out the nft line above. It simply assigns mark 0x100 (ISP1) to
+  # all traffic and uses ISP2 only as a fallback.
   #mark_set 0x100/0xff00
 }
 
@@ -85,20 +85,20 @@ prerouting {
 
 target isp1 {
   # Monitor ISP1 connectivity by pinging 8.8.4.4. Ideally this would be
-  # some ISP1's router's IP address.
+  # ISP1's router IP address instead.
   command      fping --iface enp1s0 8.8.4.4
   command_up   /etc/foomuuri/multi-isp up 1
   command_down /etc/foomuuri/multi-isp down 1
 }
 
 target isp2 {
-  # Monitor ISP2 connectivity by pinging their router 172.25.31.149.
+  # Monitor ISP2 connectivity by pinging its router at 172.25.31.149.
   command      fping --iface enp2s0 172.25.31.149
   command_up   /etc/foomuuri/multi-isp up 2
   command_down /etc/foomuuri/multi-isp down 2
 }
 
-# Normal zone-zone rules, copied from router firewall example configuration:
+# Normal zone-zone rules, copied from the router firewall example configuration:
 
 public-localhost {
   ping saddr_rate "5/second burst 20"
@@ -154,8 +154,8 @@ localhost-internal {
 }
 ```
 
-Example `/etc/foomuuri/multi-isp` script. Remember to save it as executable,
-`chmod 750 /etc/foomuuri/multi-isp`.
+Example `/etc/foomuuri/multi-isp` script. Remember to save it as
+executable: `chmod 750 /etc/foomuuri/multi-isp`.
 
 ``` bash
 #!/bin/sh
@@ -252,17 +252,25 @@ WantedBy=multi-user.target
 ```
 
 
-## Configuration with routes dynamically allocated by ISPs
+## Configuration with Routes Dynamically Allocated by ISPs
 
 This example configuration assumes:
 
-* ISP #1 is on the network interface `enp1s0` with routes and IP addresses allocated via DHCP/IPv6RA. Traffic will be marked with value 0x100.
-* ISP #2 is on the network interface `enp2s0` with routes and IP addresses allocated via DHCP/IPv6RA. Traffic will be marked with value 0x200.
-* Zone `internal` network interface is `enp8s0` with IP 10.0.0.1/24. Outgoing traffic to `public` zone is masqueraded.
-* At least the public interfaces and their routing tables will be managed by `systemd-networkd`.
-* This example demonstrates a purely failover setup from ISP #1 to ISP #2. For load balancing add a second target monitor for `enp2s0` in `foomuuri.conf` and adjust the `switch.sh` script to identify and replace the fwmark randomizer as documented in the static routes example above.
+* ISP #1 is on network interface `enp1s0`, with routes and IP addresses
+  allocated via DHCP/IPv6 RA. Its traffic is marked with value 0x100.
+* ISP #2 is on network interface `enp2s0`, with routes and IP addresses
+  allocated via DHCP/IPv6 RA. Its traffic is marked with value 0x200.
+* The `internal` zone's network interface is `enp8s0`, with IP
+  10.0.0.1/24. Outgoing traffic to the `public` zone is masqueraded.
+* At least the public interfaces and their routing tables are managed by
+  `systemd-networkd`.
+* This example demonstrates a purely failover setup from ISP #1 to
+  ISP #2. For load balancing, add a second target monitor for `enp2s0` in
+  `foomuuri.conf`, and adjust the `switch.sh` script to identify and
+  replace the fwmark randomizer as documented in the static routes example
+  above.
 
-Initiate the routing tables by creating the following two files.
+Set up the routing tables by creating the following two files.
 
 `/etc/systemd/networkd.conf.d/table-primary.conf`:
 
@@ -278,7 +286,7 @@ RouteTable=primary:100
 RouteTable=secondary:200
 ```
 
-Configure `enp1s0` as followed in `/etc/systemd/network/enp1s0.network`:
+Configure `enp1s0` as follows, in `/etc/systemd/network/enp1s0.network`:
 
 ```
 [Match]
@@ -306,7 +314,7 @@ Table=primary
 Priority=41000
 ```
 
-Configure `enp2s0` as followed in `/etc/systemd/network/enp2s0.network`:
+Configure `enp2s0` as follows, in `/etc/systemd/network/enp2s0.network`:
 
 ```
 [Match]
@@ -334,11 +342,17 @@ Table=secondary
 Priority=42000
 ```
 
-After a restart of `systemd-networkd` the `ip route show table main` command should show this output:
+After restarting `systemd-networkd`, the `ip route show table main`
+command should show the following output:
 
 `10.0.0.0/24 dev enp8s0 proto kernel scope link src 10.0.0.1`
 
-As you can see no default route is defined in the main routing table because `systemd-networkd` added them only to our separate primary and secondary tables as defined above. This can be confirmed by checking the outputs of `ip route show table 100` and `ip route show table 200`. You should see the routes added via DHCP (`ip -6 route show table 100` for ipv6 router advertisement).
+As you can see, no default route is defined in the main routing table,
+since `systemd-networkd` added the default routes only to the separate
+primary and secondary tables defined above. You can confirm this by
+checking the output of `ip route show table 100` and
+`ip route show table 200`, where you should see the routes added via DHCP
+(use `ip -6 route show table 100` for IPv6 router advertisements).
 
 `ip rule` should output something like this:
 
@@ -352,9 +366,10 @@ As you can see no default route is defined in the main routing table because `sy
 42000:	from all lookup 200 proto static
 ```
 
-The catchall rules `41000` and `42000` are needed so `localhost` knows where to lookup the default routes.
+The catch-all rules `41000` and `42000` are needed so that `localhost`
+knows where to look up the default routes.
 
-Now all that is missing is to configure Foomuuri to use the `fwmark` rules.
+Now all that remains is to configure Foomuuri to use the `fwmark` rules.
 
 Example `foomuuri.conf` file:
 
@@ -389,7 +404,10 @@ target main {
 zone-zone rules...
 ```
 
-If the `fping` monitor recognizes no uplink on the main interface `enp1s0` the following `switch.sh` script (remember to `chmod 750`) will set the default fwmark to 0x200 from the backup interface `enp2s0` by directly manipulating the nft prerouting chain.
+If the `fping` monitor detects that the main interface `enp1s0` has no
+uplink, the following `switch.sh` script (remember to `chmod 750` it)
+sets the default fwmark to 0x200, routing traffic via the backup
+interface `enp2s0` by directly manipulating the nft prerouting chain.
 
 ``` bash
 #!/bin/bash

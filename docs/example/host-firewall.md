@@ -1,18 +1,18 @@
 # Host Firewall
 
-Following examples apply for:
+The following examples apply to:
 
 * Your personal laptop
 * Your personal workstation
-* Corporate server behind [router firewall](router-firewall.md)
-* Corporate server on cloud
+* A corporate server behind a [router firewall](router-firewall.md)
+* A corporate server in the cloud
 * Any other system with only one network connection
 
 
-## Incoming only
+## Incoming Only
 
-This is the simplest possible firewall. All outgoing traffic is accepted
-and few listed incoming services are accepted.
+This is the simplest possible firewall. All outgoing traffic is accepted,
+and a small set of listed incoming services is accepted.
 
 ``` mermaid
 flowchart LR
@@ -38,23 +38,24 @@ localhost-public {  # Allow all outgoing traffic
 }
 ```
 
-Above example is complete `/etc/foomuuri/foomuuri.conf` configuration
-file - there is nothing else to be added. It allows incoming
-(`public-localhost`) traffic:
+The example above is a complete `/etc/foomuuri/foomuuri.conf`
+configuration file - nothing else needs to be added. It allows incoming
+(`public-localhost`) traffic for:
 
-* DHCP reply packets to obtain a lease from external DHCP server (IPv4 and
-  IPv6)
+* DHCP reply packets, to obtain a lease from an external DHCP server (IPv4
+  and IPv6)
 * Ping packets (no ping-flood protection)
 * SSH
 * Everything else is dropped and logged
 
-All outgoing (`localhost-public`) traffic is accepted. This is usually safe
-but more specific bidirectional firewall is safer.
+All outgoing (`localhost-public`) traffic is accepted. This is usually
+safe, but a more specific, bidirectional firewall is safer.
 
 
 ## Bidirectional
 
-This example accepts listed incoming services and listed outgoing services.
+This example accepts a specific list of incoming services and a specific
+list of outgoing services.
 
 ``` mermaid
 flowchart LR
@@ -90,16 +91,17 @@ localhost-public {
 }
 ```
 
-This complete `/etc/foomuuri/foomuuri.conf` configuration file allows incoming:
+This complete `/etc/foomuuri/foomuuri.conf` configuration file allows the
+following incoming traffic:
 
 * DHCP reply packets
-* Ping packets, except ping-flood
+* Ping packets, except ping floods
 * SSH, up to 5 connections per minute per source IP
 * Everything else is dropped and logged
 
-Following outgoing traffic is allowed:
+The following outgoing traffic is allowed:
 
-* DHCP request packets to obtain a lease
+* DHCP request packets, to obtain a lease
 * DNS queries
 * HTTP and HTTPS
 * IMAP
@@ -112,17 +114,19 @@ Following outgoing traffic is allowed:
 
 ## Multi-zone
 
-This is similar to bidirectional example, except there are two outgoing
-zones:
+This example is similar to the bidirectional example above, except that
+there are two outgoing zones:
 
-* `public` is the default untrusted connection. There is no network interface
-  listed. Use NetworkManager to assign network interface to `public` zone when
-  you're connecting to untrusted Wi-Fi network, for example in a cafe.
-* `home` is trusted connection. Again use NetworkManager to select `home`
-  zone when you're in a safe place, like at your home or office.
+* `public` is the default, untrusted connection. No network interface is
+  listed for it; use NetworkManager to assign a network interface to the
+  `public` zone when connecting to an untrusted Wi-Fi network, such as one
+  in a cafe.
+* `home` is the trusted connection. Likewise, use NetworkManager to select
+  the `home` zone when you are in a safe location, such as your home or
+  work office.
 
-This example also shows you how to use `template` to avoid listing
-same basic services in `localhost-public` and in `localhost-home`.
+This example also demonstrates how to use a `template` to avoid listing
+the same basic services in both `localhost-public` and `localhost-home`.
 
 ``` mermaid
 flowchart LR
@@ -150,7 +154,7 @@ public-localhost {  # Incoming traffic in a cafe
   drop log
 }
 
-home-localhost {  # Incoming traffic in safe location
+home-localhost {  # Incoming traffic in a safe location
   dhcp-client
   dhcpv6-client
   lsdp
@@ -179,7 +183,7 @@ localhost-public {  # Outgoing traffic in a cafe
   reject log
 }
 
-localhost-home {  # Outgoing traffic in safe location
+localhost-home {  # Outgoing traffic in a safe location
   template outgoing_services
   googlemeet
   ipp

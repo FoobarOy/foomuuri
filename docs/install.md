@@ -8,7 +8,7 @@ example](example/host-firewall.md), which documents a typical
 `/etc/foomuuri/foomuuri.conf` file.
 
 
-## Fedora, RHEL and CentOS Stream
+## Fedora, RHEL, and CentOS Stream
 
 Foomuuri is included in Fedora and EPEL.
 
@@ -81,7 +81,7 @@ sysctl --system
 Continue with [post-installation configuration](#post-installation-configuration).
 
 
-## Post-installation configuration
+## Post-Installation Configuration
 
 These steps apply regardless of how Foomuuri was installed.
 
@@ -93,13 +93,13 @@ These steps apply regardless of how Foomuuri was installed.
     ```
 
     For a sample configuration, see the
-	[host firewall example](example/host-firewall.md).
+    [host firewall example](example/host-firewall.md).
 
 
 2.  Disable and stop any existing firewall service, for example:
 
     ```sh
-	systemctl disable --now ferm.service
+    systemctl disable --now ferm.service
     systemctl disable --now firehol.service
     systemctl disable --now firewalld.service
     systemctl disable --now netfilter-persistent.service
