@@ -25,8 +25,8 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * Suitable for systems ranging from personal
   [laptops](example/host-firewall.md) to
   [corporate](example/router-firewall.md) firewalls
-* A rich rule language for flexible and complex [rules](config/rule/index.md)
-* A predefined list of
+* Rich rule language for flexible and complex [rules](config/rule/index.md)
+* Predefined list of
   [services](https://github.com/FoobarOy/foomuuri/blob/main/etc/default.services.conf)
   for simpler rule writing
 * [Macros](config/section/macro.md) and
@@ -46,11 +46,12 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * Ability to [map](config/section/zonemap.md) specific traffic to separate
   zones
 * Automatic IP address [banning](example/advanced.md#automatic-ip-address-banning)
+  support
 * [Port knocking](example/advanced.md#port-knocking) support
 * D-Bus API
 * Firewalld emulation for NetworkManager zone support
 * Support for raw nftables [rules](config/rule/misc.md#nft)
-* A modern codebase, designed around current nftables features
+* Fresh design, written to use modern nftables features
 
 
 ## Changelog

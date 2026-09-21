@@ -82,7 +82,7 @@ localhost-public {
 ```
 
 
-## Iplist filters
+## Iplist Filters
 
 Downloaded content can be filtered by appending `|filter` after a filename,
 URL, or hostname. Multiple filters can be chained.
@@ -107,7 +107,7 @@ iplist {
 ```
 
 
-## Iplist settings
+## Iplist Settings
 
 Hostnames are refreshed every 15 minutes and time out after 24 hours. URLs
 are refreshed once a day and time out after 10 days. These values can be
@@ -181,7 +181,7 @@ external iplists, to ensure that Foomuuri startup does not fail or block
 access during the first few minutes after a reboot.
 
 
-## Iplist command line
+## Iplist Command Line
 
 Iplists can be manipulated from the command line, for example, by an
 external `fail2ban` program. The command `foomuuri iplist add IPLIST

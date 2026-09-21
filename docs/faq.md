@@ -85,20 +85,20 @@ Alternatively, see this [issue](https://github.com/FoobarOy/foomuuri/issues/9)
 for instructions on integrating Foomuuri with `fail2ban`.
 
 
-## Custom nftables chains
+## Custom nftables Chains
 
 See this [discussion](https://github.com/FoobarOy/foomuuri/discussions/31)
 for instructions on defining custom nftables chains and jumping to them.
 
 
-## QEMU/libvirt and vnet interfaces in a bridge
+## QEMU/libvirt and vnet Interfaces in a Bridge
 
 See this [discussion](https://github.com/FoobarOy/foomuuri/discussions/15)
 for instructions on silently dropping `OUTPUT REJECT IN= OUT=vnetXX` log
 entries, which appear after a bridge interface is added or removed.
 
 
-## Preventing private networks from routing to the public internet
+## Preventing Private Networks from Routing to the Public Internet
 
 See this [issue](https://github.com/FoobarOy/foomuuri/issues/24) for
 instructions on blocking routing of 10.0.0.0/8 and similar private

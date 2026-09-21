@@ -18,8 +18,8 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * Firewall zones
 * Bidirectional firewalling for incoming, outgoing, and forwarding traffic
 * Suitable for systems ranging from personal laptops to corporate firewalls
-* A rich rule language for flexible and complex rules
-* A predefined list of services for simpler rule writing
+* Rich rule language for flexible and complex rules
+* Predefined list of services for simpler rule writing
 * Macros and templates supported in the rule language
 * IPv4 and IPv6 support, with automatic rule splitting per protocol
 * SNAT, DNAT, and masquerading support
@@ -30,12 +30,12 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * Multiple ISP support, with an internal network connectivity monitor
 * IPsec matching support
 * Ability to map specific traffic to separate zones
-* Automatic IP address banning
+* Automatic IP address banning support
 * Port knocking support
 * D-Bus API
 * Firewalld emulation for NetworkManager zone support
 * Support for raw nftables rules
-* A modern codebase, designed around current nftables features
+* Fresh design, written to use modern nftables features
 
 
 ## Example Configuration
