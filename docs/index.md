@@ -39,7 +39,8 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * [Rate limiting](config/rule/ratelimit.md)
 * DNS hostname [lookups](config/section/iplist.md) and IP-list support, with
   dynamic IP address refreshing
-* [Country database](config/section/iplist.md) (geolocation) support
+* External country and ASN IP lists through
+  [iplists](config/section/iplist.md) (geolocation)
 * [Multiple ISP](example/multiple-isp.md) support, with an internal network
   [connectivity monitor](tool/monitor.md)
 * [IPsec](config/rule/matcher.md#sipsec-dipsec) matching support
@@ -51,7 +52,7 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * D-Bus API
 * Firewalld emulation for NetworkManager zone support
 * Support for raw nftables [rules](config/rule/misc.md#nft)
-* Fresh design, written to use modern nftables features
+* Written to use modern nftables features
 
 
 ## Changelog

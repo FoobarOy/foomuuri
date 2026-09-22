@@ -37,4 +37,4 @@ dmz-public {
 ```
 
 See the [host firewall example](../../example/host-firewall.md#multi-zone)
-for a real-life example.
+for a real-world example.

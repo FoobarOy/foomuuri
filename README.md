@@ -26,7 +26,7 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * Logging and packet/byte counting
 * Rate limiting
 * DNS hostname lookups and IP-list support, with dynamic IP address refreshing
-* Country database (geolocation) support
+* External country and ASN IP lists through iplists (geolocation)
 * Multiple ISP support, with an internal network connectivity monitor
 * IPsec matching support
 * Ability to map specific traffic to separate zones
@@ -35,7 +35,7 @@ and the `#foomuuri` IRC channel on Libera.Chat.
 * D-Bus API
 * Firewalld emulation for NetworkManager zone support
 * Support for raw nftables rules
-* Fresh design, written to use modern nftables features
+* Written to use modern nftables features
 
 
 ## Example Configuration

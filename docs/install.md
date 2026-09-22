@@ -58,14 +58,16 @@ Source tarballs are available on the
 
 **Recommended**
 
-- `python3-dbus` and `python3-gobject` (`python3-gi` on some distributions)
-  — required for D-Bus support
+- `python3-dbus` and `python3-gobject` (`python3-gi` on some distributions),
+  for D-Bus support
 
 **Optional**
 
-- `python3-systemd`
-- `python3-urllib3`
-- `python3-lxml`
+- `python3-systemd`, for systemd notify support
+- `python3-urllib3`, for iplist URL download support
+- `python3-lxml`, for iplist JSON filtering
+- `jq`, for iplist HTML/XML filtering
+- `fping`, for network connectivity monitor
 
 ```sh
 # Extract the source

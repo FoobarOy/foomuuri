@@ -20,5 +20,5 @@ snat {
 }
 ```
 
-Remember to accept SNAT'ed traffic in the relevant zone-zone section.
-See [dnat](dnat.md) for more examples.
+Remember to accept SNAT'ed traffic in the relevant zone-zone section,
+for example in `internal-public`. See [dnat](dnat.md) for more examples.

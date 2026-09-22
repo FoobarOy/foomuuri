@@ -34,7 +34,7 @@ iplist {
   @whitelist  /etc/foomuuri/whitelist*.txt 10.0.0.0/8 192.0.2.32
 
   # Manipulate this list with the "foomuuri iplist add mylist 10.0.0.1" command.
-  # See the command line help for the "foomuuri add/del/flush" commands.
+  # See the command line help for the "foomuuri iplist add/del/flush" commands.
   @mylist
 }
 
@@ -106,6 +106,10 @@ iplist {
 }
 ```
 
+The `json:` filter requires `jq`. The `html:` and `xml:` filters require
+`python3-lxml`. The `shell:` filter executes an external command; use it
+only with trusted configuration and input.
+
 
 ## Iplist Settings
 
@@ -126,10 +130,13 @@ iplist {
 }
 ```
 
-The timeouts above are rounded to 15-minute increments. This interval can
-be changed with `systemctl edit foomuuri-iplist.timer`.
+Refresh operations are scheduled by `foomuuri-iplist.timer`. The timer
+interval defaults to 15 minutes, so configured refresh times are evaluated
+at timer runs rather than necessarily at the exact requested second.
+This interval can be changed with `systemctl edit foomuuri-iplist.timer`.
 
-A timeout value can be specified as:
+Timeout value determine how long cached addresses remain usable.
+It can be specified as:
 
 * `4w` - weeks
 * `2d` - days
@@ -155,9 +162,8 @@ The default `overwrite` value depends on the content type:
 * URL/file content defaults to `overwrite=yes`
 * DNS resolution defaults to `overwrite=no`
 
-The maximum size of a downloaded IP address list can be set with
-`url_max_size=bytes`. The default is 33554432 (32 MiB); content exceeding
-this size is ignored.
+The maximum size of URL content can be set with `url_max_size=bytes`.
+The default is 33554432 (32 MiB); content exceeding this size is ignored.
 
 The optional `dynamic=yes` option (default: `no`) enables the dynamic flag
 on the generated ruleset. This is required when updating iplist content on
