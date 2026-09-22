@@ -3,27 +3,27 @@
 
 ## szone, dzone, new_szone, new_dzone
 
-These can be specified in [zonemap](../section/zonemap.md) section to match
-original source or destination zone, and to change it to a new zone. These
-are used to branch out some specific traffic to its own zone, for example
-to split `vpn` and `public` (non-VPN) traffic.
+These can be specified in the [zonemap](../section/zonemap.md) section to
+match the original source or destination zone, and to change it to a new
+zone. They are used to branch specific traffic out into its own zone, for
+example to split `vpn` and `public` (non-VPN) traffic.
 
 
 ## helper
 
-Linux kernel provides conntrack helper functionality to some services with
-multiple ports, like `ftp` (tcp 21). You can enable this functionality by
-appending `helper kernelname-port` after matcher. For example
-`tcp 21 helper ftp-21`.
+The Linux kernel provides conntrack helper functionality for some services
+with multiple ports, such as `ftp` (`tcp 21`). You can enable this
+functionality by appending `helper kernelname-port` after a matcher, for
+example `tcp 21 helper ftp-21`.
 
-Linux has following helpers: `amanda, ftp, h323, irc, netbios_ns, pptp,
-sane, sip, snmp, tftp`
+Linux provides the following helpers: `amanda, ftp, h323, irc, netbios_ns,
+pptp, sane, sip, snmp, tftp`.
 
 
 ## mss
 
-Sets maximum segment size (MSS clamping) to all traffic. Some connections,
-like IPsec or PPPoE, might require this. Example:
+Sets the maximum segment size (MSS clamping) for all traffic. Some
+connections, such as IPsec or PPPoE, may require this. Example:
 
 ```
 localhost-vpn {
@@ -33,9 +33,9 @@ localhost-vpn {
 }
 ```
 
-Special value `mss pmtu` can be used to calculate the value in runtime
-based on what the routing cache has observed via Path MTU Discovery (PMTUD).
-Example:
+The special value `mss pmtu` can be used to calculate the value at
+runtime, based on what the routing cache has observed via Path MTU
+Discovery (PMTUD). Example:
 
 ```
 forward {  # internal-public
@@ -54,13 +54,13 @@ output {   # localhost-public
 
 ## conntrack, -conntrack
 
-Rules are processed after conntrack check (flag `conntrack`, default value).
-Flag `-conntrack` can be added to process rule before conntrack. Conntrack
-will accept established and related traffic so normal rule will see only new
-traffic.
+By default, rules are processed after the conntrack check (flag
+`conntrack`). The flag `-conntrack` can be added to process a rule before
+conntrack. Conntrack accepts established and related traffic, so a normal
+rule only sees new traffic.
 
-This can be used to count all traffic instead of new connections only, or
-to accept traffic without adding it to conntrack. For example high load
+This can be used to count all traffic rather than just new connections, or
+to accept traffic without adding it to conntrack. For example, a high-load
 DNS server might accept DNS traffic without conntrack.
 
 Example:
@@ -70,13 +70,13 @@ public-localhost {
   # Count all incoming traffic
   counter incoming_traffic continue -conntrack
 
-  # Count incoming HTTP(S) traffic in web server
+  # Count incoming HTTP(S) traffic on a web server
   tcp dport 80 443 counter web_traffic_in continue -conntrack
   ...
 }
 
 localhost-public {
-  # Count outgoing HTTP(S) traffic in web server
+  # Count outgoing HTTP(S) traffic on a web server
   tcp sport 80 443 counter web_traffic_out continue -conntrack
   ...
 }
@@ -85,8 +85,8 @@ localhost-public {
 
 ## nft
 
-Raw nftables rule can be written with `nft "raw rule here"`. For example,
-`https` rule can be written as:
+A raw nftables rule can be written with `nft "raw rule here"`. For
+example, the `https` rule can be written as:
 
 ```
 public-localhost {
@@ -103,5 +103,5 @@ public-localhost {
   udp 1000-2000 nft "jump my-custom-chain"
 ```
 
-See [nftables web page](https://wiki.nftables.org/) for more information
-about nftables syntax.
+See the [nftables website](https://wiki.nftables.org/) for more
+information about nftables syntax.

@@ -3,43 +3,43 @@
 
 ## accept, drop, reject
 
-Accepts, drops or rejects traffic. Default statement for single rule is to
-accept matched traffic: `tcp 443` is equal to `tcp 443 accept`.
+Accepts, drops, or rejects traffic. The default statement for a rule is to
+accept matched traffic: `tcp 443` is equivalent to `tcp 443 accept`.
 
-You should always add explicit final statement as last rule to every
-[zone-zone](../section/zonezone.md) section in your configuration.
+You should always add an explicit final statement as the last rule in
+every [zone-zone](../section/zonezone.md) section of your configuration.
 
-* For incoming traffic from internet to localhost/intranet the recommended
-  statement is `drop log`.
-* For outgoing traffic from localhost/intranet to internet the recommended
-  statement is `reject log`.
+* For incoming traffic from the internet to localhost/intranet, the
+  recommended statement is `drop log`.
+* For outgoing traffic from localhost/intranet to the internet, the
+  recommended statement is `reject log`.
 
 
 ## continue
 
-Continues to next rule. This is used mostly to debug rules. For example rule
-`saddr 10.0.0.4 counter log continue` counts and logs traffic from 10.0.0.4 and
-continues to next rule.
+Continues to the next rule. This is mostly used for debugging rules. For
+example, the rule `saddr 10.0.0.4 counter log continue` counts and logs
+traffic from 10.0.0.4, then continues to the next rule.
 
 
 ## return
 
-This is a special statement to return from current nftables chain to caller
-chain. Not normally used.
+A special statement that returns from the current nftables chain to the
+caller chain. Not normally used.
 
 
 ## masquerade, snat, dnat, snat_prefix, dnat_prefix
 
-These statements are used in `snat` and `dnat`
-[sections](../section/snat.md) to mangle traffic source or destination
-IP address. See that page for description and examples.
+These statements are used in the `snat` and `dnat`
+[sections](../section/snat.md) to rewrite the traffic's source or
+destination IP address. See that page for a description and examples.
 
 
 ## notrack
 
-Mark matching packet to not be added to conntrack. This has to be done early
-in `prerouting` section. For example high load DNS server can use this for
-DNS queries.
+Marks a matching packet so that it is not added to conntrack. This must
+be done early in the `prerouting` section. For example, a high-load DNS
+server can use this for DNS queries.
 
 Example:
 
@@ -51,7 +51,7 @@ prerouting filter raw {
   udp sport 53 notrack
 }
 
-# Locally created traffic
+# Locally generated traffic
 output filter raw {
   domain notrack
   tcp sport 53 notrack
@@ -62,8 +62,8 @@ output filter raw {
 
 ## queue
 
-Forward packet to userspace for example for IPS/IDS inspection. Optional flags
-and target can be specified. Example:
+Forwards a packet to userspace, for example for IPS/IDS inspection.
+Optional flags and a target can be specified. Example:
 
 ```
 forward {
@@ -78,15 +78,15 @@ forward {
 
 ## nftrace
 
-Enable nftrace ruleset debugging for matching packets. This is usually done
-in `input`, `output` or `forward` section. Tracing events can be viewed with
-`nft monitor trace` command.
+Enables nftrace ruleset debugging for matching packets. This is usually
+done in the `input`, `output`, or `forward` section. Trace events can be
+viewed with the `nft monitor trace` command.
 
 Example:
 
 ```
 input {
-  # Trace all incoming packets - generates lot of trace!
+  # Trace all incoming packets - this generates a lot of trace output!
   nftrace
 }
 

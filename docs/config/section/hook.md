@@ -1,7 +1,7 @@
 # hook
 
-Foomuuri can run external command before/after starting and stopping. This
-section configures those commands. Example:
+Foomuuri can run an external command before and after starting and
+stopping. This section configures those commands. Example:
 
 ```
 hook {

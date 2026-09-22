@@ -3,25 +3,26 @@
 
 ## counter
 
-Add byte and packet counter to rule. All traffic matching this rule will be
-counted. Counter can be named or anonymous. To name a counter add name after
-`counter`, for example `counter my_counter`.
+Adds a byte and packet counter to a rule. All new traffic matching this rule
+is counted. A counter can be named or anonymous. To name a counter, add a
+name after `counter`, for example `counter my_counter`.
 
 Example:
 
 ```
 localhost-public {
-  # Add named counter to count all outgoing traffic
+  # Add a named counter to count all outgoing traffic. Flag "-conntrack"
+  # is used to count established traffic too.
   counter outgoing_traffic continue -conntrack
 
-  # Accept ssh and add anonymous counter for it
+  # Accept SSH and add an anonymous counter for it
   ssh counter
 
-  # Accept http + https and add named counter
+  # Accept HTTP and HTTPS and add a named counter
   http counter web_traffic
   https counter web_traffic
 
-  # Reject SMTP with named counter
+  # Reject SMTP with a named counter
   smtp reject counter smtp_blocked
 }
 ```
@@ -32,52 +33,52 @@ counters can be listed with `foomuuri ruleset list`.
 
 ## log
 
-Write log entry (journal / syslog) when traffic matches this rule. Optional
-log prefix can be added. Default prefix is `szone-dzone STATEMENT`, for example
-`localhost-public REJECT`.
+Writes a log entry (journal / syslog) when traffic matches this rule. An
+optional log prefix can be added; the default prefix is
+`szone-dzone STATEMENT`, for example `localhost-public REJECT`.
 
-Following variables are supported in log prefix:
+The following variables are supported in the log prefix:
 
 * `$(szone)`
 * `$(dzone)`
 * `$(statement)`
 
-Additional text to default log prefix can be added with `log + " my text"`,
-resulting `localhost-public REJECT my text`.
+Additional text can be appended to the default log prefix with
+`log + " my text"`, resulting in `localhost-public REJECT my text`.
 
 Example:
 
 ```
 public-localhost {
-  # Drop and log ssh with default prefix "public-localhost DROP"
+  # Drop and log SSH with the default prefix "public-localhost DROP"
   ssh drop log
 
-  # Drop and log http with custom prefix "incoming-http dropped"
+  # Drop and log HTTP with a custom prefix, "incoming-http dropped"
   http drop log "incoming-http dropped"
 
-  # Drop and log https with custom prefix with variables. This results to
-  # prefix "public => localhost: DROP"
+  # Drop and log HTTPS with a custom prefix using variables. This results
+  # in the prefix "public => localhost: DROP"
   https drop log "$(szone) => $(dzone): $(statement)"
 
-  # Drop and log telnet with custom prefix "public-localhost DROP:telnet"
-  telnet drop log + ":telnet"         # no space included to get "DROP:telnet"
+  # Drop and log telnet with the custom prefix "public-localhost DROP:telnet"
+  telnet drop log + ":telnet"         # no space, so the result is "DROP:telnet"
 
-  # Drop and log ftp with custom prefix "public-localhost DROP ftp-is-disabled"
-  ftp drop log + " ftp-is-disabled"   # space is included here
+  # Drop and log ftp with the custom prefix "public-localhost DROP ftp-is-disabled"
+  ftp drop log + " ftp-is-disabled"   # a space is included here
 
-  # Use default prefix "public-localhost DROP"
+  # Use the default prefix "public-localhost DROP"
   drop log
 }
 ```
 
-Foomuuri will limit logging to [log_rate](../section/foomuuri.md) rate.
-Default value is to log first three entries per source IP and then one
+Foomuuri limits logging to the [log_rate](../section/foomuuri.md) rate. By
+default, the first three entries per source IP are logged, followed by one
 additional entry per second.
 
 
 ## log_level
 
-This overrides global `foomuuri { log_level ... }` logging level for this
+Overrides the global `foomuuri { log_level ... }` logging level for this
 single rule.
 
 Possible values are:
@@ -91,26 +92,26 @@ Possible values are:
 * `level info`
 * `level debug`
 
-Optionally flags can be appended:
+Flags can optionally be appended:
 
 * `flags tcp sequence,options` enables logging of TCP sequence and options
 * `flags ip options` enables IP options
-* `flags skuid` enables socket UID
-* `flags ether` enables ethernet link layer address
+* `flags skuid` enables the socket UID
+* `flags ether` enables the Ethernet link-layer address
 * `flags all` enables all flags
 
-To use nflog infrastructure instead of syslog specify value `group 0` (or any
-other number) instead of `level x`. Nflog options can be appended:
+To use the nflog infrastructure instead of syslog, specify `group 0` (or
+any other number) instead of `level x`. Nflog options can be appended:
 
-* `snaplen 256` specifies length of packet payload to include
-* `queue-threshold 20` will queue packets inside the kernel before sending
-  them to userspace
+* `snaplen 256` specifies the length of packet payload to include
+* `queue-threshold 20` queues packets in the kernel before sending them to
+  userspace
 
 Example:
 
 ```
 public-localhost {
-  # Drop and log incoming http requests with critical level, all flags
+  # Drop and log incoming http requests at critical level, with all flags
   http drop log log_level "level crit flags all"
   ...
 }

@@ -1,13 +1,15 @@
 # template
 
-Template is very similar to [macro](macro.md). It's just another
-way to define list of rules. Usually macro refers to single service
-(like `domain` or `facetime`) while template refers to list of different
-services. Example:
+A template is very similar to a [macro](macro.md) - it's just another way
+to define a list of rules. Typically, a macro refers to a single service
+(such as `ssh` or `https`), while a template refers to a list of different
+services.
+
+Example:
 
 ```
 template outgoing_services {
-  # Define template called "outgoing_services"
+  # Define a template called "outgoing_services"
   dhcp-server
   domain
   https
@@ -17,7 +19,7 @@ template outgoing_services {
 }
 
 localhost-public {
-  # Include template's content here
+  # Include the template's content here
   template outgoing_services
 
   # Continue with other rules
@@ -26,7 +28,7 @@ localhost-public {
 }
 
 dmz-public {
-  # Use same template for traffic coming from dmz zone
+  # Use the same template for traffic coming from dmz zone
   template outgoing_services
 
   # Continue with other rules
@@ -34,5 +36,5 @@ dmz-public {
 }
 ```
 
-See [host firewall](../../example/host-firewall.md#multi-zone)
-for real life example.
+See the [host firewall example](../../example/host-firewall.md#multi-zone)
+for a real-life example.

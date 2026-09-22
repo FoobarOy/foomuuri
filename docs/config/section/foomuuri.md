@@ -1,18 +1,20 @@
 # foomuuri
 
-This section can be usually omitted as default values should be fine.
+This section can usually be omitted, since the default values should be
+fine.
 
-This section defines common options for Foomuuri. If really needed, it is
-usually better to override single value, not full section. Example:
+This section defines common options for Foomuuri. If you do need to
+change something, it is usually better to override a single value rather
+than the whole section. Example:
 
 ```
 foomuuri {
-  # Change rpfilter's value, keep everything else as default
+  # Change rpfilter's value, keep everything else at the default
   rpfilter no
 }
 ```
 
-Full list of default values are:
+The full list of default values is:
 
 ```
 foomuuri {
@@ -40,82 +42,86 @@ foomuuri {
 }
 ```
 
-`log_rate` is the default logging rate per source IP. Default value is to
-log first three entries per source IP and then one additional entry per second.
-Rate [specification](../rule/ratelimit.md#global_rate) is the same as in rate
-limit rule.
+`log_rate` is the default logging rate per source IP address. By default,
+the first three entries per source IP address are logged, followed by one
+additional entry per second. The rate
+[specification](../rule/ratelimit.md#global_rate) follows the same format
+as in a rate limit rule.
 
-`log_input` ... `log_smurfs` defines default value for specific logging.
-Value can be:
+`log_input` through `log_smurfs` define the default logging behavior for
+specific events. The value can be:
 
-* `yes` to log it with `log_rate`
-* `no` to not log
-* `"3/second burst 10"` to log it with specific rate
+* `yes`, to log it at `log_rate`
+* `no`, to disable logging for it
+* `"3/second burst 10"`, to log it at a specific rate
 
 `log_prefix` defines the default log prefix for
 [logging](../rule/logging.md#log).
 
-`log_level` is the syslog level of logging. For possible values see
-rule specific [version](../rule/logging.md#log_level).
+`log_level` is the syslog level for logging. For possible values, see the
+rule-specific [version](../rule/logging.md#log_level).
 
-`localhost_zone` is the name of zone used for the computer running Foomuuri,
-similar to "localhost" in hostnames. See [zone](zone.md) and
+`localhost_zone` is the name of the zone used for the computer running
+Foomuuri, similar to "localhost" in hostnames. See the [zone](zone.md) and
 [zone-zone](zonezone.md) sections for more information.
 
-`dbus_zone` is the name of your outgoing internet zone. This is used in
+`dbus_zone` is the name of your outgoing internet zone. It is used for
 D-Bus support.
 
-`rpfilter` is to enable or disable reverse path filtering. Value can be:
+`rpfilter` enables or disables reverse path filtering. The value can be:
 
-* `yes` to enable it to all interfaces
-* `no` to disable it
-* `eth0 eth1 eth2` to enable it to specified interfaces `eth0 eth1 eth2`
-* `-eth1 -eth2` to enable it to all other interfaces than `eth1 eth2`
+* `yes`, to enable it on all interfaces
+* `no`, to disable it
+* `eth0 eth1 eth2`, to enable it on the specified interfaces
+* `-eth1 -eth2`, to enable it on all interfaces except `eth1` and `eth2`
 
-`flowtable` is to enable Netfilter flowtable infrastructure for specified
-interfaces, for example `flowtable eth0 eth1`. It improves network forward
-performance for high speed interfaces. Optional `hw_offload=yes` keyword
-enables hardware offloading (make sure your interface supports
-`hw-tc-offload`). Value `yes` or negative notation does not work here.
+`flowtable` enables the Netfilter flowtable infrastructure for the
+specified interfaces, for example `flowtable eth0 eth1`. It improves
+forwarding performance on high-speed interfaces. The optional
+`hw_offload=yes` keyword enables hardware offloading (make sure your
+interface supports `hw-tc-offload`). The value `yes`, or negative
+notation, is not supported here.
 
-`counter` is to add anonymous byte and packet
-[counter](../rule/logging.md#counter) to all rules. Value can be:
+`counter` adds an anonymous byte and packet
+[counter](../rule/logging.md#counter) to all rules. The value can be:
 
-* `yes` to add it to all rules
-* `no` to not add it
-* `localhost-public public-localhost` to add it to all rules in
+* `yes`, to add it to all rules
+* `no`, to not add it
+* `localhost-public public-localhost`, to add it only to rules in the
   `localhost-public` and `public-localhost` sections
 
-`permanent_counter` is to preserve named counter values across
+`permanent_counter` preserves named counter values across
 `foomuuri reload`. They are not preserved across a reboot.
 
-`set_size` is the size of [rate limit](../rule/ratelimit.md) set,
-[log rate limit](../rule/logging.md) set and
-[dynamic iplist](../rule/matcher.md#iplist_update) set. This is the maximum
-amount of entries in the set in kernel. Default value 65535 is fine for normal
-host. For company firewall larger value is required, for example 262143
-(equals to 2^18 - 1). Setting this value too high doesn't harm.  If set is
-full, new entry can't be added. This doesn't matter for log rate limits, but
-for rate limits and dynamic iplists this means that the statement (usually
-accept for rate limit, drop for iplist) is skipped. See `foomuuri ruleset list`
-for content of your currently active sets.
+`set_size` is the size of the [rate limit](../rule/ratelimit.md) set, the
+[log rate limit](../rule/logging.md) set, and the
+[dynamic iplist](../rule/matcher.md#iplist_update) set - that is, the
+maximum number of entries in the kernel set. The default value of 65535 is
+fine for a normal host; for a corporate firewall, a larger value is
+recommended, for example 262143 (2^18 - 1). Setting this value too high
+does no harm. If a set is full, new entries cannot be added; this doesn't
+matter for log rate limits, but for rate limits and dynamic iplists it
+means the statement (usually `accept` for a rate limit, `drop` for an
+iplist) is skipped. See `foomuuri ruleset list` for the contents of your
+currently active sets.
 
-`recursion_limit` is the internal limit to avoid macro and template expansion
-loop. Increase this value if you get false "Possible macro or template loop"
-error.
+`recursion_limit` is the internal limit used to avoid macro and template
+expansion loops. Increase this value if you get a false "Possible macro or
+template loop" error.
 
-`priority_offset` is the chain priority offset for rules generated by Foomuuri.
-Tune this value if you have multiple software adding chains and want to
-process them in some particular order. For example, iptables uses offset 0
-and firewalld uses 10. Lowest priority is processed first. So to process
-Foomuuri rules first, use value `-5`. To process them last, use `20`.
+`priority_offset` is the chain priority offset for rules generated by
+Foomuuri. Tune this value if you have multiple software adding chains and
+want to control their processing order. For example, iptables uses offset 0
+and firewalld uses 10; the lowest priority is processed first. So, to
+process Foomuuri's rules first, use `-5`; to process them last, use `20`.
 
-`dbus_firewalld` is to enable or disable firewalld D-Bus emulation inside
-Foomuuri. NetworkManager can tell firewalld to attach and detach interfaces
-to zones via D-Bus call. This option enables Foomuuri to listen to firewalld
-D-Bus and do the same thing.
+`dbus_firewalld` enables or disables firewalld D-Bus emulation inside
+Foomuuri. NetworkManager can instruct firewalld to attach and detach
+interfaces to zones via a D-Bus call. This option enables Foomuuri to
+listen for the same firewalld D-Bus calls and act on them.
 
-`nft_bin` is the name for `nft` binary. Full path can be specified if required.
+`nft_bin` is the name of the `nft` binary. A full path can be specified if
+required.
 
-`try_reload_timeout` is the timeout in seconds for `foomuuri try-reload`
-command.
+`try_reload_timeout` is the timeout, in seconds, for the
+`foomuuri try-reload` command.

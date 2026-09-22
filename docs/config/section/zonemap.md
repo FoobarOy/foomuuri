@@ -1,20 +1,20 @@
 # zonemap
 
-Normally Foomuuri will map incoming and outgoing traffic to zones by
-source and destination network interface. These interfaces are assigned to
-zones dynamically by NetworkManager, or configured in
+By default, Foomuuri maps incoming and outgoing traffic to zones based on
+the source and destination network interface. These interfaces are
+assigned to zones dynamically by NetworkManager, or configured in the
 [zone](zone.md) section.
 
-Zonemap section can be used to map traffic to different zone by using
+The zonemap section can be used to map traffic to a different zone using
 standard [rules](../rule/index.md). Example:
 
 ```
 zonemap {
-  # Map outgoing IPsec traffic that is going to zone "public" to use zone
+  # Map outgoing IPsec traffic destined for zone "public" to use zone
   # "vpn" instead.
   dipsec dzone public new_dzone vpn
 
-  # Same for incoming.
+  # Same for incoming traffic.
   sipsec szone public new_szone vpn
 }
 
@@ -32,10 +32,10 @@ localhost-vpn {
 }
 ```
 
-Above example, splitting traffic to IPsec and non-IPsec zones is the most
-common use case. You can use any matcher, for example `daddr` or `saddr` to
-map some IP addresses to own zones, or `uid` or `gid` to map outgoing
-traffic from some local user to own zone:
+The example above, splitting traffic into IPsec and non-IPsec zones, is
+the most common use case. You can use any matcher - for example, `daddr`
+or `saddr` to map specific IP addresses to their own zones, or `uid` or
+`gid` to map outgoing traffic from a specific local user to its own zone:
 
 ```
 zonemap {
@@ -46,8 +46,8 @@ zonemap {
   # Map outgoing traffic from user myservice to myzone
   uid myservice szone localhost new_szone myzone
 
-  # Map all outgoing IPsec traffic to xxx-vpn, no matter what the original
-  # dzone was
+  # Map all outgoing IPsec traffic to xxx-vpn, regardless of the original
+  # dzone
   dipsec new_dzone vpn
 }
 ```
