@@ -2,9 +2,10 @@
 
 A FromZone-ToZone section defines [rules](../rule/index.md) for traffic
 coming from FromZone and going to ToZone. Typically, you first accept
-certain traffic and then [reject or drop](../rule/statement.md#accept-drop-reject)
-everything else as a final rule. Rules within a zone-zone section are
-(mostly, see below) processed in the order listed.
+certain traffic and then
+[reject or drop](../rule/statement.md#accept-drop-reject) everything else
+as a final rule. Rules within a zone-zone section are (mostly, see
+[below](zonezone.md#processing-order)) processed in the order listed.
 
 Example:
 
@@ -38,6 +39,13 @@ section. It is always better to add this final rule explicitly in your
 configuration. This final rule is also added to any unconfigured
 zone-zone pairs.
 
+If you have many zones, you will end up with many zone-zone pairs. See
+[configuration files](../basic.md#configuration-files) for
+recommendations on splitting them across multiple configuration files.
+
+
+## localhost-localhost
+
 The `localhost-localhost` zone-zone section (i.e., loopback traffic,
 `127.0.0.1` and `::1`) is a special case: its final rule is `accept`.
 Usually there is no need to add a `localhost-localhost` section explicitly.
@@ -61,12 +69,11 @@ localhost-localhost {
 Note that loopback traffic from your public IP to your public IP belongs
 to `localhost-localhost`, not `public-public`.
 
-If you have many zones, you will end up with many zone-zone pairs. See
-[configuration files](../basic.md#configuration-files) for
-recommendations on splitting them across multiple configuration files.
 
-**"Mostly":** Rules within a zone-zone section are automatically sorted
-and processed in the following block order:
+## Processing Order
+
+Rules within a zone-zone section are automatically sorted and processed in
+the following block order:
 
 1. [zonemap](zonemap.md) rules
 2. [MSS clamping](../rule/misc.md#mss) options

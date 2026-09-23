@@ -89,6 +89,8 @@ notation, is not supported here. Two or more interfaces must be specified.
 * `no`, to not add it
 * `localhost-public public-localhost`, to add it only to rules in the
   `localhost-public` and `public-localhost` sections
+* `public-any`, to add it to all `public-*` sections
+* `any-public`, to add it to all `*-public` sections
 
 `permanent_counter` preserves named counter values across
 `foomuuri reload`. They are not preserved across a reboot.

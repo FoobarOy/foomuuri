@@ -5,6 +5,9 @@ any destination (zone-any), any source (any-zone), or all traffic
 (any-any). These [rules](../rule/index.md) are processed first, and
 processing then continues to the normal zone-zone rules.
 
+These rules are not added to
+[`localhost-localhost`](zonezone.md#localhost-localhost) section.
+
 Foomuuri does not add a final `drop log` rule to these sections; it is
 instead added to the specific zone-zone sections.
 
@@ -33,15 +36,6 @@ localhost-internal {
 }
 ```
 
-When traffic goes from `localhost` to `public`, the applicable sections are
-evaluated in the following order:
-
-1. `any-any` rules
-2. `any-public` rules
-3. `localhost-any` rules
-4. `localhost-public` rules (the final rule is added here even if
-   `localhost-public` is missing from the configuration)
-
 The `szone -public` matcher can be used in a rule to exclude it from
 `public-localhost`. Example:
 
@@ -56,3 +50,15 @@ localhost-any {
   vnc dzone -public    # Allow VNC to anywhere except to public
 }
 ```
+
+
+## Processing Order
+
+When traffic goes from `localhost` to `public`, the applicable sections are
+evaluated in the following order:
+
+1. `any-any` rules
+2. `any-public` rules
+3. `localhost-any` rules
+4. `localhost-public` rules (the final rule is added here even if
+   `localhost-public` is missing from the configuration)

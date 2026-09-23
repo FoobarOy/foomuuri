@@ -7,10 +7,12 @@ are stored in iplists and cached across reboots and single lookup failures.
 The first word on each line is the iplist name, which must begin with an
 `@` character. The words that follow can be any combination of:
 
-* An IPv4 or IPv6 address, with or without a netmask
-* A DNS hostname
-* A filename containing IP addresses, with or without a netmask
-* A URL for a file containing IP addresses, with or without a netmask
+* IPv4 or IPv6 address, with or without a netmask
+* DNS hostname
+* Filename containing IP addresses, with or without a netmask. The filename
+  must be specified as a full path (starting with `/`) or as a relative path
+  prefixed with `./`.
+* URL for a file containing IP addresses, with or without a netmask
 
 Example:
 
