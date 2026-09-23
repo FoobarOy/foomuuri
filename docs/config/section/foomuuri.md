@@ -65,7 +65,8 @@ specific events. The value can be:
 ## log_prefix
 
 `log_prefix` defines the default log prefix for
-[logging](../rule/logging.md#log).
+[logging](../rule/logging.md#log). Some built-in chains, such as `rpfilter`
+and `invalid`, always use a static log prefix.
 
 
 ## log_level

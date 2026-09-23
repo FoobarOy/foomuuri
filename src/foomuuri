@@ -1056,7 +1056,7 @@ def read_config(require_etc_config: bool) -> dict:
         continuation = ''
         for linenumber, line in enumerate(content.splitlines()):
             if line == '# foomuuri: not-conf':
-                break  # sysctl's 50-foomuuri.conf is not my config
+                break  # sysctl's 50-foomuuri.conf is not my config, undoc
 
             # Combine lines if there is \ at end of line
             if line.endswith('\\'):
@@ -1576,6 +1576,8 @@ def is_port(value: str, protocol: str) -> bool:
 
     This is used in parse_rule_line so protocol must specified.
     Allow special keywords for protocol icmp/icmpv6.
+
+    Comma notation "1,2" is undoc for backward compability.
     """
     if value.startswith('-') and value[1:].isnumeric():
         return True  # Single negative port "-1" works too
@@ -1793,7 +1795,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             rule.plain = False
             keyword = None
         elif item in {'tcp', 'udp', 'icmp', 'icmpv6', 'igmp', 'esp'}:
-            # "igmp" and "esp" are for backward compability (v0.21)
+            # "igmp" and "esp" are for backward compability (v0.21), undoc
             rule_item_only_one(rule, 'protocol', item)
             rule.protocol = item
             rule.plain = False
@@ -1869,7 +1871,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             'cgroup',
             'ct_status',
             'time',
-            'warning',
+            'warning',  # undoc, used in default.services.conf
         }:
             keyword = item
             rule[keyword] = rule[keyword] or ''
@@ -2593,7 +2595,9 @@ def parse_protocol_ports(
     for key in ('sport', 'dport'):
         if rule[key]:
             protokey = key
-            if key == 'dport':  # Change "dport" to protocol-specific key
+            if key == 'dport':
+                # Change Foomuuri's generic "dport" keyword to
+                # nft's protocol-specific keyword
                 protokey = {
                     'ip': 'protocol',
                     'ip6': 'nexthdr',

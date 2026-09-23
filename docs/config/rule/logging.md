@@ -33,9 +33,10 @@ counters can be listed with `foomuuri ruleset list`.
 
 ## log
 
-Writes a log entry (journal / syslog) when traffic matches this rule. An
+Writes a log entry (journal or syslog) when traffic matches this rule. An
 optional log prefix can be added; the default prefix is
-`szone-dzone STATEMENT`, for example `localhost-public REJECT`.
+`szone-dzone STATEMENT`, for example `localhost-public REJECT`. This results
+in a journal entry such as `kernel: localhost-public REJECT IN= OUT=eth0 ...`.
 
 The following variables are supported in the log prefix:
 

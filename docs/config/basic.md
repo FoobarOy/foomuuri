@@ -86,7 +86,7 @@ IPsec and similar VPN traffic.
 
 ## Miscellaneous
 
-Comments are written as `# comment`.
+Comments in the configuration files are written as `# comment`.
 
 A long line can be split across multiple lines by adding `\` at the end
 of each line.
