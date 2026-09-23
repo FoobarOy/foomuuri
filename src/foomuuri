@@ -2336,13 +2336,13 @@ def cgroup_match(rule: Rule) -> str:
     if not cgroup:
         return ''
 
-    # cgroupv2: non-numeric, single value only
-    if not re.match(r'[-0-9]', cgroup[0]) and ' ' not in cgroup:
-        level = cgroup.count('/') + 1
-        return f'socket cgroupv2 level {level} "{cgroup}" '
+    # cgroup: numeric ("10", "15 16 20-30" or "-42")
+    if ' ' in cgroup or re.search(r'^-?[0-9]', cgroup):
+        return f'meta cgroup {single_or_set(cgroup, rule.fileline)} '
 
-    # cgroup
-    return f'meta cgroup {single_or_set(cgroup, rule.fileline)} '
+    # cgroupv2: non-numeric, single value only ("system.slice/sshd.service")
+    level = cgroup.count('/') + 1
+    return f'socket cgroupv2 level {level} "{cgroup}" '
 
 
 def rule_statement(
@@ -4524,7 +4524,7 @@ def parse_duration(timespec: str, fallback: int) -> int:
 
     for unit in units:
         pattern = rf'^(\d+){unit[0]}'
-        if match := re.match(pattern, timespec):
+        if match := re.search(pattern, timespec):
             delta[unit[1]] = int(match[1])
             timespec = re.sub(pattern, '', timespec, count=1)
 
