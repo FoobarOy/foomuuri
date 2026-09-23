@@ -4392,9 +4392,10 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
     """Verify that iplist entry's filter is known."""
     for value in values:
         for spec in value.split('|')[1:]:
+            if spec == 'missing-ok':  # Obsolete, replaced by "missing_ok=yes"
+                continue
             if not spec.startswith(
                 (
-                    'missing-ok',
                     'shell:',
                     'json:',
                     'html:',
@@ -4406,11 +4407,17 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
                     f'"{name} {value}"',
                     fatal=False,
                 )
+            elif not spec.split(':', maxsplit=1)[1]:
+                fail(
+                    f'{fileline}Filter "|{spec}" requires arguments '
+                    f'in iplist "{name} {value}"',
+                    fatal=False,
+                )
 
 
 def resolve_one_hostname(hostname: str) -> typing.Optional[set]:
     """Resolve hostname and return its IP addresses."""
-    if '|' in hostname:
+    if ':' in hostname:  # Allow "|missing-ok" but not "|json:"
         warning(f'Iplist filters are not supported for hostnames: {hostname}')
     with contextlib.suppress(socket.gaierror):
         return {
