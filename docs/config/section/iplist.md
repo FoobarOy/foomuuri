@@ -84,8 +84,8 @@ localhost-public {
 
 ## Iplist Filters
 
-Downloaded content can be filtered by appending `|filter` after a filename,
-URL, or hostname. Multiple filters can be chained.
+Downloaded content can be filtered by appending `|filter` after a filename or
+URL. Multiple filters can be chained.
 
 * `|shell:/path/to/command` - pipe the content through an external command
 * `|json:filter` - parse the content as JSON, using the external `jq` command

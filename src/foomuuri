@@ -4401,14 +4401,17 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
                     'xml:',
                 )
             ):
-                warning(
+                fail(
                     f'{fileline}Unknown filter "|{spec}" in iplist '
-                    f'"{name} {value}"'
+                    f'"{name} {value}"',
+                    fatal=False,
                 )
 
 
 def resolve_one_hostname(hostname: str) -> typing.Optional[set]:
     """Resolve hostname and return its IP addresses."""
+    if '|' in hostname:
+        warning(f'Iplist filters are not supported for hostnames: {hostname}')
     with contextlib.suppress(socket.gaierror):
         return {
             addr[4][0]
