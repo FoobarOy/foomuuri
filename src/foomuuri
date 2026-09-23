@@ -1876,6 +1876,8 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             if item == 'queue':  # statement and start keyword
                 rule_item_only_one(rule, 'statement', item)
                 rule.statement = item
+            if item == 'mss':  # Conflicts with statement
+                rule_item_only_one(rule, 'statement', item)
             if item not in {'counter', 'log', 'log_level'}:
                 rule.plain = False
 

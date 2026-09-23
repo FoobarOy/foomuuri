@@ -22,7 +22,7 @@ pptp, sane, sip, snmp, tftp`.
 
 ## mss
 
-Sets the maximum segment size (MSS clamping) for all traffic. Some
+Sets the maximum segment size (MSS clamping) for matched traffic. Some
 connections, such as IPsec or PPPoE, may require this. Example:
 
 ```
@@ -50,6 +50,9 @@ output {   # localhost-public
   mss pmtu
 }
 ```
+
+[Matchers](matcher.md) can be used with `mss`, but [statements](statement.md)
+cannot.
 
 
 ## conntrack, -conntrack
