@@ -1402,8 +1402,8 @@ def parse_config_foomuuri(config: dict) -> None:
 
     # Add "packets" to log rates
     for key in CONFIG:
-        if key.startswith('log_') and re.match(
-            r'^\d+/(second|minute|hour) burst \d+$', CONFIG[key]
+        if key.startswith('log_') and re.fullmatch(
+            r'\d+/(second|minute|hour) burst \d+', CONFIG[key]
         ):
             CONFIG[key] += ' packets'
 
@@ -1582,7 +1582,7 @@ def is_port(value: str, protocol: str) -> bool:
     for item in value.split(','):
         if protocol in {'icmp', 'icmpv6'} and (
             # See: "nft describe icmp type; nft describe icmpv6 type"
-            item == 'redirect' or re.match(r'^[a-z2]{2,}-[-a-z]{5,}$', item)
+            item == 'redirect' or re.fullmatch(r'[a-z2]{2,}-[-a-z]{5,}', item)
         ):
             continue
         for number in item.split('-'):
@@ -1660,24 +1660,24 @@ def verify_rule_sanity(rule: Rule, fileline: str) -> None:
         #
         # ct count 8
         # ct count over 8
-        if re.match(
-            r'^(over )?\d+/(second|minute|hour) burst \d+$', rule[key]
+        if re.fullmatch(
+            r'(over )?\d+/(second|minute|hour) burst \d+', rule[key]
         ):
             rule[key] += ' packets'  # Add missing "packets"
         if not (
-            re.match(
-                r'^(over )?'
+            re.fullmatch(
+                r'(over )?'
                 r'\d+/(second|minute|hour)'
-                r'( burst \d+ packets)?$',
+                r'( burst \d+ packets)?',
                 rule[key],
             )
-            or re.match(
-                r'^(over )?'
+            or re.fullmatch(
+                r'(over )?'
                 r'\d+ [km]?bytes/(second|minute|hour)'
-                r'( burst \d+ [km]?bytes)?$',
+                r'( burst \d+ [km]?bytes)?',
                 rule[key],
             )
-            or re.match(r'^ct count (over )?\d+$', rule[key])
+            or re.fullmatch(r'ct count (over )?\d+', rule[key])
         ):
             fail(f'{fileline}Invalid "{key}" value: {rule[key]}')
 
@@ -2526,7 +2526,7 @@ def parse_maclist(rule: Rule, direction: str) -> str:
     macs = []
     for item in maclist.split():
         item = item.lower()
-        if re.match(r'^(-)?([0-9a-f]{2}:){5}[0-9a-f]{2}$', item):
+        if re.fullmatch(r'(-)?([0-9a-f]{2}:){5}[0-9a-f]{2}', item):
             macs.append(item)
         else:
             fail(f'{rule.fileline}Invalid MAC address "{item}" in: {maclist}')
@@ -3314,8 +3314,8 @@ def merge_accepts(accepts: list[str], linenum: int) -> int:
             # "tcp dport number accept"
             # "tcp dport { number, number } accept"
             # "tcp dport number-number accept"
-            regex = f'^{key} (\\{{ )?([-\\d, ]+)( \\}})? accept$'
-            match = re.match(regex, accept)
+            regex = f'{key} (\\{{ )?([-\\d, ]+)( \\}})? accept'
+            match = re.fullmatch(regex, accept)
             if match:  # Add "22" from "tcp dport 22 accept" to merged
                 ports.append(match.group(2))
                 break
@@ -5902,7 +5902,7 @@ def monitor_parse_line(targets, groups, target, line):
 
     else:
         # fping with "--interval"
-        match = re.match(r'^[^ ]+ : \[\d+\], (.+)$', line)
+        match = re.fullmatch(r'[^ ]+ : \[\d+\], (.+)', line)
         if not match:
             return  # No match, ignore line
         result = match.group(1)
