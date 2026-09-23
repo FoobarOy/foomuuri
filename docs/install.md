@@ -65,8 +65,8 @@ Source tarballs are available on the
 
 - `python3-systemd`, for systemd notify support
 - `python3-urllib3`, for iplist URL download support
-- `python3-lxml`, for iplist JSON filtering
-- `jq`, for iplist HTML/XML filtering
+- `python3-lxml`, for iplist HTML/XML filtering
+- `jq`, for iplist JSON filtering
 - `fping`, for network connectivity monitor
 
 ```sh
