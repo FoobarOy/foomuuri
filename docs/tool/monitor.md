@@ -96,13 +96,20 @@ The up/down command receives status information via environment variables:
   indicating the status of recent checks
 * `FOOMUURI_ALL_TARGET`: list of all configured targets
 * `FOOMUURI_ALL_GROUP`: list of all configured groups
-* `FOOMUURI_TARGET_xxx`: state (`up` or `down`) for target `xxx`
-* `FOOMUURI_GROUP_xxx`: state (`up` or `down`) for group `xxx`
+* `FOOMUURI_TARGET_xxx`: state (`up` or `down`) for target `xxx` (the target
+  name is sanitized to remove non-alphanumeric characters)
+* `FOOMUURI_GROUP_xxx`: state (`up` or `down`) for group `xxx` (the group
+  name is sanitized to remove non-alphanumeric characters)
 
 Only a single command can be specified. If you need to run multiple
 commands, use a shell wrapper script to run them.
 
-Monitor statistics are written to a file once a minute.
+Monitor statistics are written to a file periodically. This interval can be
+changed with `statistics_interval 60`. The default value is 60 seconds
+(once a minute).
+
+The number of statistics kept can be changed with `statistics_size 300`.
+The default value is 300, keeping the last 300 results.
 
 
 ## group

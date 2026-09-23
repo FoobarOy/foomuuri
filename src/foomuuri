@@ -6258,7 +6258,7 @@ def command_monitor() -> int:
         stat_interval = min(
             cfg['statistics_interval'] for cfg in targets.values()
         )
-        next_stat = time.time() + stat_interval / 5
+        next_stat = time.time() + stat_interval / 5  # Early first write
         while INTERNAL.keep_going == 1:
             monitor_read_targets(targets, groups)
 
