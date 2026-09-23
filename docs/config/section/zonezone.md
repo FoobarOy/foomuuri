@@ -68,7 +68,10 @@ recommendations on splitting them across multiple configuration files.
 **"Mostly":** Rules within a zone-zone section are automatically sorted
 and processed in the following block order:
 
-1. ICMP rules, in the order listed
-2. Previously accepted established and related traffic, accepted by conntrack
-3. Incoming multicast and broadcast rules, in the order listed
-4. Everything else, in the order listed
+1. [zonemap](zonemap.md) rules
+2. [MSS clamping](../rule/misc.md#mss) options
+3. Rules with [`-conntrack`](../rule/misc.md#conntrack-conntrack) flag
+4. [ICMP](../rule/matcher.md#tcp-udp-icmp-icmpv6) rules
+5. Previously accepted established and related traffic, accepted by conntrack
+6. Incoming [multicast and broadcast](../rule/matcher.md#multicast-broadcast) rules
+7. Everything else
