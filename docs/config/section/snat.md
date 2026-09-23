@@ -16,7 +16,7 @@ snat {
   saddr 10.0.0.0/8 oifname eth1 -dipsec snat 192.0.2.32
 
   # IPv6-to-IPv6 Network Prefix Translation (NPTv6)
-  saddr fd00:f00:4444::/64 oifname eth2 snat_prefix to 2a03:1111:222:8888::/64
+  saddr fd00:f00:4444::/64 oifname eth2 snat_prefix 2a03:1111:222:8888::/64
 }
 ```
 
