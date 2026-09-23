@@ -2012,9 +2012,10 @@ def verify_config(config: dict, zones: Zones, rules: ZonePairRules) -> None:
     localhost = CONFIG.localhost_zone
     if localhost not in zones:
         zones[localhost] = []
-        warning(
+        fail(
             f'{config["_section_line"]["zone"]}Zone "{localhost}" '
-            f'is missing from zone{{}}, adding it'
+            f'is missing from zone{{}}, adding it',
+            fatal=False,
         )
 
     if zones[localhost]:
