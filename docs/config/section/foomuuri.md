@@ -80,7 +80,7 @@ specified interfaces, for example `flowtable eth0 eth1`. It improves
 forwarding performance on high-speed interfaces. The optional
 `hw_offload=yes` keyword enables hardware offloading (make sure your
 interface supports `hw-tc-offload`). The value `yes`, or negative
-notation, is not supported here.
+notation, is not supported here. Two or more interfaces must be specified.
 
 `counter` adds an anonymous byte and packet
 [counter](../rule/logging.md#counter) to all rules. The value can be:

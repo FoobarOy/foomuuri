@@ -3264,6 +3264,8 @@ def output_header(chain_rules: SpecialChainRules) -> None:
     out('}')
 
     flowtable = {item for item in CONFIG.flowtable if '=' not in item}
+    if len(flowtable) == 1 and flowtable != {'no'}:
+        fail(f'Invalid "foomuuri {{ flowtable }}" value: {flowtable.pop()}')
     if len(flowtable) > 1:
         out('flowtable fastpath {')
         out(f'hook ingress priority filter{INTERNAL.priority_offset}')
