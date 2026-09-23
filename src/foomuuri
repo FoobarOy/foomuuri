@@ -1984,18 +1984,19 @@ def insert_single_any(
 
 
 def insert_any_zones(zones: Zones, rules: ZonePairRules) -> None:
-    """Insert "any-zone", "zone-any" and "any-any" rules to "zone-zone" rules.
+    """Insert "any-any", "any-zone" and "zone-any" rules to "zone-zone" rules.
 
     These are inserted to beginning of zone-zone rules.
     """
     for zone in zones:
-        any_rules = rules.pop(('any', zone), [])  # any-zone
-        for szone in zones:
-            insert_single_any(any_rules, rules, szone, zone)
-
         any_rules = rules.pop((zone, 'any'), [])  # zone-any
         for dzone in zones:
             insert_single_any(any_rules, rules, zone, dzone)
+
+    for zone in zones:
+        any_rules = rules.pop(('any', zone), [])  # any-zone
+        for szone in zones:
+            insert_single_any(any_rules, rules, szone, zone)
 
     any_rules = rules.pop(('any', 'any'), [])  # any-any
     for szone in zones:
