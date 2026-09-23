@@ -4722,7 +4722,7 @@ def iplist_apply_filters(source, text):
 
         # pylint: disable=c-extension-no-member
         if spec.startswith('shell:'):
-            text = run_program_pipe([spec[6:]], text)
+            text = run_program_pipe(shlex.split(spec[6:]), text)
         elif spec.startswith('json:'):
             text = run_program_pipe(['jq', '--raw-output', spec[5:]], text)
         elif spec.startswith('html:'):

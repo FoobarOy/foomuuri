@@ -103,6 +103,12 @@ iplist {
   # Download a network scanner's IP address list and parse it from an
   # HTML page.
   @netscanner  https://internet-measurement.com/|html://div/pre/text()
+
+  # Read content from file and filter it with external command.
+  # Command must read input from stdin and output result to stdout.
+  # Parameters can be passed to command by "-quoting whole string.
+  @ipfile      /etc/foomuuri/ipfile.txt|shell:/etc/foomuuri/my-filter
+  @ipfile2     "/etc/foomuuri/ipfile2.txt|shell:/etc/foomuuri/my-filter2 parameters"
 }
 ```
 
