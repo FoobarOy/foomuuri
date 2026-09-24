@@ -4623,13 +4623,46 @@ def command_iplist_status() -> int:
     return error
 
 
+def iplist_element_contains(
+    element: str,
+    needle: typing.Union[ipaddress.IPv4Network, ipaddress.IPv6Network],
+) -> bool:
+    """Check if needle is a subset of iplist element."""
+    if '-' in element:
+        first, last = map(ipaddress.ip_address, element.split('-', 1))
+    else:
+        network = ipaddress.ip_network(element, strict=False)
+        first, last = network.network_address, network.broadcast_address
+
+    return (
+        needle.version == first.version == last.version
+        and first <= needle.network_address
+        and needle.broadcast_address <= last
+    )
+
+
 def command_iplist_list() -> int:
-    """List iplist entries."""
+    """List iplist entries filtered by iplist names or ipaddresses."""
     config = minimal_config()
     known = parse_config_iplist(config)
     table = [('Iplist', 'IPAddress', 'Timeout')]
     error = 0
-    for iplist_name in INTERNAL.parameters[1:] or sorted(known):
+
+    needles = []
+    iplists = []
+    needle_matched = False
+    for arg in INTERNAL.parameters[1:]:
+        if get_ip_family(arg) != 0:
+            if any(c in {'-', '[', ']'} for c in arg):
+                fail(
+                    'Filtering by IP range, negative or bracketed value '
+                    f'is not supported: {arg}'
+                )
+            needles.append(ipaddress.ip_network(arg, strict=False))
+        else:
+            iplists.append(arg)
+
+    for iplist_name in iplists or sorted(known):
         iplist_name = iplist_name.removeprefix('@')
         if iplist_name.endswith(('_4', '_6')):
             data4 = nft_json(f'list set inet foomuuri {iplist_name}')
@@ -4641,10 +4674,23 @@ def command_iplist_list() -> int:
             warning(f'Unknown iplist: @{iplist_name}')
             error = 1
             continue
+
         elems = sorted(iterate_set_elements(data4)) + sorted(
             iterate_set_elements(data6)
         )
-        if not elems:
+
+        if needles:
+            elems = [
+                elem
+                for elem in elems
+                if any(
+                    iplist_element_contains(elem[0], needle)
+                    for needle in needles
+                )
+            ]
+            needle_matched = needle_matched or bool(elems)
+
+        if not elems and not needles:
             table.append((f'@{iplist_name}', '', ''))
         else:
             table.extend(
@@ -4657,7 +4703,7 @@ def command_iplist_list() -> int:
             )
 
     print_table(data=table, align='<<>', header=True)
-    return error
+    return error or int(bool(needles) and not needle_matched)
 
 
 def command_iplist_add() -> int:
@@ -6297,8 +6343,8 @@ Available COMMANDs:
                Reset all or specified named COUNTER(s)
   iplist status [IPLIST]...
                List number of entries of all or specified IPLIST(s)
-  iplist list [IPLIST]...
-               List entries of all or specified IPLIST(s)
+  iplist list [IPLIST]... [IPADDRESS]...
+               List entries of all or specified IPLIST(s) with IPADDRESS(es)
   iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...
                Add or refresh IPADDRESS(es) to IPLIST
   iplist del IPLIST IPADDRESS [IPADDRESS]...

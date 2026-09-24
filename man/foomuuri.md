@@ -95,8 +95,8 @@ ruleset or only specified **ZONE-ZONE**.
 **iplist status [IPLIST]...**
 : List number of entries of all or specified IPLIST(s).
 
-**iplist list [IPLIST]...**
-: List entries of all or specified IPLIST(s).
+**iplist list [IPLIST]... [IPADDRESS]...**
+: List entries of all or specified IPLIST(s) containing IPADDRESS(es).
 
 **iplist add IPLIST [TIMEOUT] IPADDRESS [IPADDRESS]...**
 : Add or refresh IPADDRESS(es) to IPLIST. TIMEOUT format is the same as in
