@@ -26,6 +26,9 @@
   When enabled, named counter values are preserved across `foomuuri reload`.
   They are not preserved across a reboot.
 * Add `foomuuri counter reset` command to reset named counter values.
+* `foomuuri iplist list` command can list entries from all iplists or
+  specified ones, optionally filtered to entries containing specified
+  IP addresses.
 * Add `prometheus-rasdaemon` macro to default services.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
