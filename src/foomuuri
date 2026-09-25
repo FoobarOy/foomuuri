@@ -157,7 +157,7 @@ class TypedConfig:
         super().__setattr__(name, value)
 
     @staticmethod
-    def _isinstance_target(expected_type):
+    def _isinstance_target(expected_type: typing.Any) -> typing.Any:
         """Return isinstance() target of a type hint.
 
         Convert parameterized hints to their origin and typing.Union
@@ -461,7 +461,7 @@ class IPListOptions(TypedConfig):
         default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # allow empty/failed URL download or DNS resolve
 
-    def parse_option(self, option: str):
+    def parse_option(self, option: str) -> bool:
         """Parse and set iplist option value from option.
 
         Option is either a a string in option=value format,
@@ -3580,7 +3580,7 @@ def save_final(filename: typing.Optional[pathlib.PosixPath]) -> list[str]:
     return lines
 
 
-def signal_childs():
+def signal_childs() -> None:
     """Signal foomuuri-dbus and foomuuri-monitor to reload."""
     for child in ('dbus', 'monitor'):
         # Read pid
@@ -3871,7 +3871,9 @@ if HAVE_DBUS:
 
         polkit = None
 
-        def __init__(self, conn, object_path, zones):
+        def __init__(
+            self, conn: typing.Any, object_path: str, zones: Zones
+        ) -> None:
             """Initialize dbus.service.Object."""
             dbus.service.Object.__init__(
                 self, conn=conn, object_path=object_path
@@ -3880,14 +3882,18 @@ if HAVE_DBUS:
             self.zones = zones
 
         @staticmethod
-        def apply_out():
+        def apply_out() -> int:
             """Apply current OUT commands."""
             lines = '\n'.join(save_final(None))
             return run_program_rc(
                 CONFIG.nft_bin + ['--file', '-'], stdin=lines
             )
 
-        def verify_polkit_privilege(self, sender, privilege):
+        def verify_polkit_privilege(
+            self,
+            sender: typing.Optional[str],
+            privilege: str,
+        ) -> None:
             """Verify authorization from PolicyKit."""
             # Initialize polkit connections
             if not self.polkit:
@@ -3933,7 +3939,9 @@ if HAVE_DBUS:
             raise FoomuuriDbusException('Authorization failed') from None
 
         @staticmethod
-        def remove_interface(interface_zone, interface):
+        def remove_interface(
+            interface_zone: dict[str, str], interface: str
+        ) -> str:
             """Remove interface from all zones."""
             # Get interface's current zone
             zone = interface_zone.get(interface)
@@ -3975,7 +3983,9 @@ if HAVE_DBUS:
             return zone
 
         @staticmethod
-        def add_interface(interface_zone, interface, zone):
+        def add_interface(
+            interface_zone: dict[str, str], interface: str, zone: str
+        ) -> None:
             """Add interface to zone.
 
             It must be already removed from other zones.
@@ -4025,7 +4035,9 @@ if HAVE_DBUS:
                     f'{INTERNAL.catch_all_interface_zone}-{zone} }}'
                 )
 
-        def change_interface_zone(self, interface, new_zone):
+        def change_interface_zone(
+            self, interface: str, new_zone: str
+        ) -> tuple[str, str]:
             """Change interface to new_zone, or delete if new_zone is empty."""
             interface, new_zone = str(interface), str(new_zone)
             if new_zone and new_zone not in self.zones:
@@ -4060,7 +4072,7 @@ if HAVE_DBUS:
                 )
             return old_zone, new_zone
 
-        def parse_default_zone(self, interface, zone):
+        def parse_default_zone(self, interface: str, zone: str) -> str:
             """Return zone, or dbus_zone if empty."""
             interface, zone = str(interface), str(zone)
             if zone:
@@ -4072,7 +4084,7 @@ if HAVE_DBUS:
                     return key
             return CONFIG.dbus_zone
 
-        def method_get_zones(self):
+        def method_get_zones(self) -> list[str]:
             """Get list of available zones.
 
             "localhost" can't have any interfaces so don't include it.
@@ -4081,7 +4093,7 @@ if HAVE_DBUS:
                 name for name in self.zones if name != CONFIG.localhost_zone
             ]
 
-        def method_remove_interface(self, zone, interface):
+        def method_remove_interface(self, zone: str, interface: str) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
             This is currently always handled as "from all".
@@ -4093,7 +4105,7 @@ if HAVE_DBUS:
             verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
             return self.change_interface_zone(interface, '')[0]
 
-        def method_add_interface(self, zone, interface):
+        def method_add_interface(self, zone: str, interface: str) -> str:
             """Add interface to zone.
 
             There can be only one zone per interface so it will be removed
@@ -4107,7 +4119,9 @@ if HAVE_DBUS:
             verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
             return self.change_interface_zone(interface, zone)[1]
 
-        def method_change_zone_of_interface(self, zone, interface):
+        def method_change_zone_of_interface(
+            self, zone: str, interface: str
+        ) -> str:
             """Change interface to zone."""
             if not Validators.str_interface_name(interface):
                 raise FoomuuriDbusException(
@@ -4128,7 +4142,7 @@ if HAVE_DBUS:
             out_signature='as',
             sender_keyword='sender',
         )
-        def getZones(self, sender=None):
+        def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
             """Get list of available zones."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
@@ -4139,7 +4153,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def removeInterface(self, zone, interface, sender=None):
+        def removeInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
             Return: previous zone
@@ -4153,7 +4172,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def addInterface(self, zone, interface, sender=None):
+        def addInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Add interface to zone.
 
             Return: new zone
@@ -4167,7 +4191,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def changeZoneOfInterface(self, zone, interface, sender=None):
+        def changeZoneOfInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Change interface to zone.
 
             Return: previous zone
@@ -4186,7 +4215,7 @@ if HAVE_DBUS:
             out_signature='as',
             sender_keyword='sender',
         )
-        def getZones(self, sender=None):
+        def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
             """Get list of available zones."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
             return self.method_get_zones()
@@ -4197,7 +4226,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def removeInterface(self, zone, interface, sender=None):
+        def removeInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
             Return: previous zone
@@ -4211,7 +4245,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def addInterface(self, zone, interface, sender=None):
+        def addInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Add interface to zone.
 
             Return: new zone
@@ -4225,7 +4264,12 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def changeZoneOfInterface(self, zone, interface, sender=None):
+        def changeZoneOfInterface(
+            self,
+            zone: str,
+            interface: str,
+            sender: typing.Optional[str] = None,
+        ) -> str:
             """Change interface to zone.
 
             Return: previous zone
@@ -4239,7 +4283,9 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def getZoneOfSource(self, source, sender=None):
+        def getZoneOfSource(
+            self, source: str, sender: typing.Optional[str] = None
+        ) -> str:
             """Get current zone of source.
 
             These calls are used by netavark (run by Podman) to set
@@ -4257,7 +4303,9 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def changeZoneOfSource(self, zone, source, sender=None):
+        def changeZoneOfSource(
+            self, zone: str, source: str, sender: typing.Optional[str] = None
+        ) -> str:
             """Change source to zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             raise FoomuuriDbusException(
@@ -4270,14 +4318,16 @@ if HAVE_DBUS:
             out_signature='s',
             sender_keyword='sender',
         )
-        def removeSource(self, zone, source, sender=None):
+        def removeSource(
+            self, zone: str, source: str, sender: typing.Optional[str] = None
+        ) -> str:
             """Remove source from zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
             raise FoomuuriDbusException(
                 f'Not implemented: remove {source} from "{zone}"'
             )
 
-    def command_dbus():
+    def command_dbus() -> None:
         """Start D-Bus daemon."""
         # Import gi here as it is heavy module to load.
         try:
@@ -4328,7 +4378,12 @@ if HAVE_DBUS:
             # Define reload/stop signal handler
             mainloop = gi.repository.GLib.MainLoop()
 
-            def signal_handler(sig, _dummy_frame, mainloop=mainloop):
+            def signal_handler(
+                sig: int,
+                _dummy_frame: typing.Any,
+                mainloop: typing.Any = mainloop,
+            ) -> None:
+
                 if sig == signal.SIGINT:
                     INTERNAL.keep_going = 0
                     notify('STOPPING=1')
@@ -4355,7 +4410,7 @@ if HAVE_DBUS:
                 del firewalld_name
             del bus
 
-    def command_set():
+    def command_set() -> int:
         """Modify runtime config by calling D-Bus methods."""
         if (
             len(INTERNAL.parameters) != 4
@@ -4377,16 +4432,19 @@ if HAVE_DBUS:
                 obj.changeZoneOfInterface(zone, interface)
         except dbus.exceptions.DBusException as error:
             fail(f"Can't modify interface: {error}")
+        return 0
 
 else:  # HAVE_DBUS is false
 
-    def command_dbus():
+    def command_dbus() -> int:
         """Start D-Bus daemon."""
         fail('No python-dbus installed')
+        return 0
 
-    def command_set():
+    def command_set() -> int:
         """Modify runtime config by calling D-Bus methods."""
         fail('No python-dbus installed')
+        return 0
 
 
 def remove_filters(text: str) -> str:
@@ -4730,7 +4788,7 @@ def command_iplist_add() -> int:
     )
 
 
-def command_iplist_del():
+def command_iplist_del() -> int:
     """Delete entries from iplist."""
     config = minimal_config()
     iplists = parse_config_iplist(config)
@@ -4768,7 +4826,9 @@ def command_iplist_flush() -> int:
     return iplist_output_and_apply(iplists, cache, update_only, update_only)
 
 
-def lxml_parser(source, parser, path, text):
+def lxml_parser(
+    source: str, parser: typing.Any, path: str, text: str
+) -> typing.Optional[str]:
     """Parse html/xml text with lxml."""
     # pylint: disable=c-extension-no-member
     try:
@@ -4780,8 +4840,9 @@ def lxml_parser(source, parser, path, text):
     return '\n'.join(nodes)
 
 
-def iplist_apply_filters(source, text):
+def iplist_apply_filters(source: str, content: str) -> str:
     """Apply filters to iplist content."""
+    text = content
     for spec in source.split('|')[1:]:
         if not text:
             break
@@ -4808,7 +4869,7 @@ def iplist_apply_filters(source, text):
                 )
             else:
                 warning('No python-lxml installed')
-    return text
+    return text or ''
 
 
 def iplist_parse_content(source: str, text: str) -> list[str]:
@@ -4831,7 +4892,7 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
     return addresses
 
 
-def str_to_time(timestamp):
+def str_to_time(timestamp: str) -> int:
     """Convert time string to unix timestamp."""
     obj = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')
     obj = obj.replace(tzinfo=datetime.timezone.utc)
@@ -5195,7 +5256,7 @@ class IPListValue:
         return self
 
 
-def parse_config_iplist(config) -> IPLists:
+def parse_config_iplist(config: dict) -> IPLists:
     """Parse iplist{} sections from config."""
 
     # pylint: disable=too-many-branches
@@ -5792,7 +5853,9 @@ def seconds_to_human(seconds: int) -> str:
     return f'{hour:02d}:{minute:02d}:{second:02d}'
 
 
-def monitor_state_command(targets, groups, cfg, grouptarget, name):
+def monitor_state_command(
+    targets: dict, groups: dict, cfg: dict, grouptarget: str, name: str
+) -> None:
     """Run command if group/target state changes."""
     # pylint: disable=too-many-locals
 
@@ -5826,15 +5889,15 @@ def monitor_state_command(targets, groups, cfg, grouptarget, name):
 
 
 def monitor_run_command(  # ruff: ignore[too-many-positional-arguments]
-    targets,
-    groups,
-    cfg,
-    grouptarget,
-    name,
-    updown,
-    extra,
-    history,
-):
+    targets: dict,
+    groups: dict,
+    cfg: dict,
+    grouptarget: str,
+    name: str,
+    updown: str,
+    extra: str,
+    history: typing.Optional[str],
+) -> None:
     """Run monitor's external command if configured.
 
     It will receive current state change event info and all states in
@@ -5868,7 +5931,9 @@ def monitor_run_command(  # ruff: ignore[too-many-positional-arguments]
     run_program_rc(proc, env=env)
 
 
-def monitor_down_interval(targets, groups, cfg, grouptarget, name):
+def monitor_down_interval(
+    targets: dict, groups: dict, cfg: dict, grouptarget: str, name: str
+) -> None:
     """Group/target is still down, run command in regular intervals."""
     now = time.time()
     if now < cfg['last_down_interval'] + cfg['down_interval']:
@@ -5882,7 +5947,7 @@ def monitor_down_interval(targets, groups, cfg, grouptarget, name):
     )
 
 
-def monitor_update_groups(targets, groups):
+def monitor_update_groups(targets: dict, groups: dict) -> None:
     """Update all group statuses.
 
     On startup make decision and send event for all groups after first reply
@@ -5902,7 +5967,9 @@ def monitor_update_groups(targets, groups):
             monitor_state_command(targets, groups, cfg, 'group', group)
 
 
-def monitor_update_target(targets, groups, target, state):
+def monitor_update_target(
+    targets: dict, groups: dict, target: str, state: bool
+) -> None:
     """Add state to target's history and change its state."""
     # Add new state to end of history
     cfg = targets[target]
@@ -5945,7 +6012,9 @@ def monitor_update_target(targets, groups, target, state):
         monitor_state_command(targets, groups, cfg, 'target', target)
 
 
-def monitor_parse_line(targets, groups, target, line):
+def monitor_parse_line(
+    targets: dict, groups: dict, target: str, line: str
+) -> None:
     """Parse result line from monitor's command."""
     verbose(f'target {target}: {line}', 2)
     stat_ms = None  # Value for statistics, assume error
@@ -5967,7 +6036,7 @@ def monitor_parse_line(targets, groups, target, line):
         state = '/100%' not in line  # It's up if loss is less than 100%
         if state:
             with contextlib.suppress(ValueError):
-                stat_ms = float(line.split('/')[-1])
+                stat_ms = float(line.rsplit('/', maxsplit=1)[-1])
 
     else:
         # fping with "--interval"
@@ -5988,7 +6057,7 @@ def monitor_parse_line(targets, groups, target, line):
     cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size'] :]
 
 
-def command_option_values(cmd):
+def command_option_values(cmd: list[str]) -> dict[str, typing.Optional[str]]:
     """Quick and dirty parser for "--foo n" and "--foo=n"."""
     ret = {}
     for index, item in enumerate(cmd):
@@ -6005,7 +6074,7 @@ def command_option_values(cmd):
     return ret
 
 
-def mangle_fping_command(target, cfg):
+def mangle_fping_command(target: str, cfg: dict) -> list[str]:
     """Mangle fping's command line to contain needed options."""
     cmd = cfg['command']
     if 'fping' not in cmd[0]:
@@ -6016,7 +6085,7 @@ def mangle_fping_command(target, cfg):
     # use it if missing (1s) or --interval=n000 is specified.
     # Use plain --interval if value is not exact second.
     squiet = options.get('--squiet', '')
-    interval = options.get('--interval', '')
+    interval = options.get('--interval') or ''  # ty workaround
     if not squiet and not interval:  # Nothing, use 1s / 1000ms
         cmd = cmd[:1] + ['--squiet=1', '--interval=1000'] + cmd[1:]
     elif squiet and not interval:  # squiet specified, use it as interval
@@ -6038,7 +6107,7 @@ def mangle_fping_command(target, cfg):
     return cmd
 
 
-def monitor_start_targets(targets, groups):
+def monitor_start_targets(targets: dict, groups: dict) -> None:
     """Start pinging all targets."""
     started_something = False
     for target, cfg in targets.items():
@@ -6079,7 +6148,7 @@ def monitor_start_targets(targets, groups):
         time.sleep(0.5)
 
 
-def monitor_close_target(targets, groups, target):
+def monitor_close_target(targets: dict, groups: dict, target: str) -> None:
     """Target monitoring command died. Mark it as down."""
     # Terminate proc and schedule restart
     verbose(
@@ -6097,7 +6166,7 @@ def monitor_close_target(targets, groups, target):
     monitor_update_target(targets, groups, target, False)
 
 
-def monitor_read_targets(targets, groups):
+def monitor_read_targets(targets: dict, groups: dict) -> None:
     """Read incoming lines from all targets."""
     # (Re)Start targets if not running
     monitor_start_targets(targets, groups)
@@ -6121,7 +6190,7 @@ def monitor_read_targets(targets, groups):
     monitor_update_groups(targets, groups)
 
 
-def monitor_terminate_targets(targets):
+def monitor_terminate_targets(targets: dict) -> None:
     """Terminate all subprocesses."""
     for cfg in targets.values():
         if cfg['proc']:
@@ -6131,7 +6200,7 @@ def monitor_terminate_targets(targets):
             cfg['proc'].wait(timeout=0.1)
 
 
-def parse_config_targets(config):
+def parse_config_targets(config: dict) -> dict:
     """Parse "target foo { ... }" entries from config."""
     targets = {}
     names = [item for item in config if item.startswith('target ')]
@@ -6203,7 +6272,7 @@ def parse_config_targets(config):
     return targets
 
 
-def parse_config_groups(config, targets):
+def parse_config_groups(config: dict, targets: dict) -> dict:
     """Parse "group foo { ... }" entries from config."""
     groups = {}
     names = [item for item in config if item.startswith('group ')]
@@ -6239,7 +6308,7 @@ def parse_config_groups(config, targets):
     return groups
 
 
-def monitor_write_statistics(targets, groups):
+def monitor_write_statistics(targets: dict, groups: dict) -> None:
     """Write statistics file."""
     stats = {}
     for group, cfg in groups.items():
@@ -6285,7 +6354,7 @@ def command_monitor() -> int:
         daemonize()
 
         # Define reload/stop signal handler
-        def signal_handler(sig, _dummy_frame):
+        def signal_handler(sig: int, _dummy_frame: typing.Any) -> None:
             if sig == signal.SIGINT:
                 INTERNAL.keep_going = 0
                 notify('STOPPING=1')
