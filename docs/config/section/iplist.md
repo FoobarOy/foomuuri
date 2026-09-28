@@ -121,6 +121,9 @@ only with trusted configuration and input.
 
 ## Iplist Settings
 
+
+### Timeouts & Refresh Options
+
 Hostnames are refreshed every 15 minutes and time out after 24 hours. URLs
 are refreshed once a day and time out after 10 days. These values can be
 changed globally or per iplist.
@@ -143,8 +146,8 @@ interval defaults to 15 minutes, so configured refresh times are evaluated
 at timer runs rather than necessarily at the exact requested second.
 This interval can be changed with `systemctl edit foomuuri-iplist.timer`.
 
-Timeout value determine how long cached addresses remain usable.
-It can be specified as:
+Timeout values determine how long cached addresses remain usable.
+They can be specified as:
 
 * `4w` - weeks
 * `2d` - days
@@ -153,11 +156,23 @@ It can be specified as:
 * `900s` - seconds
 * `2d3h15m` or `1w90m` - a combination of the above
 
+The optional `element_timeout=time` option sets the default element expiry
+timeout. This is needed for automatic IP address banning and port knocking.
+
+
+### Error Handling & Download Limits
+
 With the optional `missing_ok=yes` option (default: `no`), a warning is
 printed instead of an error when:
 
 * DNS resolution or the URL/file download fails, or
 * the resolution/download succeeds but the content is empty.
+
+The maximum size of URL content can be set with `url_max_size=bytes`.
+The default is 33554432 (32 MiB); content exceeding this size is ignored.
+
+
+### Content Management & Merging
 
 The optional `overwrite=yes|no` option controls how resolved IP addresses
 or URL content are applied to the iplist. With `yes`, old content is
@@ -170,8 +185,13 @@ The default `overwrite` value depends on the content type:
 * URL/file content defaults to `overwrite=yes`
 * DNS resolution defaults to `overwrite=no`
 
-The maximum size of URL content can be set with `url_max_size=bytes`.
-The default is 33554432 (32 MiB); content exceeding this size is ignored.
+The optional `merge=no` option (default: `yes`) disables IP address
+auto-merging. It is generally recommended to leave auto-merging enabled,
+except when using an external `fail2ban` integration, where it should be
+disabled. Shortcut `-merge` is also supported.
+
+
+### Dynamic Sets & Startup Behavior
 
 The optional `dynamic=yes` option (default: `no`) enables the dynamic flag
 on the generated ruleset. This is required when updating iplist content on
@@ -179,14 +199,6 @@ the packet path using the [`iplist_update`](../rule/matcher.md#iplist_update)
 matcher, for example, in automatic IP address
 [banning](../../example/advanced.md#automatic-ip-address-banning). This
 option should not be used for normal usage.
-
-The optional `element_timeout=time` option sets the default element expiry
-timeout. This is needed for automatic IP address banning and port knocking.
-
-The optional `merge=no` option (default: `yes`) disables IP address
-auto-merging. It is generally recommended to leave auto-merging enabled,
-except when using an external `fail2ban` integration, where it should be
-disabled.
 
 Foomuuri will not add IP addresses at startup to lists marked with the
 optional `start=no` option (default: `yes`); entries are added later by the

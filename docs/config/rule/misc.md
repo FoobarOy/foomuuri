@@ -1,26 +1,10 @@
 # Miscellaneous Rules
 
 
-## szone, dzone, new_szone, new_dzone
-
-These can be specified in the [zonemap](../section/zonemap.md) section to
-match the original source or destination zone, and to change it to a new
-zone. They are used to branch specific traffic out into its own zone, for
-example to split `vpn` and `public` (non-VPN) traffic.
+## TCP & Packet Alterations
 
 
-## helper
-
-The Linux kernel provides conntrack helper functionality for some services
-with multiple ports, such as `ftp` (`tcp 21`). You can enable this
-functionality by appending `helper kernelname-port` after a matcher, for
-example `tcp 21 helper ftp-21`.
-
-Linux provides the following helpers: `amanda, ftp, h323, irc, netbios_ns,
-pptp, sane, sip, snmp, tftp`.
-
-
-## mss
+### mss
 
 Sets the maximum segment size (MSS clamping) for matched traffic. Some
 connections, such as IPsec or PPPoE, may require this. Example:
@@ -55,7 +39,18 @@ output {   # localhost-public
 cannot.
 
 
-## conntrack, -conntrack
+## Zone & Connection Tracking Modifiers
+
+
+### szone, dzone, new_szone, new_dzone
+
+These can be specified in the [zonemap](../section/zonemap.md) section to
+match the original source or destination zone, and to change it to a new
+zone. They are used to branch specific traffic out into its own zone, for
+example to split `vpn` and `public` (non-VPN) traffic.
+
+
+### conntrack, -conntrack
 
 By default, rules are processed after the conntrack check (flag
 `conntrack`). The flag `-conntrack` can be added to process a rule before
@@ -86,7 +81,21 @@ localhost-public {
 ```
 
 
-## nft
+### helper
+
+The Linux kernel provides conntrack helper functionality for some services
+with multiple ports, such as `ftp` (`tcp 21`). You can enable this
+functionality by appending `helper kernelname-port` after a matcher, for
+example `tcp 21 helper ftp-21`.
+
+Linux provides the following helpers: `amanda, ftp, h323, irc, netbios_ns,
+pptp, sane, sip, snmp, tftp`.
+
+
+## Raw Rules
+
+
+### nft
 
 A raw nftables rule can be written with `nft "raw rule here"`. For
 example, the `https` rule can be written as:

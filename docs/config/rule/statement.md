@@ -1,7 +1,9 @@
 # Statements
 
 
-## accept, drop, reject
+## Action Statements
+
+### accept, drop, reject
 
 Accepts, drops, or rejects traffic. The default statement for a rule is to
 accept matched traffic: `tcp 443` is equivalent to `tcp 443 accept`.
@@ -15,27 +17,34 @@ every [zone-zone](../section/zonezone.md) section of your configuration.
   recommended statement is `reject log`.
 
 
-## continue
+### continue
 
 Continues to the next rule. This is mostly used for debugging rules. For
 example, the rule `saddr 10.0.0.4 counter log continue` counts and logs
 traffic from 10.0.0.4, then continues to the next rule.
 
 
-## return
+### return
 
 A special statement that returns from the current nftables chain to the
 caller chain. Not normally used.
 
 
-## masquerade, snat, dnat, snat_prefix, dnat_prefix
+## Address Rewriting (NAT)
+
+
+### masquerade, snat, dnat, snat_prefix, dnat_prefix
 
 These statements are used in the `snat` and `dnat`
 [sections](../section/snat.md) to rewrite the traffic's source or
-destination IP address. See that page for a description and examples.
+destination IP address. See the [SNAT](../section/snat.md) and
+[DNAT](../section/dnat.md) pages for full descriptions and examples.
 
 
-## notrack
+## Packet Inspection & Flow Control
+
+
+### notrack
 
 Marks a matching packet so that it is not added to conntrack. This must
 be done early in the `prerouting` section. For example, a high-load DNS
@@ -60,7 +69,7 @@ output filter raw {
 ```
 
 
-## queue
+### queue
 
 Forwards a packet to userspace, for example for IPS/IDS inspection.
 Optional flags and a target can be specified. Example:
@@ -76,7 +85,7 @@ forward {
 ```
 
 
-## nftrace
+### nftrace
 
 Enables nftrace ruleset debugging for matching packets. This is usually
 done in the `input`, `output`, or `forward` section. Trace events can be

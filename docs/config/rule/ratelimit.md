@@ -1,7 +1,10 @@
-# Rate limit
+# Rate Limit
 
 
-## global_rate
+## Global Rate Limits
+
+
+### global_rate
 
 Defines a global rate limit without a source or destination IP address
 check. For example, `https global_rate "10/second burst 20"` allows HTTPS
@@ -86,7 +89,9 @@ connections. This is usually used with the `drop` statement:
 `ssh global_rate "ct count over 6" drop`.
 
 
-## saddr_rate, daddr_rate
+## Address-Specific Rate Limits
+
+### saddr_rate, daddr_rate
 
 Source/destination IP address-specific rate limiting works similarly to
 `global_rate`.
@@ -105,7 +110,7 @@ specifies:
 * A total of 1000 connections per second are allowed across all IPs.
 
 
-## saddr_rate_mask, daddr_rate_mask
+### saddr_rate_mask, daddr_rate_mask
 
 Normally, full IPv4 or IPv6 addresses are used when counting `saddr_rate`
 or `daddr_rate`. This can be changed with a netmask:
@@ -114,7 +119,7 @@ or `daddr_rate`. This can be changed with a netmask:
 when counting limits.
 
 
-## saddr_rate_name, daddr_rate_name
+### saddr_rate_name, daddr_rate_name
 
 To share the same rate limit across two different rules, specify a name
 for it. For example:
@@ -129,7 +134,7 @@ total of 30 connections per IP per second. Without the shared name, it
 would allow 30 + 30 connections per IP per second.
 
 
-## saddr_daddr_rate, saddr_daddr_rate_mask, saddr_daddr_rate_name
+### saddr_daddr_rate, saddr_daddr_rate_mask, saddr_daddr_rate_name
 
 This is a special form of `saddr_rate` combined with `daddr_rate`, useful
 when a service has multiple destination IPs (as with DNS round-robin). In

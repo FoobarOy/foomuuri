@@ -23,6 +23,9 @@ This example configuration assumes:
 * The `internal` zone's network interface is `enp8s0`, with network
   10.0.0.0/8. Outgoing traffic to the `public` zone is masqueraded.
 
+
+### Firewall Configuration (foomuuri.conf)
+
 Example `foomuuri.conf` file:
 
 ```
@@ -154,6 +157,9 @@ localhost-internal {
 }
 ```
 
+
+### Multi-ISP Route Script (/etc/foomuuri/multi-isp)
+
 Example `/etc/foomuuri/multi-isp` script. Remember to save it as
 executable: `chmod 750 /etc/foomuuri/multi-isp`.
 
@@ -230,6 +236,9 @@ case "${1}" in
 esac
 ```
 
+
+### Systemd Service Setup
+
 Example `/etc/systemd/system/foomuuri-multi-isp.service` file. Remember to
 enable it with `systemctl enable foomuuri-multi-isp.service`.
 
@@ -269,6 +278,9 @@ This example configuration assumes:
   `foomuuri.conf`, and adjust the `switch.sh` script to identify and
   replace the fwmark randomizer as documented in the static routes example
   above.
+
+
+### Networkd Routing Tables Configuration
 
 Set up the routing tables by creating the following two files.
 
@@ -342,6 +354,9 @@ Table=secondary
 Priority=42000
 ```
 
+
+### Verification & Dynamic Firewall Rules
+
 After restarting `systemd-networkd`, the `ip route show table main`
 command should show the following output:
 
@@ -403,6 +418,9 @@ target main {
 
 zone-zone rules...
 ```
+
+
+### Automatic Switch Script (/etc/foomuuri/switch.sh)
 
 If the `fping` monitor detects that the main interface `enp1s0` has no
 uplink, the following `switch.sh` script (remember to `chmod 750` it)

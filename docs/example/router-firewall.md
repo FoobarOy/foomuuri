@@ -3,6 +3,9 @@
 
 ## localhost - public - internal
 
+
+### Overview & Network Diagram
+
 This example is for a small corporate firewall:
 
 * A single firewall computer that runs:
@@ -19,6 +22,9 @@ flowchart LR
         localhost <--> internal
     end
 ```
+
+
+### Firewall Configuration
 
 ```
 zone {
@@ -118,6 +124,9 @@ net.ipv6.conf.all.forwarding = 1
 
 ## localhost - public - dmz - internal
 
+
+### Overview & Network Diagram
+
 This example is for a larger corporate firewall:
 
 * A single firewall computer that runs:
@@ -139,6 +148,9 @@ flowchart LR
         localhost <--> dmz
     end
 ```
+
+
+### Firewall Configuration
 
 ```
 zone {

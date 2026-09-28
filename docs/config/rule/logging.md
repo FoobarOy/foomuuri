@@ -1,7 +1,9 @@
-# Logging
+# Logging & Counters
 
 
-## counter
+## Rule Counters
+
+### counter
 
 Adds a byte and packet counter to a rule. All new traffic matching this rule
 is counted. A counter can be named or anonymous. To name a counter, add a
@@ -31,7 +33,9 @@ Named counter values can be listed with `foomuuri counter list`. Anonymous
 counters can be listed with `foomuuri ruleset list`.
 
 
-## log
+## Rule Logging & Log Levels
+
+### log
 
 Writes a log entry (journal or syslog) when traffic matches this rule. An
 optional log prefix can be added; the default prefix is
@@ -77,7 +81,7 @@ default, the first three entries per source IP are logged, followed by one
 additional entry per second.
 
 
-## log_level
+### log_level
 
 Overrides the global `foomuuri { log_level ... }` logging level for this
 single rule.

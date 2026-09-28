@@ -11,6 +11,9 @@ configurations and commands, is also available.
 
 ## target
 
+
+### Target Commands
+
 The minimal configuration is:
 
 ```
@@ -41,6 +44,18 @@ See `man fping` or the [fping website](https://www.fping.org/) for a
 description of `fping`'s parameters. Foomuuri supports both `interval` and
 `squiet` modes; it is recommended to use whole seconds in `--interval`.
 
+It is recommended to use an IP address rather than a hostname as the
+`fping` target. Hostname lookups will fail if the network is down when
+`fping` starts. Foomuuri handles this case, but it causes a 30-second
+delay and a possible `fping` restart loop.
+
+`curl` and other programs can also be used instead of `fping`. See the
+example [shell script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor-example-command.sh)
+for how to use them.
+
+
+### Up/Down State Thresholds
+
 "Up" and "down" states are defined with the following parameters:
 
 ```
@@ -61,14 +76,8 @@ allowed).
 A target is considered down if 30 of the last 100 pings failed, or if the
 last 10 pings failed.
 
-`curl` and other programs can also be used instead of `fping`. See the
-example [shell script](https://github.com/FoobarOy/foomuuri/blob/main/misc/monitor-example-command.sh)
-for how to use them.
 
-It is recommended to use an IP address rather than a hostname as the
-`fping` target. Hostname lookups will fail if the network is down when
-`fping` starts. Foomuuri handles this case, but it causes a 30-second
-delay and a possible `fping` restart loop.
+### Periodic Down Interval Execution
 
 The optional `command_down_interval` setting can be specified. Foomuuri
 will run it every `down_interval` seconds (default: 600, i.e., every 10
@@ -85,6 +94,9 @@ target my-isp-router {
    ...
 }
 ```
+
+
+### Environment Variables
 
 The up/down command receives status information via environment variables:
 
@@ -103,6 +115,9 @@ The up/down command receives status information via environment variables:
 
 Only a single command can be specified. If you need to run multiple
 commands, use a shell wrapper script to run them.
+
+
+### Statistics
 
 Monitor statistics are written to a file periodically. This interval can be
 changed with `statistics_interval 60`. The default value is 60 seconds

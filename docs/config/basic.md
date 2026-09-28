@@ -3,7 +3,7 @@
 
 ## Configuration Files
 
-Foomuuri reads configuration files from `/etc/foomuuri/*.conf`, in
+Foomuuri reads user configuration files from `/etc/foomuuri/*.conf`, in
 alphabetical order, including all subdirectories. Foomuuri also reads
 static configuration from `/usr/share/foomuuri/*.conf`, which can be
 overridden in `/etc/foomuuri`.
@@ -49,19 +49,19 @@ A basic host firewall has only `localhost` and `public` zones. If you use
 a different name, you should also configure it in the
 [foomuuri { dbus_zone }](section/foomuuri.md) section.
 
-`public` is intended for use in public location, where you do not trust the
+`public` is intended for use in a public location, where you do not trust the
 other computers on the network not to harm your computer.
 
 
 ### home
 
-Similar to `public`, but for use in home location, where you mostly trust
+Similar to `public`, but for use in a home location, where you mostly trust
 the other computers on the network not to harm your computer.
 
 
 ### work
 
-Similar to `public`, but for use in work location, where you mostly trust
+Similar to `public`, but for use in a work location, where you mostly trust
 the other computers on the network not to harm your computer.
 
 
