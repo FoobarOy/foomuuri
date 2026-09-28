@@ -4881,6 +4881,7 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
 
     # Collect IP addresses
     addresses = []
+    errors = 0
     for line in text.splitlines():
         for value in line.split():
             if value.startswith(('#', ';')):  # Remove comments
@@ -4888,7 +4889,11 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
             if get_ip_family(value, allow_negative=False):
                 addresses.append(value)
             else:
-                warning(f'Unknown entry in iplist "{source}": {value}')
+                warning(f'Unknown entry in iplist "{source}": {value[:64]}')
+                errors += 1
+                if errors == 5:
+                    fail(f'Too many errors in iplist "{source}"', fatal=False)
+                    return addresses
     return addresses
 
 
