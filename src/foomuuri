@@ -1522,7 +1522,12 @@ def minimal_config(require_etc_config: bool = True) -> dict:
     return config
 
 
-def get_ip_family(value: str, *, allow_negative: bool = True) -> int:
+def get_ip_family(
+    value: str,
+    *,
+    allow_negative: bool = True,
+    allow_suffixmask: bool = True,
+) -> int:
     """Detect if value is an IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
@@ -1532,7 +1537,7 @@ def get_ip_family(value: str, *, allow_negative: bool = True) -> int:
         value = value[1:]  # Negative is handled in single_or_set()
 
     # IPv6/-mask
-    if value.count('/-') == 1:
+    if allow_suffixmask and value.count('/-') == 1:
         addr, maskstr = value.split('/-')
         with contextlib.suppress(ValueError):
             mask = int(maskstr)
@@ -4886,7 +4891,11 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
         for value in line.split():
             if value.startswith(('#', ';')):  # Remove comments
                 break
-            if get_ip_family(value, allow_negative=False):
+            if get_ip_family(
+                value,
+                allow_negative=False,
+                allow_suffixmask=False,
+            ):
                 addresses.append(value)
             else:
                 warning(f'Unknown entry in iplist "{source}": {value[:64]}')
