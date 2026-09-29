@@ -4898,11 +4898,16 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
             ):
                 addresses.append(value)
             else:
-                warning(f'Unknown entry in iplist "{source}": {value[:64]}')
                 errors += 1
-                if errors == 5:
-                    fail(f'Too many errors in iplist "{source}"', fatal=False)
-                    return addresses
+                if errors <= 5:  # Print warning for first five errors
+                    warning(
+                        f'Unknown entry in iplist "{source}": {value[:64]}'
+                    )
+    if errors > 5:
+        warning(
+            f'{errors - 5} additional warnings suppressed for '
+            f'iplist "{source}"'
+        )
     return addresses
 
 
