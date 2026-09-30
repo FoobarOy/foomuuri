@@ -1522,22 +1522,17 @@ def minimal_config(require_etc_config: bool = True) -> dict:
     return config
 
 
-def get_ip_family(
-    value: str,
-    *,
-    allow_negative: bool = True,
-    allow_suffixmask: bool = True,
-) -> int:
+def get_ip_family(value: str, *, strict: bool = False) -> int:
     """Detect if value is an IPv4 or IPv6 address, network or interval.
 
     Return 4, 6, or 0 if not detected.
     """
     # -IP
-    if allow_negative and value.startswith('-'):
+    if not strict and value.startswith('-'):
         value = value[1:]  # Negative is handled in single_or_set()
 
     # IPv6/-mask
-    if allow_suffixmask and value.count('/-') == 1:
+    if not strict and value.count('/-') == 1:
         addr, maskstr = value.split('/-')
         with contextlib.suppress(ValueError):
             mask = int(maskstr)
@@ -4891,11 +4886,7 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
         for value in line.split():
             if value.startswith(('#', ';')):  # Remove comments
                 break
-            if get_ip_family(
-                value,
-                allow_negative=False,
-                allow_suffixmask=False,
-            ):
+            if get_ip_family(value, strict=True):
                 addresses.append(value)
             else:
                 errors += 1
@@ -4983,7 +4974,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         expire = self._normalize_expire(now, timeout)
         entry = self._ensure_entry(f'manual.{iplist_name}')
         for address in addresses:
-            if get_ip_family(address, allow_negative=False):
+            if get_ip_family(address, strict=True):
                 entry['ip'][address] = expire
                 entry['dirty'] = True
                 continue
@@ -5263,7 +5254,7 @@ class IPListValue:
         self = cls(name=name)
         static_addresses: list[str] = []
         for source in sources:
-            if get_ip_family(source, allow_negative=False):
+            if get_ip_family(source, strict=True):
                 static_addresses.append(source)
             else:
                 self._copy_addresses(source_cache, source)
@@ -5395,7 +5386,7 @@ def iplist_collect_resolve_list(
                 sources[source].set_option(
                     'missing_ok', iplist.options.missing_ok, source
                 )
-            elif not get_ip_family(source, allow_negative=False):
+            elif not get_ip_family(source, strict=True):
                 for option in ('timeout', 'refresh'):
                     hostnames[source].update_if_less(
                         option, iplist.options[f'dns_{option}']

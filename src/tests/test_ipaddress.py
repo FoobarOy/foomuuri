@@ -59,9 +59,9 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('::-::'), 6)
         self.assertEqual(get_ip_family('::1-::2'), 6)
 
-    def test_allow_negative(self):
-        """Test address detection for allow_negative=True/False."""
-        self.assertEqual(get_ip_family('-127.0.0.1', allow_negative=True), 4)
-        self.assertEqual(get_ip_family('-::', allow_negative=True), 6)
-        self.assertEqual(get_ip_family('-127.0.0.1', allow_negative=False), 0)
-        self.assertEqual(get_ip_family('-::', allow_negative=False), 0)
+    def test_strict(self):
+        """Test address detection for strict=True/False."""
+        self.assertEqual(get_ip_family('-127.0.0.1', strict=False), 4)
+        self.assertEqual(get_ip_family('-::', strict=False), 6)
+        self.assertEqual(get_ip_family('-127.0.0.1', strict=True), 0)
+        self.assertEqual(get_ip_family('-::', strict=True), 0)
