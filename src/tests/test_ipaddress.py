@@ -1,4 +1,4 @@
-"""Basic unit tests for test_ipv*_address() functions."""
+"""Basic unit tests for get_ip_family()."""
 # pylint: disable=import-error
 
 import unittest
@@ -15,6 +15,7 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('[127.0.0.1]'), 0)
 
         self.assertEqual(get_ip_family('127.0.0.1'), 4)
+        self.assertEqual(get_ip_family('-127.0.0.1'), 4)
 
     def test_ipv4_network(self):
         """Test for IPv4 network."""
@@ -22,6 +23,8 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('127.0.0.0/-16'), 0)
 
         self.assertEqual(get_ip_family('127.0.0.0/8'), 4)
+        self.assertEqual(get_ip_family('127.0.0.1/8'), 4)
+        self.assertEqual(get_ip_family('-127.0.0.0/8'), 4)
 
     def test_ipv4_range(self):
         """Test for IPv4 range."""
@@ -38,6 +41,7 @@ class TestIsIpAddress(unittest.TestCase):
 
         self.assertEqual(get_ip_family('::'), 6)
         self.assertEqual(get_ip_family('[::]'), 6)
+        self.assertEqual(get_ip_family('-::'), 6)
 
     def test_ipv6_network(self):
         """Test for IPv6 network."""
@@ -46,8 +50,10 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('[::]/-64'), 0)
 
         self.assertEqual(get_ip_family('::/64'), 6)
+        self.assertEqual(get_ip_family('::1/64'), 6)
         self.assertEqual(get_ip_family('::/-64'), 6)
         self.assertEqual(get_ip_family('[::]/64'), 6)
+        self.assertEqual(get_ip_family('-::/64'), 6)
 
     def test_ipv6_range(self):
         """Test for IPv6 range."""
@@ -60,8 +66,21 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('::1-::2'), 6)
 
     def test_strict(self):
-        """Test address detection for strict=True/False."""
-        self.assertEqual(get_ip_family('-127.0.0.1', strict=False), 4)
-        self.assertEqual(get_ip_family('-::', strict=False), 6)
+        """Test address detection for strict=True."""
         self.assertEqual(get_ip_family('-127.0.0.1', strict=True), 0)
+        self.assertEqual(get_ip_family('-127.0.0.0/24', strict=True), 0)
         self.assertEqual(get_ip_family('-::', strict=True), 0)
+        self.assertEqual(get_ip_family('-::/64', strict=True), 0)
+        self.assertEqual(get_ip_family('::/-64', strict=True), 0)
+
+        self.assertEqual(get_ip_family('127.0.0.1', strict=True), 4)
+        self.assertEqual(get_ip_family('127.0.0.0/24', strict=True), 4)
+        self.assertEqual(get_ip_family('127.0.0.1/8', strict=True), 4)
+        self.assertEqual(get_ip_family('127.0.0.1-127.0.0.2', strict=True), 4)
+        self.assertEqual(get_ip_family('::', strict=True), 6)
+        self.assertEqual(get_ip_family('[::]', strict=True), 6)
+        self.assertEqual(get_ip_family('::/64', strict=True), 6)
+        self.assertEqual(get_ip_family('::1/64', strict=True), 6)
+        self.assertEqual(get_ip_family('[::/64]', strict=True), 6)
+        self.assertEqual(get_ip_family('[::]/64', strict=True), 6)
+        self.assertEqual(get_ip_family('::1-::2', strict=True), 6)
