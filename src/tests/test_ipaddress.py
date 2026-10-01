@@ -72,6 +72,7 @@ class TestIsIpAddress(unittest.TestCase):
         self.assertEqual(get_ip_family('-::', strict=True), 0)
         self.assertEqual(get_ip_family('-::/64', strict=True), 0)
         self.assertEqual(get_ip_family('::/-64', strict=True), 0)
+        self.assertEqual(get_ip_family('::%interface', strict=True), 0)
 
         self.assertEqual(get_ip_family('127.0.0.1', strict=True), 4)
         self.assertEqual(get_ip_family('127.0.0.0/24', strict=True), 4)
