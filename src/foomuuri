@@ -1528,6 +1528,12 @@ def get_ip_family(value: str, *, strict: bool = False) -> int:
 
     Return 4, 6, or 0 if not detected.
     """
+    # pylint: disable=too-many-return-statements
+
+    # Reject "fe80::1%foo};flush" in strict mode
+    if strict and '%' in value:
+        return 0
+
     # -IP
     if not strict and value.startswith('-'):
         value = value[1:]  # Negative is handled in single_or_set()
