@@ -188,6 +188,21 @@ non-IPsec traffic. These are useful in the `snat` and `dnat`
 [sections](../section/snat.md).
 
 
+### length
+
+Matches the IP packet length in bytes. Length includes the protocol header.
+
+Example:
+
+```
+public-localhost {
+  # Allows pings up to 91 bytes, since the ICMP header is 8 bytes
+  ping length < 100
+  ...
+}
+```
+
+
 ### ipv4, ipv6
 
 A single rule applies to both IPv4 and IPv6 traffic by default. Adding an

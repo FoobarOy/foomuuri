@@ -21,6 +21,7 @@
   will change to `overwrite=no` for all content types.
 * Add support for `==`, `!=`, `<`, `>`, `<=` and `>=` compare operators
   when matching numeric values. For example `tcp < 1024`.
+* Add `length` matcher to check IP packet length in bytes.
 * Add support for `localhost-public { accept }` single line syntax.
 * Add `permanent_counter` option to `foomuuri` section (default: `no`).
   When enabled, named counter values are preserved across `foomuuri reload`.

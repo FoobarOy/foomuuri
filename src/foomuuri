@@ -628,6 +628,7 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     iplist_add: typing.Optional[str] = None
     iplist_update: typing.Optional[str] = None
     iplist_delete: typing.Optional[str] = None
+    length: typing.Optional[str] = None
     dscp: typing.Optional[str] = None
     cgroup: typing.Optional[str] = None
     ct_status: typing.Optional[str] = None
@@ -1867,6 +1868,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             'iplist_add',
             'iplist_update',
             'iplist_delete',
+            'length',
             'dscp',
             'cgroup',
             'ct_status',
@@ -2755,6 +2757,13 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
             return None
         tproxy = f'tproxy {"ip" if ipv == 4 else "ip6"} to {tproxy_to} '
 
+    length = ''
+    if rule.length:
+        length = (
+            f'{"ip" if ipv == 4 else "ip6"} length '
+            f'{single_or_set(rule.length, rule.fileline)} '
+        )
+
     dscp = ''
     if rule.dscp:
         dscp = (
@@ -2781,7 +2790,7 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
     return (
         f'{ipsecmeta}{ct_status}{castmeta}{ifname}{addrlist}{proto_ports}'
         f'{cgroup_match(rule)}{time_match(rule)}{mark_match(rule)}'
-        f'{priority_match}{dscp}{uid}{gid}{tproxy}{meta_set}'
+        f'{priority_match}{length}{dscp}{uid}{gid}{tproxy}{meta_set}'
         f'{iplist_mangle}'
     )
 
