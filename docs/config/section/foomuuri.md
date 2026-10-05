@@ -14,48 +14,28 @@ foomuuri {
 }
 ```
 
-The full list of default values is:
-
-```
-foomuuri {
-  log_rate "1/second burst 3"
-  log_input yes
-  log_output yes
-  log_forward yes
-  log_rpfilter yes
-  log_invalid no
-  log_smurfs no
-  log_prefix "$(szone)-$(dzone) $(statement)"
-  log_level "level info flags skuid"
-  localhost_zone localhost
-  dbus_zone public
-  rpfilter yes
-  flowtable no
-  counter no
-  permanent_counter no
-  set_size 65535
-  recursion_limit 10000
-  priority_offset 5
-  dbus_firewalld no
-  nft_bin nft
-  try_reload_timeout 15
-}
-```
-
 
 ## log_rate
 
-`log_rate` is the default logging rate per source IP address. By default,
-the first three entries per source IP address are logged, followed by one
-additional entry per second. The rate
+`log_rate` (default: `"1/second burst 3"`) is the default logging rate per
+source IP address. By default, the first three entries per source IP
+address are logged, followed by one additional entry per second. The rate
 [specification](../rule/ratelimit.md#global_rate) follows the same format
 as in a rate limit rule.
 
 
-## log_input - log_smurfs
+## log_input, log_output, log_forward, log_rpfilter, log_invalid, log_smurfs
 
-`log_input` through `log_smurfs` define the default logging behavior for
-specific events. The value can be:
+These options define the default logging behavior for specific events:
+
+* `log_input` (default: `yes`)
+* `log_output` (default: `yes`)
+* `log_forward` (default: `yes`)
+* `log_rpfilter` (default: `yes`)
+* `log_invalid` (default: `no`)
+* `log_smurfs` (default: `no`)
+
+The value for each can be:
 
 * `yes`, to log it at `log_rate`
 * `no`, to disable logging for it
@@ -64,33 +44,36 @@ specific events. The value can be:
 
 ## log_prefix
 
-`log_prefix` defines the default log prefix for
-[logging](../rule/logging.md#log). Some built-in chains, such as `rpfilter`
-and `invalid`, always use a static log prefix.
+`log_prefix` (default: `"$(szone)-$(dzone) $(statement)"`) defines the
+default log prefix for [logging](../rule/logging.md#log). Some built-in
+chains, such as `rpfilter` and `invalid`, always use a static log prefix.
 
 
 ## log_level
 
-`log_level` is the syslog level for logging. For possible values, see the
-rule-specific [version](../rule/logging.md#log_level).
+`log_level` (default: `"level info flags skuid"`) is the syslog level for
+logging. For possible values, see the rule-specific
+[version](../rule/logging.md#log_level).
 
 
 ## localhost_zone
 
-`localhost_zone` is the name of the zone used for the computer running
-Foomuuri, similar to "localhost" in hostnames. See the [zone](zone.md) and
-[zone-zone](zonezone.md) sections for more information.
+`localhost_zone` (default: `localhost`) is the name of the zone used for
+the computer running Foomuuri, similar to "localhost" in hostnames. See
+the [zone](zone.md) and [zone-zone](zonezone.md) sections for more
+information.
 
 
 ## dbus_zone
 
-`dbus_zone` is the name of your outgoing internet zone. It is used for
-D-Bus support.
+`dbus_zone` (default: `public`) is the name of your outgoing internet
+zone. It is used for D-Bus support.
 
 
 ## rpfilter
 
-`rpfilter` enables or disables reverse path filtering. The value can be:
+`rpfilter` (default: `yes`) enables or disables reverse path filtering.
+The value can be:
 
 * `yes`, to enable it on all interfaces
 * `no`, to disable it
@@ -100,11 +83,11 @@ D-Bus support.
 
 ## flowtable
 
-`flowtable` enables the Netfilter flowtable infrastructure for the
-specified interfaces, for example `flowtable eth0 eth1`. It improves
-forwarding performance on high-speed interfaces. The value `yes`, or
-negative notation, is not supported here, and at least two interfaces must
-be specified.
+`flowtable` (default: `no`) enables the Netfilter flowtable infrastructure
+for the specified interfaces, for example `flowtable eth0 eth1`. It
+improves forwarding performance on high-speed interfaces. The value
+`yes`, or negative notation, is not supported here, and at least two
+interfaces must be specified.
 
 The optional `hw_offload=yes` keyword enables hardware offloading (make sure
 your interface supports `hw-tc-offload`).
@@ -116,7 +99,7 @@ kernel; use `sysctl -w net.netfilter.nf_conntrack_acct=1` to enable it.
 
 ## counter
 
-`counter` adds an anonymous byte and packet
+`counter` (default: `no`) adds an anonymous byte and packet
 [counter](../rule/logging.md#counter) to all rules. The value can be:
 
 * `yes`, to add it to all rules
@@ -129,13 +112,15 @@ kernel; use `sysctl -w net.netfilter.nf_conntrack_acct=1` to enable it.
 
 ## permanent_counter
 
-If `permanent_counter` is enabled (value: `yes`), named counter values are
-preserved across `foomuuri reload`. They are not preserved across a reboot.
+If `permanent_counter` (default: `no`) is enabled (value: `yes`), named
+counter values are preserved across `foomuuri reload`. They are not
+preserved across a reboot.
 
 
 ## set_size
 
-`set_size` is the size of the [rate limit](../rule/ratelimit.md) set, the
+`set_size` (default: `65535`) is the size of the
+[rate limit](../rule/ratelimit.md) set, the
 [log rate limit](../rule/logging.md) set, and the
 [dynamic iplist](../rule/matcher.md#iplist_update) set - that is, the
 maximum number of entries in the kernel set. The default value of 65535 is
@@ -150,9 +135,9 @@ currently active sets.
 
 ## recursion_limit
 
-`recursion_limit` is the internal limit used to avoid macro and template
-expansion loops. Increase this value if you get a false "Possible macro or
-template loop" error.
+`recursion_limit` (default: `10000`) is the internal limit used to avoid
+macro and template expansion loops. Increase this value if you get a
+false "Possible macro or template loop" error.
 
 
 ## priority_offset
@@ -167,19 +152,19 @@ use `20`.
 
 ## dbus_firewalld
 
-`dbus_firewalld` enables or disables firewalld D-Bus emulation inside
-Foomuuri. NetworkManager can instruct firewalld to attach and detach
-interfaces to zones via a D-Bus call. This option enables Foomuuri to
-listen for the same firewalld D-Bus calls and act on them.
+`dbus_firewalld` (default: `no`) enables or disables firewalld D-Bus
+emulation inside Foomuuri. NetworkManager can instruct firewalld to attach
+and detach interfaces to zones via a D-Bus call. This option enables
+Foomuuri to listen for the same firewalld D-Bus calls and act on them.
 
 
 ## nft_bin
 
-`nft_bin` is the name of the `nft` binary. A full path can be specified if
-required.
+`nft_bin` (default: `nft`) is the name of the `nft` binary. A full path
+can be specified if required.
 
 
 ## try_reload_timeout
 
-`try_reload_timeout` is the timeout, in seconds, for the
+`try_reload_timeout` (default: `15`) is the timeout, in seconds, for the
 `foomuuri try-reload` command.
