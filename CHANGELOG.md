@@ -30,7 +30,7 @@
 * `foomuuri iplist list` command can list entries from all iplists or
   specified ones, optionally filtered to entries containing specified
   IP addresses.
-* Add `prometheus-rasdaemon` and `nut` macros to default services.
+* Add `prometheus-rasdaemon`, `ceph` and `nut` macros to default services.
 * Fix: Macro expansion didn't handle prefix/suffix correctly if macro refers
   to another macro which has `something; something`. (#209)
 * Fix: Support numeric ranges in `uid` and `gid` matchers. (#214)
