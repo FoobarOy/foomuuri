@@ -1441,13 +1441,19 @@ def parse_config_zonemap(config: dict, zones: Zones) -> RuleList:
                 f'{fileline}Zonemap without "new_dzone" or "new_szone" '
                 f'has no effect: {" ".join(line)}'
             )
-        for key in ('szone', 'dzone', 'new_szone', 'new_dzone'):
-            value = rule[key]
-            if value and value not in zones:
+        for key in ('new_szone', 'new_dzone'):
+            if ' ' in (rule[key] or ''):
                 fail(
-                    f'{fileline}Zonemap "{key}" has unknown zone "{value}": '
+                    f'{fileline}Zonemap "{key}" must be single zone: '
                     f'{" ".join(line)}'
                 )
+        for key in ('szone', 'dzone', 'new_szone', 'new_dzone'):
+            for value in (rule[key] or '').split():
+                if value not in zones:
+                    fail(
+                        f'{fileline}Zonemap "{key}" has unknown zone '
+                        f'"{value}": {" ".join(line)}'
+                    )
         zonemap.append(rule)
     INTERNAL.zonemap_loop_check = {}
     return zonemap
