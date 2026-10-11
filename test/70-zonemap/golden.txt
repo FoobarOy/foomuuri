@@ -259,6 +259,120 @@ table inet foomuuri {
 		reject with icmpx admin-prohibited
 	}
 
+	chain localhost-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto localhost-combine_orig_1_4,
+			ipv6 : goto localhost-combine_orig_1_6
+		}
+	}
+
+	chain localhost-combine_orig_1_4 {
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_orig_1 REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-combine_orig_1_6 {
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_orig_1 REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto localhost-combine_orig_2_4,
+			ipv6 : goto localhost-combine_orig_2_6
+		}
+	}
+
+	chain localhost-combine_orig_2_4 {
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_orig_2 REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-combine_orig_2_6 {
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_orig_2 REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto localhost-combine_new_4,
+			ipv6 : goto localhost-combine_new_6
+		}
+	}
+
+	chain localhost-combine_new_4 {
+		tcp dport 1000 goto localhost-a_4
+		tcp dport 1001 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.22 accept
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_new REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
+	chain localhost-combine_new_6 {
+		tcp dport 1000 goto localhost-a_6
+		tcp dport 1001 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "localhost-combine_new REJECT " level info flags skuid
+		reject with icmpx admin-prohibited
+	}
+
 	chain public-localhost {
 		meta nfproto vmap {
 			ipv4 : goto public-localhost_4,
@@ -424,6 +538,129 @@ table inet foomuuri {
 		drop
 	}
 
+	chain public-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto public-combine_orig_1_4,
+			ipv6 : goto public-combine_orig_1_6
+		}
+	}
+
+	chain public-combine_orig_1_4 {
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		tcp dport 1011 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain public-combine_orig_1_6 {
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		tcp dport 1011 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain public-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto public-combine_orig_2_4,
+			ipv6 : goto public-combine_orig_2_6
+		}
+	}
+
+	chain public-combine_orig_2_4 {
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		tcp dport 1011 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain public-combine_orig_2_6 {
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		tcp dport 1011 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain public-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto public-combine_new_4,
+			ipv6 : goto public-combine_new_6
+		}
+	}
+
+	chain public-combine_new_4 {
+		tcp dport 1000 goto public-a_4
+		tcp dport 1001 goto b-combine_new_4
+		tcp dport 1011 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "public-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain public-combine_new_6 {
+		tcp dport 1000 goto public-a_6
+		tcp dport 1001 goto b-combine_new_6
+		tcp dport 1011 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "public-combine_new DROP " level info flags skuid
+		drop
+	}
+
 	chain a-localhost {
 		meta nfproto vmap {
 			ipv4 : goto a-localhost_4,
@@ -581,6 +818,123 @@ table inet foomuuri {
 		drop
 	}
 
+	chain a-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto a-combine_orig_1_4,
+			ipv6 : goto a-combine_orig_1_6
+		}
+	}
+
+	chain a-combine_orig_1_4 {
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "a-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain a-combine_orig_1_6 {
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "a-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain a-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto a-combine_orig_2_4,
+			ipv6 : goto a-combine_orig_2_6
+		}
+	}
+
+	chain a-combine_orig_2_4 {
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "a-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain a-combine_orig_2_6 {
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "a-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain a-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto a-combine_new_4,
+			ipv6 : goto a-combine_new_6
+		}
+	}
+
+	chain a-combine_new_4 {
+		tcp dport 1000 goto a-a_4
+		tcp dport 1001 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "a-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain a-combine_new_6 {
+		tcp dport 1000 goto a-a_6
+		tcp dport 1001 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "a-combine_new DROP " level info flags skuid
+		drop
+	}
+
 	chain b-localhost {
 		meta nfproto vmap {
 			ipv4 : goto b-localhost_4,
@@ -727,6 +1081,967 @@ table inet foomuuri {
 		}
 		fib daddr type multicast drop
 		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "b-b DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto b-combine_orig_1_4,
+			ipv6 : goto b-combine_orig_1_6
+		}
+	}
+
+	chain b-combine_orig_1_4 {
+		tcp dport 1000 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "b-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_orig_1_6 {
+		tcp dport 1000 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "b-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto b-combine_orig_2_4,
+			ipv6 : goto b-combine_orig_2_6
+		}
+	}
+
+	chain b-combine_orig_2_4 {
+		tcp dport 1000 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "b-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_orig_2_6 {
+		tcp dport 1000 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "b-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto b-combine_new_4,
+			ipv6 : goto b-combine_new_6
+		}
+	}
+
+	chain b-combine_new_4 {
+		tcp dport 1000 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "b-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain b-combine_new_6 {
+		tcp dport 1000 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "b-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-localhost {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-localhost_4,
+			ipv6 : goto combine_orig_1-localhost_6
+		}
+	}
+
+	chain combine_orig_1-localhost_4 {
+		goto combine_new-localhost_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-localhost_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-localhost_6 {
+		goto combine_new-localhost_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-localhost_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-public {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-public_4,
+			ipv6 : goto combine_orig_1-public_6
+		}
+	}
+
+	chain combine_orig_1-public_4 {
+		goto combine_new-public_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto combine_orig_1-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-public_6 {
+		goto combine_new-public_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto combine_orig_1-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-a {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-a_4,
+			ipv6 : goto combine_orig_1-a_6
+		}
+	}
+
+	chain combine_orig_1-a_4 {
+		goto combine_new-a_4
+		tcp dport 1001 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-a_6 {
+		goto combine_new-a_6
+		tcp dport 1001 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-b {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-b_4,
+			ipv6 : goto combine_orig_1-b_6
+		}
+	}
+
+	chain combine_orig_1-b_4 {
+		goto combine_new-b_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-b_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-b_6 {
+		goto combine_new-b_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-b_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-combine_orig_1_4,
+			ipv6 : goto combine_orig_1-combine_orig_1_6
+		}
+	}
+
+	chain combine_orig_1-combine_orig_1_4 {
+		goto combine_new-combine_orig_1_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_orig_1_6 {
+		goto combine_new-combine_orig_1_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-combine_orig_2_4,
+			ipv6 : goto combine_orig_1-combine_orig_2_6
+		}
+	}
+
+	chain combine_orig_1-combine_orig_2_4 {
+		goto combine_new-combine_orig_2_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_orig_2_6 {
+		goto combine_new-combine_orig_2_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_1-combine_new_4,
+			ipv6 : goto combine_orig_1-combine_new_6
+		}
+	}
+
+	chain combine_orig_1-combine_new_4 {
+		goto combine_new-combine_new_4
+		tcp dport 1000 goto combine_orig_1-a_4
+		tcp dport 1001 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_1-combine_new_6 {
+		goto combine_new-combine_new_6
+		tcp dport 1000 goto combine_orig_1-a_6
+		tcp dport 1001 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_1-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-localhost {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-localhost_4,
+			ipv6 : goto combine_orig_2-localhost_6
+		}
+	}
+
+	chain combine_orig_2-localhost_4 {
+		goto combine_new-localhost_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-localhost_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-localhost_6 {
+		goto combine_new-localhost_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-localhost_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-public {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-public_4,
+			ipv6 : goto combine_orig_2-public_6
+		}
+	}
+
+	chain combine_orig_2-public_4 {
+		goto combine_new-public_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto combine_orig_2-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-public_6 {
+		goto combine_new-public_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto combine_orig_2-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-a {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-a_4,
+			ipv6 : goto combine_orig_2-a_6
+		}
+	}
+
+	chain combine_orig_2-a_4 {
+		goto combine_new-a_4
+		tcp dport 1001 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-a_6 {
+		goto combine_new-a_6
+		tcp dport 1001 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-b {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-b_4,
+			ipv6 : goto combine_orig_2-b_6
+		}
+	}
+
+	chain combine_orig_2-b_4 {
+		goto combine_new-b_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-b_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-b_6 {
+		goto combine_new-b_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-b_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-combine_orig_1_4,
+			ipv6 : goto combine_orig_2-combine_orig_1_6
+		}
+	}
+
+	chain combine_orig_2-combine_orig_1_4 {
+		goto combine_new-combine_orig_1_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_orig_1_6 {
+		goto combine_new-combine_orig_1_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-combine_orig_2_4,
+			ipv6 : goto combine_orig_2-combine_orig_2_6
+		}
+	}
+
+	chain combine_orig_2-combine_orig_2_4 {
+		goto combine_new-combine_orig_2_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_orig_2_6 {
+		goto combine_new-combine_orig_2_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto combine_orig_2-combine_new_4,
+			ipv6 : goto combine_orig_2-combine_new_6
+		}
+	}
+
+	chain combine_orig_2-combine_new_4 {
+		goto combine_new-combine_new_4
+		tcp dport 1000 goto combine_orig_2-a_4
+		tcp dport 1001 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_orig_2-combine_new_6 {
+		goto combine_new-combine_new_6
+		tcp dport 1000 goto combine_orig_2-a_6
+		tcp dport 1001 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_orig_2-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-localhost {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-localhost_4,
+			ipv6 : goto combine_new-localhost_6
+		}
+	}
+
+	chain combine_new-localhost_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-localhost_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		ip protocol igmp ip daddr 224.0.0.1 accept
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-localhost_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-localhost_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-localhost DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-public {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-public_4,
+			ipv6 : goto combine_new-public_6
+		}
+	}
+
+	chain combine_new-public_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-public_4
+		tcp dport 1010 goto combine_new-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-public_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-public_6
+		tcp dport 1010 goto combine_new-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-public DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-a {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-a_4,
+			ipv6 : goto combine_new-a_6
+		}
+	}
+
+	chain combine_new-a_4 {
+		tcp dport 1001 goto b-a_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-a_6 {
+		tcp dport 1001 goto b-a_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-a DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-b {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-b_4,
+			ipv6 : goto combine_new-b_6
+		}
+	}
+
+	chain combine_new-b_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-b_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-b_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-b_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-b DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_orig_1 {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-combine_orig_1_4,
+			ipv6 : goto combine_new-combine_orig_1_6
+		}
+	}
+
+	chain combine_new-combine_orig_1_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-combine_orig_1_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_orig_1_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-combine_orig_1_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_orig_1 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_orig_2 {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-combine_orig_2_4,
+			ipv6 : goto combine_new-combine_orig_2_6
+		}
+	}
+
+	chain combine_new-combine_orig_2_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-combine_orig_2_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_orig_2_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-combine_orig_2_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_orig_2 DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_new {
+		meta nfproto vmap {
+			ipv4 : goto combine_new-combine_new_4,
+			ipv6 : goto combine_new-combine_new_6
+		}
+	}
+
+	chain combine_new-combine_new_4 {
+		tcp dport 1000 goto combine_new-a_4
+		tcp dport 1001 goto b-combine_new_4
+		jump allow_icmp_4
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_4,
+			untracked : jump smurfs_4
+		}
+		fib daddr type { broadcast, multicast } drop
+		update @_lograte_set_4 { ip saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_new DROP " level info flags skuid
+		drop
+	}
+
+	chain combine_new-combine_new_6 {
+		tcp dport 1000 goto combine_new-a_6
+		tcp dport 1001 goto b-combine_new_6
+		jump allow_icmp_6
+		ct state vmap {
+			established : accept,
+			related : accept,
+			invalid : jump invalid_drop,
+			new : jump smurfs_6,
+			untracked : jump smurfs_6
+		}
+		fib daddr type multicast drop
+		update @_lograte_set_6 { ip6 saddr limit rate 1/second burst 3 packets } log prefix "combine_new-combine_new DROP " level info flags skuid
 		drop
 	}
 
