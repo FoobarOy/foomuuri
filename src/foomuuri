@@ -12,7 +12,7 @@ import collections
 import concurrent.futures
 import contextlib
 import dataclasses
-import datetime
+import datetime as dt
 import io
 import ipaddress
 import itertools
@@ -4629,7 +4629,7 @@ def parse_duration(timespec: str, fallback: int) -> int:
 
     if delta and not timespec:
         with contextlib.suppress(OverflowError):
-            return int(datetime.timedelta(**delta).total_seconds())
+            return int(dt.timedelta(**delta).total_seconds())
 
     return fallback
 
@@ -4923,13 +4923,6 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
     return addresses
 
 
-def str_to_time(timestamp: str) -> int:
-    """Convert time string to unix timestamp."""
-    obj = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')
-    obj = obj.replace(tzinfo=datetime.timezone.utc)
-    return int(obj.timestamp())
-
-
 # Map IP addresses to expiration timestamps.
 IPListAddresses = dict[str, int]
 
@@ -5175,8 +5168,11 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                 source = f'manual.@{items[4][:-2]}'
 
                 if len(items) == 12:
-                    # iplist_manual_file has expire stamp.
-                    timeout = str_to_time(items[11])
+                    # iplist_manual_file has expire timestamp. It's almost
+                    # in ISO 8601 format, but without timezone 'Z'.
+                    timeout = int(
+                        dt.datetime.fromisoformat(f'{items[11]}Z').timestamp()
+                    )
                 else:
                     timeout = int(time.time()) + parse_duration(items[8], 0)
                 self._ensure_entry(source)['ip'][items[6]] = timeout
