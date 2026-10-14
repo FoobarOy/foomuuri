@@ -1584,18 +1584,22 @@ def get_ip_family(value: str, *, strict: bool = False) -> int:
     return 0
 
 
-def is_port(value: str, protocol: str) -> bool:
-    """Check if value is port: "1", "1-2" or "1,2", or any combination.
+def is_port(value: str, rule: Rule) -> bool:
+    """Check if value is port number ("1", "1-2", "-3") or ICMP type.
 
-    This is used in parse_rule_line so protocol must specified.
-    Allow special keywords for protocol icmp/icmpv6.
+    This function is used in parse_rule_line when parsing "tcp 22" config
+    line shortcut.
 
-    Comma notation "1,2" is undoc for backward compability.
+    Comma notation "1,2" is accepted with warning message. It is undoc for
+    backward compability and will result an error in some future version.
     """
-    if value.startswith('-') and value[1:].isnumeric():
-        return True  # Single negative port "-1" works too
+    # Strip "-" from negative format: "-3", "-1-2", "-echo-request"
+    if value.startswith('-') and len(value) > 1:
+        value = value[1:]
+
+    # Verify each value
     for item in value.split(','):
-        if protocol in {'icmp', 'icmpv6'} and (
+        if rule.protocol in {'icmp', 'icmpv6'} and (
             # See: "nft describe icmp type; nft describe icmpv6 type"
             item == 'redirect' or re.fullmatch(r'[a-z2]{2,}-[-a-z]{5,}', item)
         ):
@@ -1603,6 +1607,14 @@ def is_port(value: str, protocol: str) -> bool:
         for number in item.split('-'):
             if not number.isnumeric():
                 return False
+
+    # Warning if there is "," instead of " "
+    if ',' in value:
+        warning(
+            f'{rule.fileline}Use "{value.replace(",", " ")}" when listing '
+            f'multiple ports: {" ".join(rule.line)}'
+        )
+
     return True
 
 
@@ -1760,8 +1772,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             not keyword
             and rule.protocol
             and (
-                Validators.str_comparison_operator(item)
-                or is_port(item, rule.protocol)
+                Validators.str_comparison_operator(item) or is_port(item, rule)
             )
         ):
             keyword = 'dport'
