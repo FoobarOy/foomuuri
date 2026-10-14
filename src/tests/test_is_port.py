@@ -33,8 +33,10 @@ class TestIsPort(unittest.TestCase):
             'tcp 1-3',
             'tcp -2',
             'icmp 8',
+            'icmp -8',
             'icmp redirect',
             'icmp echo-request',
+            'icmp -echo-request',
         ):
             protocol, value = item.split(' ', 1)
             self.run_is_port(protocol, value, True)
