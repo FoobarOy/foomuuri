@@ -113,8 +113,9 @@ kernel; use `sysctl -w net.netfilter.nf_conntrack_acct=1` to enable it.
 ## permanent_counter
 
 If `permanent_counter` (default: `no`) is enabled (value: `yes`), named
-counter values are preserved across `foomuuri reload`. They are not
-preserved across a reboot.
+counter values are preserved across `foomuuri reload`. After a reboot, they
+are restored to the values saved during the previous `foomuuri start` or
+`foomuuri reload`.
 
 
 ## set_size
