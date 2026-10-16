@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.34 (20xx-xx-xx)
+## 0.34 (2026-10-16)
 
 * BREAKING CHANGE: Iplist filter `|missing-ok` is replaced by `missing_ok=yes`
   setting. This setting can be defined globally or per iplist, old filter was
