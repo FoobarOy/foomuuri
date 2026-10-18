@@ -13,7 +13,6 @@ import concurrent.futures
 import contextlib
 import dataclasses
 import datetime as dt
-import io
 import ipaddress
 import itertools
 import json
@@ -4538,9 +4537,7 @@ def active_sets() -> set[str]:
 def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
     """Download URL and return it as text, or None if failure."""
 
-    def get_response_content(
-        response: typing.Any, max_size: int
-    ) -> io.BytesIO:
+    def get_response_content(response: typing.Any, max_size: int) -> bytearray:
         """Validate and return response content."""
         if response.status != 200:
             raise ValueError(f'status code: {response.status}')
@@ -4551,10 +4548,10 @@ def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
                 f'content length {content_length} exceeds {max_size}'
             )
 
-        content = io.BytesIO()
+        content = bytearray()
         for chunk in response.stream(INTERNAL.url_chunk_size):
-            content.write(chunk)
-            if content.tell() > max_size:
+            content.extend(chunk)
+            if len(content) > max_size:
                 raise ValueError(f'content length exceeds {max_size}')
 
         return content
@@ -4574,10 +4571,8 @@ def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
             retries=urllib3.Retry(**INTERNAL.url_get_retries),
             timeout=urllib3.Timeout(**INTERNAL.url_get_timeout),
         ) as response:
-            return (
-                get_response_content(response, options.max_size)
-                .getvalue()
-                .decode('utf-8', errors='ignore')
+            return get_response_content(response, options.max_size).decode(
+                'utf-8', errors='ignore'
             )
     except ImportError:
         warning(
