@@ -4,14 +4,14 @@
 
 all: distclean
 	mkdir final
-	$(MAKE) version VERSION=0.27 HASH=cdfd86778a61d1ed81eaad50dbebc54bd7e9452e
-	$(MAKE) version VERSION=0.28 HASH=38c5d4a1097f30cc2addd093b66c4a82e0e95763
-	$(MAKE) version VERSION=0.29 HASH=81c54c327f79baffdb7246d0bc637df821645d31
-	$(MAKE) version VERSION=0.30 HASH=8a6de6c5e61f62d84cbe9b24cfb742f9c9a65616
-	$(MAKE) version VERSION=0.31 HASH=8a6de6c5e61f62d84cbe9b24cfb742f9c9a65616
-	$(MAKE) version VERSION=0.32 HASH=9f850bfa3d55fca9972ff4556fece079e6c10d44
+	$(MAKE) version VERSION=0.27 HASH=cdfd867
+	$(MAKE) version VERSION=0.28 HASH=38c5d4a
+	$(MAKE) version VERSION=0.29 HASH=81c54c3
+	$(MAKE) version VERSION=0.30 HASH=8a6de6c
+	$(MAKE) version VERSION=0.31 HASH=8a6de6c
+	$(MAKE) version VERSION=0.32 HASH=9f850bf
 	$(MAKE) version VERSION=0.33 HASH=v0.33
-	$(MAKE) version VERSION=0.34 HASH=v0.34
+	$(MAKE) version VERSION=0.34 HASH=359b934
 	$(MAKE) version VERSION=development HASH=HEAD
 	cp versions.json robots.txt final/
 	ln -s $(shell jq -r '.[] | select(.version == "latest") | .title | ltrimstr("v")' versions.json) final/latest
