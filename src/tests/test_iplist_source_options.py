@@ -54,11 +54,12 @@ class TestIPListSourceOptionsSetOption(unittest.TestCase):
                     options.set_option('overwrite', value, 'https://foo.bar')
                 self.assertEqual(options.overwrite, value)
                 warning.assert_called_once_with(
-                    'Conflicting iplist source option "overwrite" for "https://foo.bar"'
+                    'Conflicting iplist source option "overwrite" for '
+                    '"https://foo.bar"'
                 )
 
-    def test_conflicting_none_keeps_value(self):
-        """Test setting None over True/False prints warning and keeps value."""
+    def test_conflicting_none_keeps_value_warning(self):
+        """Test setting None over True/False keeps value with warning."""
         for value in (True, False):
             options = IPListSourceOptions()
             options.overwrite = value

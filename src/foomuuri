@@ -5053,7 +5053,6 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         source: str,
         addresses: dict[str, int],
         options: IPListSourceOptions,
-        default_is_overwrite: bool,
         now: int,
     ) -> None:
         """Append or overwrite addresses to source."""
@@ -5061,7 +5060,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         # pylint: disable=too-many-positional-arguments
 
         if options.overwrite is None:
-            overwrite_mode = default_is_overwrite
+            # The default is to append
+            overwrite_mode = False
         else:
             overwrite_mode = options.overwrite
         entry = self._ensure_entry(source)
@@ -5087,14 +5087,11 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         )
 
         if value is not None:
-            # These lists are always complete address lists so overwrite=yes
-            # works here. Except when the downloaded list is empty, so
-            # overwrite=no is safe default value.
             expire = self._normalize_expire(now, options.timeout)
             addresses = dict.fromkeys(
                 iplist_parse_content(source, value), expire
             )
-            self._append_or_overwrite(source, addresses, options, False, now)
+            self._append_or_overwrite(source, addresses, options, now)
             verbose(
                 f'Iplist content for "{source}" refreshed, '
                 f'{len(addresses)} entries'
@@ -5141,7 +5138,6 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                         hostname,
                         addresses,
                         hostnames[hostname],
-                        False,
                         now,
                     )
                     verbose(
