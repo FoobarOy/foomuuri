@@ -26,10 +26,6 @@ forward {  # internal-public
   mss pmtu
 }
 
-input {    # public-localhost
-  mss pmtu
-}
-
 output {   # localhost-public
   mss pmtu
 }
