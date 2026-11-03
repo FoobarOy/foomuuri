@@ -628,6 +628,7 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     iplist_update: typing.Optional[str] = None
     iplist_delete: typing.Optional[str] = None
     length: typing.Optional[str] = None
+    hdrlength: typing.Optional[str] = None
     dscp: typing.Optional[str] = None
     cgroup: typing.Optional[str] = None
     ct_status: typing.Optional[str] = None
@@ -1891,6 +1892,7 @@ def parse_rule_line(fileline_line: tuple[str, list[str]]) -> Rule:
             'iplist_update',
             'iplist_delete',
             'length',
+            'hdrlength',
             'dscp',
             'cgroup',
             'ct_status',
@@ -2781,9 +2783,14 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
 
     length = ''
     if rule.length:
-        length = (
+        length += (
             f'{"ip" if ipv == 4 else "ip6"} length '
             f'{single_or_set(rule.length, rule.fileline)} '
+        )
+    if rule.hdrlength:
+        length += (
+            f'{"ip" if ipv == 4 else "ip6"} hdrlength '
+            f'{single_or_set(rule.hdrlength, rule.fileline)} '
         )
 
     dscp = ''

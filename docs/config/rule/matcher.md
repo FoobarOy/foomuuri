@@ -203,6 +203,19 @@ public-localhost {
 ```
 
 
+### hdrlength
+
+Matches the IP packet header length in bytes.
+
+Example:
+
+```
+input filter -310 {
+  ipv4 tcp hdrlength > 5 drop
+}
+```
+
+
 ### ipv4, ipv6
 
 A single rule applies to both IPv4 and IPv6 traffic by default. Adding an
