@@ -174,16 +174,11 @@ The default is 33554432 (32 MiB); content exceeding this size is ignored.
 
 ### Content Management & Merging
 
-The optional `overwrite=yes|no` option controls how resolved IP addresses
-or URL content are applied to the iplist. With `yes`, old content is
-removed and replaced with the new addresses. With `no`, old content is
-kept until it expires, and new addresses are either added or have their
+The optional `overwrite=yes|no` option (default: `no`) controls how resolved
+IP addresses or URL content are applied to the iplist. With `yes`, old
+content is removed and replaced with the new addresses. With `no`, old content
+is kept until it expires, and new addresses are either added or have their
 expiry timeout updated.
-
-The default `overwrite` value depends on the content type:
-
-* URL/file content defaults to `overwrite=yes`
-* DNS resolution defaults to `overwrite=no`
 
 The optional `merge=no` option (default: `yes`) disables IP address
 auto-merging. It is generally recommended to leave auto-merging enabled,

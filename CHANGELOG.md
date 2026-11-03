@@ -2,6 +2,8 @@
 
 ## 0.35 (20xx-xx-xx)
 
+* BREAKING CHANGE: Iplist URL/file content type defaults to `overwrite=no`.
+  Now all content types default to `no`.
 * Add `hdrlength` matcher to check IP packet header length in bytes.
 
 ## 0.34 (2026-10-16)

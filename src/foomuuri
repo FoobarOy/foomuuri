@@ -5087,13 +5087,14 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         )
 
         if value is not None:
-            # Replace list, don't append. These lists are always complete
-            # address lists.
+            # These lists are always complete address lists so overwrite=yes
+            # works here. Except when the downloaded list is empty, so
+            # overwrite=no is safe default value.
             expire = self._normalize_expire(now, options.timeout)
             addresses = dict.fromkeys(
                 iplist_parse_content(source, value), expire
             )
-            self._append_or_overwrite(source, addresses, options, True, now)
+            self._append_or_overwrite(source, addresses, options, False, now)
             verbose(
                 f'Iplist content for "{source}" refreshed, '
                 f'{len(addresses)} entries'

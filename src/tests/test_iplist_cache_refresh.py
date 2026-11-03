@@ -65,7 +65,11 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             self.url, ip={'10.0.0.1': self.now}, refresh=self.now
         )
         entry, warning, verbose, _ = self.run_refresh(
-            source=self.url, cache=cache, content='', missing_ok=True
+            source=self.url,
+            cache=cache,
+            content='',
+            missing_ok=True,
+            overwrite=True,
         )
         self.assertFalse(entry['ip'])
         self.assertTrue(entry['dirty'])
@@ -80,7 +84,11 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             self.url, ip={'10.0.0.1': self.now}, refresh=self.now
         )
         entry, warning, verbose, _ = self.run_refresh(
-            source=self.url, cache=cache, content='', missing_ok=None
+            source=self.url,
+            cache=cache,
+            content='',
+            missing_ok=None,
+            overwrite=True,
         )
         self.assertFalse(entry['ip'])
         self.assertTrue(entry['dirty'])
@@ -187,7 +195,10 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             self.url, ip={'10.0.0.1': self.now}, refresh=self.now
         )
         entry, warning, verbose, _ = self.run_refresh(
-            source=self.url, cache=cache, content='10.0.0.9\n'
+            source=self.url,
+            cache=cache,
+            content='10.0.0.9\n',
+            overwrite=True,
         )
         self.assertNotIn('10.0.0.1', entry['ip'])
         self.assertIn('10.0.0.9', entry['ip'])
