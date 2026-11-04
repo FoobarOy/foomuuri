@@ -453,11 +453,11 @@ class IPListOptions(TypedConfig):
     dynamic: bool = dataclasses.field(
         default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # dynamic flag, implies merge=no and no interval
-    overwrite: typing.Optional[bool] = dataclasses.field(
-        default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
-    )  # overwrite or append source entries, None uses default value
-    missing_ok: typing.Optional[bool] = dataclasses.field(
-        default=None, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    overwrite: bool = dataclasses.field(
+        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
+    )  # overwrite or append source entries
+    missing_ok: bool = dataclasses.field(
+        default=False, metadata={'convert_str': Converters.str_yes_no_to_bool}
     )  # allow empty/failed URL download or DNS resolve
 
     def parse_option(self, option: str) -> bool:
@@ -492,6 +492,8 @@ class IPList:
 
     options: IPListOptions = dataclasses.field(default_factory=IPListOptions)
     sources: list[str] = dataclasses.field(default_factory=list)
+    # source -> fileline of last reference
+    source_refs: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(eq=False)
@@ -535,33 +537,45 @@ class IPListSourceOptions:  # pylint: disable=too-few-public-methods
     timeout: int = sys.maxsize
     refresh: int = sys.maxsize
     max_size: int = sys.maxsize
-    overwrite: typing.Optional[bool] = None
-    missing_ok: typing.Optional[bool] = None
+    overwrite: bool = IPListOptions.overwrite
+    missing_ok: bool = IPListOptions.missing_ok
 
-    def update_if_less(self, name: str, new_value: int) -> None:
-        """Update attribute value if new value is less than current."""
-        setattr(self, name, min(new_value, getattr(self, name)))
 
-    def set_option(
-        self,
-        name: str,
-        new_value: typing.Optional[bool],
-        source: str,
-    ) -> None:
-        """Set attribute value. Print warning if conflicting value is given.
+class IPListSourceType:
+    """Iplist source type."""
 
-        Print a warning if value changes:
-        - True -> False
-        - False -> True
-        - True or False -> None (unset, default value)
-        """
-        old_value = getattr(self, name)
-        if old_value is not None and old_value != new_value:
-            warning(
-                f'Conflicting iplist source option "{name}" for "{source}"'
+    LOCATION = 'location'
+    HOSTNAME = 'hostname'
+    STATIC = 'static'
+
+    @classmethod
+    def from_source(cls, source: str) -> str:
+        """Return source type for source string."""
+        if source.startswith(('https://', 'http://', '.', '/')):
+            return cls.LOCATION
+        if not get_ip_family(source, strict=True):
+            return cls.HOSTNAME
+        return cls.STATIC
+
+    @classmethod
+    def options(cls, source_type: str) -> tuple[str, ...]:
+        """Return iplist option names relevant to source type."""
+        if source_type == cls.LOCATION:
+            return (
+                'url_timeout',
+                'url_refresh',
+                'url_max_size',
+                'overwrite',
+                'missing_ok',
             )
-        if new_value is not None:  # Don't change from True/False to None
-            setattr(self, name, new_value)
+        if source_type == cls.HOSTNAME:
+            return (
+                'dns_timeout',
+                'dns_refresh',
+                'overwrite',
+                'missing_ok',
+            )
+        return ()
 
 
 @dataclasses.dataclass
@@ -5059,13 +5073,8 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         # pylint: disable=too-many-arguments
         # pylint: disable=too-many-positional-arguments
 
-        if options.overwrite is None:
-            # The default is to append
-            overwrite_mode = False
-        else:
-            overwrite_mode = options.overwrite
         entry = self._ensure_entry(source)
-        if overwrite_mode:
+        if options.overwrite:
             entry['ip'] = addresses
         else:
             entry['ip'].update(addresses)
@@ -5281,7 +5290,7 @@ class IPListValue:
         self = cls(name=name)
         static_addresses: list[str] = []
         for source in sources:
-            if get_ip_family(source, strict=True):
+            if IPListSourceType.from_source(source) == IPListSourceType.STATIC:
                 static_addresses.append(source)
             else:
                 self._copy_addresses(source_cache, source)
@@ -5293,10 +5302,35 @@ class IPListValue:
         return self
 
 
+def iplist_warn_source_option_conflicts(iplists: IPLists) -> None:
+    """Warn about conflicting source options in shared iplist sources."""
+    # source -> {iplist name: fileline}
+    refs: dict[str, dict[str, str]] = collections.defaultdict(dict)
+    for name, iplist in iplists.items():
+        for source in iplist.sources:
+            refs[source][name] = iplist.source_refs.get(source, '')
+
+    for source in sorted(refs):
+        source_type = IPListSourceType.from_source(source)
+        if source_type == IPListSourceType.STATIC or len(refs[source]) < 2:
+            continue
+
+        for option in IPListSourceType.options(source_type):
+            values = {iplists[name].options[option] for name in refs[source]}
+            if len(values) < 2:
+                continue
+            for fileline in refs[source].values():
+                warning(
+                    f'{fileline}Conflicting iplist source option '
+                    f'"{option}" for "{source}"'
+                )
+
+
 def parse_config_iplist(config: dict) -> IPLists:
     """Parse iplist{} sections from config."""
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     def parse_option(
         options: IPListOptions, option: str, fileline: str
     ) -> bool:
@@ -5359,6 +5393,7 @@ def parse_config_iplist(config: dict) -> IPLists:
             if iplists[name].sources:
                 # Overwrite iplist sources
                 iplists[name].sources.clear()
+                iplists[name].source_refs.clear()
                 warning(
                     f'{fileline}Overwriting iplist "{name}" with value '
                     f'"{" ".join(line[1:])}"'
@@ -5377,6 +5412,7 @@ def parse_config_iplist(config: dict) -> IPLists:
 
             # Add as a source
             iplists[name].sources.append(option)
+            iplists[name].source_refs[option] = fileline
             if '|missing-ok' in option:  # Parse old style |filter
                 iplists[name].options.missing_ok = True
                 warning(
@@ -5385,6 +5421,7 @@ def parse_config_iplist(config: dict) -> IPLists:
                 )
 
         iplist_verify_filters(name, iplists[name].sources, fileline)
+    iplist_warn_source_option_conflicts(iplists)
     if CONFIG.verbose >= 2:
         for name, iplist in iplists.items():
             verbose(f'{name:9s}  {" ".join(iplist.sources)}')
@@ -5395,39 +5432,49 @@ def iplist_collect_resolve_list(
     iplists: IPLists,
     update_only: set[str],
 ) -> tuple[dict[str, IPListSourceOptions], dict[str, IPListSourceOptions]]:
-    """Collect URLs and hostnames to be resolved."""
-    sources = collections.defaultdict(IPListSourceOptions)
-    hostnames = collections.defaultdict(IPListSourceOptions)
-    for iplist_name, iplist in iplists.items():
-        if iplist_name not in update_only:
-            continue
+    """Collect content locations and hostnames to be resolved.
+
+    Use options from the last defined iplist that references the source,
+    regardless of which iplists are selected for update.
+
+    Return locations and hostnames referenced by update_only iplists.
+    """
+    selected_sources = {
+        source
+        for name, iplist in iplists.items()
+        if name in update_only
+        for source in iplist.sources
+    }
+
+    locations = {}
+    hostnames = {}
+    targets = {
+        IPListSourceType.LOCATION: locations,
+        IPListSourceType.HOSTNAME: hostnames,
+    }
+    source_option_prefixes = {
+        IPListSourceType.LOCATION: 'url_',
+        IPListSourceType.HOSTNAME: 'dns_',
+    }
+    for iplist in iplists.values():
         for source in iplist.sources:
-            if source.startswith(('https://', 'http://', '.', '/')):
-                for option in ('timeout', 'refresh', 'max_size'):
-                    sources[source].update_if_less(
-                        option, iplist.options[f'url_{option}']
-                    )
-                sources[source].set_option(
-                    'overwrite', iplist.options.overwrite, source
+            if source not in selected_sources:
+                continue
+            source_type = IPListSourceType.from_source(source)
+            if source_type not in targets:
+                continue
+            source_options = IPListSourceOptions()
+            for option in IPListSourceType.options(source_type):
+                setattr(
+                    source_options,
+                    option.removeprefix(source_option_prefixes[source_type]),
+                    getattr(iplist.options, option),
                 )
-                sources[source].set_option(
-                    'missing_ok', iplist.options.missing_ok, source
-                )
-            elif not get_ip_family(source, strict=True):
-                for option in ('timeout', 'refresh'):
-                    hostnames[source].update_if_less(
-                        option, iplist.options[f'dns_{option}']
-                    )
-                hostnames[source].set_option(
-                    'overwrite', iplist.options.overwrite, source
-                )
-                hostnames[source].set_option(
-                    'missing_ok', iplist.options.missing_ok, source
-                )
+            targets[source_type][source] = source_options
     if CONFIG.verbose >= 2:
-        verbose(f'Sources:   {sources}')
+        verbose(f'Locations: {locations}')
         verbose(f'Hostnames: {hostnames}')
-    return sources, hostnames
+    return locations, hostnames
 
 
 def iplist_output_add_element(
@@ -5576,9 +5623,9 @@ def command_iplist_refresh() -> int:
 
     # Read URLs and files to cache
     cache = IPListSourceCache.read(iplists)
-    sources, hostnames = iplist_collect_resolve_list(iplists, update_only)
-    for source, options in sources.items():
-        cache.refresh_url_or_file(source, options)
+    locations, hostnames = iplist_collect_resolve_list(iplists, update_only)
+    for location, options in locations.items():
+        cache.refresh_url_or_file(location, options)
 
     # Resolve hostnames to cache
     cache.resolve_hostnames(hostnames)

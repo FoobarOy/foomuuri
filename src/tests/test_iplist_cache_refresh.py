@@ -39,8 +39,8 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
         *,
         timeout=1000,
         refresh=1000,
-        missing_ok=None,
-        overwrite=None,
+        missing_ok=foomuuri.IPListSourceOptions.missing_ok,
+        overwrite=foomuuri.IPListSourceOptions.overwrite,
     ):
         """Call IPListSourceCache.refresh_url_or_file()."""
         foomuuri.INTERNAL.force = force
@@ -87,7 +87,7 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             source=self.url,
             cache=cache,
             content='',
-            missing_ok=None,
+            missing_ok=foomuuri.IPListSourceOptions.missing_ok,
             overwrite=True,
         )
         self.assertFalse(entry['ip'])
@@ -107,7 +107,7 @@ class TestSourceCacheRefreshURLOrFile(unittest.TestCase):
             cache=cache,
             content='10.0.0.9\n',
             force=-1,
-            missing_ok=None,
+            missing_ok=foomuuri.IPListSourceOptions.missing_ok,
         )
         self.assertIn('10.0.0.9', entry['ip'])
         self.assertTrue(entry['dirty'])
