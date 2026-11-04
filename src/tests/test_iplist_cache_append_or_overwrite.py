@@ -23,16 +23,13 @@ class TestAppendOrOverwrite(unittest.TestCase):
         cache,
         addresses,
         overwrite=None,
-        default_is_overwrite=True,
     ):
         """Call _append_or_overwrite() with common fixtures."""
         options = foomuuri.IPListSourceOptions()
         options.overwrite = overwrite
         # pylint: disable=protected-access
         # ruff: ignore[private-member-access]
-        cache._append_or_overwrite(
-            self.source, addresses, options, default_is_overwrite, self.now
-        )
+        cache._append_or_overwrite(self.source, addresses, options, self.now)
         return cache[self.source]
 
     def cached_cache(self):
@@ -41,22 +38,15 @@ class TestAppendOrOverwrite(unittest.TestCase):
             self.source, ip={'10.0.0.1': self.now}, refresh=self.now
         )
 
-    def test_default_overwrite_replaces(self, *_):
-        """Test default overwrite mode replaces cached addresses."""
+    def test_default_overwrite_appends(self, *_):
+        """Test default overwrite mode appends cached addresses."""
         cache = self.cached_cache()
         entry = self.run_append_or_overwrite(
-            cache, {'10.0.0.9': self.expire}, default_is_overwrite=True
-        )
-        self.assertEqual(entry['ip'], {'10.0.0.9': self.expire})
-
-    def test_default_append_merges(self, *_):
-        """Test default append mode merges addresses to cached ones."""
-        cache = self.cached_cache()
-        entry = self.run_append_or_overwrite(
-            cache, {'10.0.0.9': self.expire}, default_is_overwrite=False
+            cache,
+            {'10.0.0.9': self.expire},
         )
         self.assertEqual(
-            entry['ip'], {'10.0.0.1': self.now, '10.0.0.9': self.expire}
+            entry['ip'], {'10.0.0.9': self.expire, '10.0.0.1': self.now}
         )
 
     def test_overwrite_true_overrides_append_default(self, *_):
@@ -66,7 +56,6 @@ class TestAppendOrOverwrite(unittest.TestCase):
             cache,
             {'10.0.0.9': self.expire},
             overwrite=True,
-            default_is_overwrite=False,
         )
         self.assertEqual(entry['ip'], {'10.0.0.9': self.expire})
 
@@ -77,7 +66,6 @@ class TestAppendOrOverwrite(unittest.TestCase):
             cache,
             {'10.0.0.9': self.expire},
             overwrite=False,
-            default_is_overwrite=True,
         )
         self.assertEqual(
             entry['ip'], {'10.0.0.1': self.now, '10.0.0.9': self.expire}
