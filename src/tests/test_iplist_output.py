@@ -29,7 +29,7 @@ class TestIPListOutputValues(unittest.TestCase):
         cache,
         iplist_name,
         force=0,
-        missing_ok=None,
+        missing_ok=False,
     ):
         """Call iplist_output_values() with mocked IO."""
         foomuuri.INTERNAL.command = 'iplist'
