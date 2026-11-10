@@ -3904,8 +3904,10 @@ if HAVE_DBUS:
 
         _dbus_error_name = 'fi.foobar.Foomuuri1.exception'
 
-    class DbusCommon(dbus.service.Object):
-        """D-Bus server and common functions."""
+    class DbusFoomuuri(dbus.service.Object):
+        """D-Bus server for Foomuuri."""
+
+        # pylint: disable=invalid-name  # dbus method names
 
         polkit = None
 
@@ -4122,58 +4124,6 @@ if HAVE_DBUS:
                     return key
             return CONFIG.dbus_zone
 
-        def method_get_zones(self) -> list[str]:
-            """Get list of available zones.
-
-            "localhost" can't have any interfaces so don't include it.
-            """
-            return [
-                name for name in self.zones if name != CONFIG.localhost_zone
-            ]
-
-        def method_remove_interface(self, zone: str, interface: str) -> str:
-            """Remove interface from zone, or from all if zone is empty.
-
-            This is currently always handled as "from all".
-            """
-            if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(
-                    f'Invalid interface name: {interface}'
-                )
-            verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
-            return self.change_interface_zone(interface, '')[0]
-
-        def method_add_interface(self, zone: str, interface: str) -> str:
-            """Add interface to zone.
-
-            There can be only one zone per interface so it will be removed
-            from previous zone if needed.
-            """
-            if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(
-                    f'Invalid interface name: {interface}'
-                )
-            zone = self.parse_default_zone(interface, zone)
-            verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
-            return self.change_interface_zone(interface, zone)[1]
-
-        def method_change_zone_of_interface(
-            self, zone: str, interface: str
-        ) -> str:
-            """Change interface to zone."""
-            if not Validators.str_interface_name(interface):
-                raise FoomuuriDbusException(
-                    f'Invalid interface name: {interface}'
-                )
-            zone = self.parse_default_zone(interface, zone)
-            verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
-            return self.change_interface_zone(interface, zone)[0]
-
-    class DbusFoomuuri(DbusCommon):
-        """D-Bus server for Foomuuri."""
-
-        # pylint: disable=invalid-name  # dbus method names
-
         @dbus.service.method(
             'fi.foobar.Foomuuri1.zone',
             in_signature='',
@@ -4181,9 +4131,14 @@ if HAVE_DBUS:
             sender_keyword='sender',
         )
         def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
-            """Get list of available zones."""
+            """Get list of available zones.
+
+            "localhost" can't have any interfaces so don't include it.
+            """
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
-            return self.method_get_zones()
+            return [
+                name for name in self.zones if name != CONFIG.localhost_zone
+            ]
 
         @dbus.service.method(
             'fi.foobar.Foomuuri1.zone',
@@ -4199,10 +4154,16 @@ if HAVE_DBUS:
         ) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
+            This is currently always handled as "from all".
             Return: previous zone
             """
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_remove_interface(zone, interface)
+            if not Validators.str_interface_name(interface):
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
+            verbose(f'Interface "{interface}" remove from zone "{zone}"', 0)
+            return self.change_interface_zone(interface, '')[0]
 
         @dbus.service.method(
             'fi.foobar.Foomuuri1.zone',
@@ -4218,10 +4179,18 @@ if HAVE_DBUS:
         ) -> str:
             """Add interface to zone.
 
+            There can be only one zone per interface so it will be removed
+            from previous zone if needed.
             Return: new zone
             """
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_add_interface(zone, interface)
+            if not Validators.str_interface_name(interface):
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
+            zone = self.parse_default_zone(interface, zone)
+            verbose(f'Interface "{interface}" add to zone "{zone}"', 0)
+            return self.change_interface_zone(interface, zone)[1]
 
         @dbus.service.method(
             'fi.foobar.Foomuuri1.zone',
@@ -4240,9 +4209,15 @@ if HAVE_DBUS:
             Return: previous zone
             """
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_change_zone_of_interface(zone, interface)
+            if not Validators.str_interface_name(interface):
+                raise FoomuuriDbusException(
+                    f'Invalid interface name: {interface}'
+                )
+            zone = self.parse_default_zone(interface, zone)
+            verbose(f'Interface "{interface}" change to zone "{zone}"', 0)
+            return self.change_interface_zone(interface, zone)[0]
 
-    class DbusFirewalld(DbusCommon):
+    class DbusFirewalld(DbusFoomuuri):
         """D-Bus server for firewalld emulation."""
 
         # pylint: disable=invalid-name  # dbus method names
@@ -4255,8 +4230,7 @@ if HAVE_DBUS:
         )
         def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
             """Get list of available zones."""
-            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.info')
-            return self.method_get_zones()
+            return super().getZones(sender)
 
         @dbus.service.method(
             'org.fedoraproject.FirewallD1.zone',
@@ -4274,8 +4248,7 @@ if HAVE_DBUS:
 
             Return: previous zone
             """
-            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_remove_interface(zone, interface)
+            return super().removeInterface(zone, interface, sender)
 
         @dbus.service.method(
             'org.fedoraproject.FirewallD1.zone',
@@ -4293,8 +4266,7 @@ if HAVE_DBUS:
 
             Return: new zone
             """
-            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_add_interface(zone, interface)
+            return super().addInterface(zone, interface, sender)
 
         @dbus.service.method(
             'org.fedoraproject.FirewallD1.zone',
@@ -4312,8 +4284,7 @@ if HAVE_DBUS:
 
             Return: previous zone
             """
-            self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
-            return self.method_change_zone_of_interface(zone, interface)
+            return super().changeZoneOfInterface(zone, interface, sender)
 
         @dbus.service.method(
             'org.fedoraproject.FirewallD1.zone',
