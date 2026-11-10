@@ -158,6 +158,15 @@ emulation inside Foomuuri. NetworkManager can instruct firewalld to attach
 and detach interfaces to zones via a D-Bus call. This option enables
 Foomuuri to listen for the same firewalld D-Bus calls and act on them.
 
+Foomuuri also has its own D-Bus interface, which is currently used only by
+the `foomuuri set interface` command. All D-Bus interfaces can be disabled
+with the following commands:
+
+```
+systemctl stop foomuuri-dbus
+systemctl mask foomuuri-dbus
+```
+
 
 ## nft_bin
 
