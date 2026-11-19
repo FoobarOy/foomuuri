@@ -553,9 +553,9 @@ class IPListSourceType:
         """Return source type for source string."""
         if source.startswith(('https://', 'http://', '.', '/')):
             return cls.LOCATION
-        if not get_ip_family(source, strict=True):
-            return cls.HOSTNAME
-        return cls.STATIC
+        if get_ip_family(source, strict=True):
+            return cls.STATIC
+        return cls.HOSTNAME
 
     @classmethod
     def options(cls, source_type: str) -> tuple[str, ...]:
