@@ -488,7 +488,7 @@ class IPListOptions(TypedConfig):
         return False
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class IPList:
     """Container of iplist options and sources."""
 
@@ -498,7 +498,7 @@ class IPList:
     source_refs: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class IPLists:
     """Mapping of iplist name to IPList."""
 
@@ -580,7 +580,7 @@ class IPListSourceType:
         return ()
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True)
 class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     """A single rule parsed from config."""
 
@@ -4437,14 +4437,11 @@ if HAVE_DBUS:
 
     def command_set() -> int:
         """Modify runtime config by calling D-Bus methods."""
-        if (
-            len(INTERNAL.parameters) != 4
-            or INTERNAL.parameters[0] != 'interface'
-            or INTERNAL.parameters[2] != 'zone'
-        ):
-            command_help()
-        interface = INTERNAL.parameters[1]
-        zone = INTERNAL.parameters[3]
+        match INTERNAL.parameters:
+            case ['interface', interface, 'zone', zone]:
+                pass
+            case _:
+                return command_help()
         try:
             bus = dbus.SystemBus()
             obj = bus.get_object('fi.foobar.Foomuuri1', '/fi/foobar/Foomuuri1')
@@ -5235,7 +5232,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         return self
 
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass(eq=False, slots=True)
 class IPListValue:
     """Hold transient iplist addresses value."""
 
@@ -5781,30 +5778,32 @@ def command_subcommand() -> int:
 
 def command_list() -> int:
     """Backward compability command handler."""
-    if not INTERNAL.parameters:
-        warning(
-            'Command "foomuuri list" is obsolete, use '
-            '"foomuuri ruleset list" instead'
-        )
-        return command_ruleset_list()
-    if INTERNAL.parameters[0] == 'macro':
-        warning(
-            'Command "foomuuri list macro" is obsolete, use '
-            '"foomuuri macro list" instead'
-        )
-        return command_macro_list()
-    if INTERNAL.parameters[0] == 'counter':
-        warning(
-            'Command "foomuuri list counter" is obsolete, use '
-            '"foomuuri counter list" instead'
-        )
-        return command_counter_list()
-    warning(
-        'Command "foomuuri list" is obsolete, use '
-        '"foomuuri ruleset list" instead'
-    )
-    INTERNAL.parameters = ['list'] + INTERNAL.parameters
-    return command_ruleset_list()
+    match INTERNAL.parameters:
+        case []:
+            warning(
+                'Command "foomuuri list" is obsolete, use '
+                '"foomuuri ruleset list" instead'
+            )
+            return command_ruleset_list()
+        case ['macro', *_]:
+            warning(
+                'Command "foomuuri list macro" is obsolete, use '
+                '"foomuuri macro list" instead'
+            )
+            return command_macro_list()
+        case ['counter', *_]:
+            warning(
+                'Command "foomuuri list counter" is obsolete, use '
+                '"foomuuri counter list" instead'
+            )
+            return command_counter_list()
+        case _:
+            warning(
+                'Command "foomuuri list" is obsolete, use '
+                '"foomuuri ruleset list" instead'
+            )
+            INTERNAL.parameters = ['list'] + INTERNAL.parameters
+            return command_ruleset_list()
 
 
 def command_reload() -> int:
@@ -6510,46 +6509,44 @@ def parse_command_line() -> None:
     """Parse command line to INTERNAL.command and INTERNAL.parameters."""
     # pylint: disable=too-many-branches
     for arg in sys.argv[1:]:
-        if arg == '--help':
-            INTERNAL.command = 'help'
-        elif arg == '--version':
-            INTERNAL.command = 'version'
-        elif arg == '--verbose':
-            option = arg[2:]
-            CONFIG[option] += 1
-            INTERNAL.config_override[option] = (
-                int(INTERNAL.config_override.get(option, 0)) + 1
-            )
-        elif arg == '--quiet':
-            option = 'verbose'
-            CONFIG[option] -= 1
-            INTERNAL.config_override[option] = (
-                int(INTERNAL.config_override.get(option, 0)) - 1
-            )
-        elif arg in {'--fork', '--syslog'}:
-            CONFIG[arg[2:]] = 1
-            INTERNAL.config_override[arg[2:]] = 1
-        elif arg == '--force':
-            INTERNAL.force += 1
-        elif arg == '--soft':
-            INTERNAL.force -= 1
-        elif arg.startswith('--set='):
-            if arg.count('=') == 1:
-                fail(f'Invalid syntax for --set=OPTION=VALUE: {arg}')
-            _, option, value = arg.split('=', 2)
-            if option not in CONFIG:
-                fail(f'Unknown foomuuri{{}} option: {option}')
-            try:
-                CONFIG.set_from_str(option, value)
-                INTERNAL.config_override[option] = value
-            except ValueError:
-                fail(f'Invalid foomuuri{{}} option {option} value: {value}')
-        elif arg.startswith('--'):
-            fail(f'Unknown option: {arg}')
-        elif not INTERNAL.command:
-            INTERNAL.command = arg
-        else:
-            INTERNAL.parameters.append(arg)
+        match arg:
+            case '--help' | '--version':
+                INTERNAL.command = arg[2:]
+            case '--fork' | '--syslog' | '--verbose':
+                option = arg[2:]
+                CONFIG[option] += 1
+                INTERNAL.config_override[option] = (
+                    int(INTERNAL.config_override.get(option, 0)) + 1
+                )
+            case '--quiet':
+                option = 'verbose'
+                CONFIG[option] -= 1
+                INTERNAL.config_override[option] = (
+                    int(INTERNAL.config_override.get(option, 0)) - 1
+                )
+            case '--force':
+                INTERNAL.force += 1
+            case '--soft':
+                INTERNAL.force -= 1
+            case _ if arg.startswith('--set='):
+                if arg.count('=') == 1:
+                    fail(f'Invalid syntax for --set=OPTION=VALUE: {arg}')
+                _, option, value = arg.split('=', 2)
+                if option not in CONFIG:
+                    fail(f'Unknown foomuuri{{}} option: {option}')
+                try:
+                    CONFIG.set_from_str(option, value)
+                    INTERNAL.config_override[option] = value
+                except ValueError:
+                    fail(
+                        f'Invalid foomuuri{{}} option {option} value: {value}'
+                    )
+            case _ if arg.startswith('--'):
+                fail(f'Unknown option: {arg}')
+            case _ if not INTERNAL.command:
+                INTERNAL.command = arg
+            case _:
+                INTERNAL.parameters.append(arg)
 
 
 def run_command() -> int:
