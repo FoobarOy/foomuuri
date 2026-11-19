@@ -85,22 +85,24 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_obsolete_syntax_fail(self, fail, warning, *_):
         """Test iplist{} section with invalid obsolete timeout option."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            timeout  # value is missing
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
-            warning.assert_called_once_with(
-                f'File {config_file} line 4: Iplist "timeout" is obsolete, '
-                'use "dns_timeout" or "url_timeout" instead',
-            )
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option '
-                'value: dns_timeout='
-            )
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                timeout  # value is missing
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
+        warning.assert_called_once_with(
+            f'File {config_file} line 4: Iplist "timeout" is obsolete, '
+            'use "dns_timeout" or "url_timeout" instead',
+        )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option '
+            'value: dns_timeout='
+        )
 
     @unittest.mock.patch('foomuuri.warning')
     def test_obsolete_missing_ok_filter(self, warning, *_):
@@ -171,106 +173,118 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_first_invalid_default_option(self, fail, *_):
         """Test first invalid default option on single line."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            invalid url_timeout=2d url_refresh=1d
-            @foo https://foob.ar/
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                invalid url_timeout=2d url_refresh=1d
+                @foo https://foob.ar/
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option name: '
-                'invalid=url_timeout=2d url_refresh=1d'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option name: '
+            'invalid=url_timeout=2d url_refresh=1d'
+        )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_second_invalid_default_option(self, fail, *_):
         """Test second invalid default option on single line."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            url_timeout=2d invalid url_refresh=1d
-            @foo https://foob.ar/
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                url_timeout=2d invalid url_refresh=1d
+                @foo https://foob.ar/
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Unsupported syntax: '
-                'url_timeout=2d invalid url_refresh=1d'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Unsupported syntax: '
+            'url_timeout=2d invalid url_refresh=1d'
+        )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_space_style_default_option_name(self, fail, *_):
         """Test invalid space-style default option name."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            url_min_size 1024
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                url_min_size 1024
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option name: '
-                'url_min_size=1024'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option name: '
+            'url_min_size=1024'
+        )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_space_style_default_option_value(self, fail, *_):
         """Test invalid space-style default option value."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            url_max_size abcd
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                url_max_size abcd
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option value: '
-                'url_max_size=abcd'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option value: '
+            'url_max_size=abcd'
+        )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_name(self, fail, *_):
         """Test invalid default option name."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            invalid_option=whatever_value
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                invalid_option=whatever_value
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option name: '
-                'invalid_option=whatever_value'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option name: '
+            'invalid_option=whatever_value'
+        )
 
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_value(self, fail, *_):
         """Test invalid default option value."""
-        with mock_config_foomuuri(
-            section='iplist',
-            content="""
-            url_max_size=abcd
-        """,
-        ) as config_file:
-            with self.assertRaises(SystemExit):
-                _ = parse_config_iplist(minimal_config())
+        with (
+            mock_config_foomuuri(
+                section='iplist',
+                content="""
+                url_max_size=abcd
+            """,
+            ) as config_file,
+            self.assertRaises(SystemExit),
+        ):
+            _ = parse_config_iplist(minimal_config())
 
-            fail.assert_called_once_with(
-                f'File {config_file} line 4: Invalid iplist{{}} option value: '
-                'url_max_size=abcd'
-            )
+        fail.assert_called_once_with(
+            f'File {config_file} line 4: Invalid iplist{{}} option value: '
+            'url_max_size=abcd'
+        )
 
     def test_start_merge_url_size_options(self, *_):
         """Test start, merge, url_size options."""
