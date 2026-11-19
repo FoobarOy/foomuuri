@@ -8,7 +8,9 @@ from importlib.util import module_from_spec, spec_from_loader
 if (  # ruff: ignore[non-empty-init-module]
     (
         spec := spec_from_loader(
-            'foomuuri', SourceFileLoader('foomuuri', './src/foomuuri')
+            'foomuuri',
+            # ty: ignore[invalid-argument-type]
+            SourceFileLoader('foomuuri', './src/foomuuri'),
         )
     )
     and (foomuuri := module_from_spec(spec))
