@@ -54,7 +54,7 @@ Source tarballs are available on the
 **Requirements**
 
 - `nftables` version 1.0.0 or higher, built with JSON support
-- `python` version 3.9 or higher
+- `python` version 3.12 or higher (Foomuuri v0.34 supports Python 3.9)
 
 **Recommended**
 

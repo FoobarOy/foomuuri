@@ -2,6 +2,9 @@
 
 ## 0.35 (20xx-xx-xx)
 
+* BREAKING CHANGE: The minimum supported Python version is now 3.12.
+  Foomuuri v0.34 supports Python 3.9 and will continue to receive security
+  fixes if needed.
 * BREAKING CHANGE: Iplist URL/file content type defaults to `overwrite=no`.
   Now all content types default to `no`.
 * Add `hdrlength` matcher to check IP packet header length in bytes.

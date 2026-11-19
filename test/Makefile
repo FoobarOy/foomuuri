@@ -16,7 +16,7 @@ all: lint test
 lint:
 	ruff check $(SOURCE)
 	ruff format --diff $(SOURCE)
-	ty check --ignore=import-not-found $(SOURCE)
+	ty check --python-version=3.12 --ignore=import-not-found $(SOURCE)
 	pylint $(SOURCE)
 
 test: $(SUBDIRS)
