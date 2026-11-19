@@ -196,7 +196,7 @@ class TypedConfig:
 
     def _convert_from_str(
         self, field: dataclasses.Field, value: str
-    ) -> typing.Any:
+    ) -> object:
         """Convert string using field type and metadata."""
         if not isinstance(value, str):
             raise TypeError(
@@ -873,9 +873,22 @@ def run_program_shell(args: str, fileline: str) -> str:
     return proc.stdout.rstrip()
 
 
-def nft_command(cmd: str, **kwargs: typing.Any) -> int:
+def nft_command(
+    cmd: str,
+    *,
+    env: dict[str, str] | None = None,
+    stdin: str | None = None,
+    print_output: bool = True,
+    quiet: bool = False,
+) -> int:
     """Run "nft cmd", wrapper to run_program_rc()."""
-    return run_program_rc(CONFIG.nft_bin + [cmd], **kwargs)
+    return run_program_rc(
+        CONFIG.nft_bin + [cmd],
+        env=env,
+        stdin=stdin,
+        print_output=print_output,
+        quiet=quiet,
+    )
 
 
 def nft_json(cmd: str) -> dict | None:
@@ -3928,7 +3941,7 @@ if HAVE_DBUS:
         polkit = None
 
         def __init__(
-            self, conn: typing.Any, object_path: str, zones: Zones
+            self, conn: object, object_path: str, zones: Zones
         ) -> None:
             """Initialize dbus.service.Object."""
             dbus.service.Object.__init__(
@@ -4405,7 +4418,7 @@ if HAVE_DBUS:
 
             def signal_handler(
                 sig: int,
-                _dummy_frame: typing.Any,
+                _dummy_frame: types.FrameType | None,
                 mainloop: typing.Any = mainloop,
             ) -> None:
 
@@ -4848,7 +4861,7 @@ def command_iplist_flush() -> int:
 
 
 def lxml_parser(
-    source: str, parser: typing.Any, path: str, text: str
+    source: str, parser: object, path: str, text: str
 ) -> str | None:
     """Parse html/xml text with lxml."""
     # pylint: disable=c-extension-no-member
@@ -5821,7 +5834,9 @@ def command_reload() -> int:
     return 0
 
 
-def alarm_handler(_dummy_signum: int, _dummy_frame: typing.Any) -> None:
+def alarm_handler(
+    _dummy_signum: int, _dummy_frame: types.FrameType | None
+) -> None:
     """Signal handler to catch input timeout."""
     raise KeyboardInterrupt
 
@@ -6414,7 +6429,9 @@ def command_monitor() -> int:
         daemonize()
 
         # Define reload/stop signal handler
-        def signal_handler(sig: int, _dummy_frame: typing.Any) -> None:
+        def signal_handler(
+            sig: int, _dummy_frame: types.FrameType | None
+        ) -> None:
             if sig == signal.SIGINT:
                 INTERNAL.keep_going = 0
                 notify('STOPPING=1')
