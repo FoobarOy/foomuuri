@@ -22,7 +22,7 @@ class TestAppendOrOverwrite(unittest.TestCase):
         self,
         cache,
         addresses,
-        overwrite=None,
+        overwrite=foomuuri.IPListSourceOptions.overwrite,
     ):
         """Call _append_or_overwrite() with common fixtures."""
         options = foomuuri.IPListSourceOptions()
@@ -49,8 +49,8 @@ class TestAppendOrOverwrite(unittest.TestCase):
             entry['ip'], {'10.0.0.9': self.expire, '10.0.0.1': self.now}
         )
 
-    def test_overwrite_true_overrides_append_default(self, *_):
-        """Test overwrite=yes replaces despite append default."""
+    def test_overwrite_true_replaces_cached(self, *_):
+        """Test overwrite=yes replaces cached addresses."""
         cache = self.cached_cache()
         entry = self.run_append_or_overwrite(
             cache,
@@ -58,18 +58,6 @@ class TestAppendOrOverwrite(unittest.TestCase):
             overwrite=True,
         )
         self.assertEqual(entry['ip'], {'10.0.0.9': self.expire})
-
-    def test_overwrite_false_overrides_overwrite_default(self, *_):
-        """Test overwrite=no appends despite overwrite default."""
-        cache = self.cached_cache()
-        entry = self.run_append_or_overwrite(
-            cache,
-            {'10.0.0.9': self.expire},
-            overwrite=False,
-        )
-        self.assertEqual(
-            entry['ip'], {'10.0.0.1': self.now, '10.0.0.9': self.expire}
-        )
 
     def test_marks_dirty_and_refresh(self):
         """Test entry is marked dirty and stamped with refresh time."""

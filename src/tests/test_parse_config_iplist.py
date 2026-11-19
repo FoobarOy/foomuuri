@@ -1,6 +1,6 @@
 """Basic unit tests of parse_config_iplist()."""
 # pylint: disable=invalid-name,import-error
-# ruff: file-ignore[invalid-argument-name]
+# ruff: file-ignore[invalid-argument-name,no-self-use]
 
 import contextlib
 import copy
@@ -17,6 +17,27 @@ from foomuuri import (
 )
 
 
+@contextlib.contextmanager
+def mock_config_foomuuri(section: str = 'iplist', content: str = ''):
+    """Return context manager of foomuuri.find_config_files() patch.
+
+    foomuuri.find_config_files() is patched to return generated
+    foomuuri configuration file, containing arbitrary section {}
+    with specified content.
+    """
+    # consult tests/test_parse_config_foomuuri.py for mock explanation
+    config_file = unittest.mock.MagicMock()
+    config_file.read_text.return_value = f"""
+        {section} {{
+            {content}
+        }}
+    """
+    with unittest.mock.patch(
+        'foomuuri.find_config_files', side_effect=[[], [config_file]]
+    ):
+        yield config_file
+
+
 @unittest.mock.patch(
     'foomuuri.INTERNAL', new_callable=lambda: copy.deepcopy(BASE_INTERNAL)
 )
@@ -26,31 +47,10 @@ from foomuuri import (
 class TestIplistParseConfig(unittest.TestCase):
     """Test parse_config_iplist()."""
 
-    @staticmethod
-    @contextlib.contextmanager
-    def mock_config_foomuuri(section: str = 'iplist', content: str = ''):
-        """Return context manager of foomuuri.find_config_files() patch.
-
-        foomuuri.find_config_files() is patched to return generated
-        foomuuri configuration file, containing arbitrary section {}
-        with specified content.
-        """
-        # consult tests/test_parse_config_foomuuri.py for mock explanation
-        config_file = unittest.mock.MagicMock()
-        config_file.read_text.return_value = f"""
-            {section} {{
-                {content}
-            }}
-        """
-        with unittest.mock.patch(
-            'foomuuri.find_config_files', side_effect=[[], [config_file]]
-        ):
-            yield config_file
-
     @unittest.mock.patch('foomuuri.warning')
     def test_obsolete_syntax(self, warning, *_):
         """Test obsolete resolve{} section and timeout/refresh options."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='resolve',
             content="""
             timeout 1d 5m
@@ -85,7 +85,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_obsolete_syntax_fail(self, fail, warning, *_):
         """Test iplist{} section with invalid obsolete timeout option."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             timeout  # value is missing
@@ -105,7 +105,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.warning')
     def test_obsolete_missing_ok_filter(self, warning, *_):
         """Test conversion of obsolete |missing-ok filter to option."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo https://foo.bar|missing-ok
@@ -124,7 +124,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_empty_iplist_definition(self, *_):
         """Test empty iplist definition."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo
@@ -136,7 +136,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_valid_default_options(self, *_):
         """Test valid default options, space and equal-sign styles."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_max_size 1024
@@ -156,7 +156,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_single_line_multiple_valid_default_options(self, *_):
         """Test mulitple valid default options on single line."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_timeout=69d url_refresh=42d
@@ -171,7 +171,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_first_invalid_default_option(self, fail, *_):
         """Test first invalid default option on single line."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             invalid url_timeout=2d url_refresh=1d
@@ -189,7 +189,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_second_invalid_default_option(self, fail, *_):
         """Test second invalid default option on single line."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_timeout=2d invalid url_refresh=1d
@@ -207,7 +207,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_space_style_default_option_name(self, fail, *_):
         """Test invalid space-style default option name."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_min_size 1024
@@ -224,7 +224,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_space_style_default_option_value(self, fail, *_):
         """Test invalid space-style default option value."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_max_size abcd
@@ -241,7 +241,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_name(self, fail, *_):
         """Test invalid default option name."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             invalid_option=whatever_value
@@ -258,7 +258,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.fail', side_effect=SystemExit)
     def test_invalid_default_option_value(self, fail, *_):
         """Test invalid default option value."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             url_max_size=abcd
@@ -274,7 +274,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_start_merge_url_size_options(self, *_):
         """Test start, merge, url_size options."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             -start -merge url_max_size=1024
@@ -314,7 +314,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.warning')
     def test_iplist_sources_overwrite(self, warning, *_):
         """Test overwriting of iplist sources."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo https://foob.ar/
@@ -333,7 +333,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_iplist_sources_append(self, *_):
         """Test appending of iplist sources."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo https://foob.ar/
@@ -354,7 +354,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_intermixing_iplist_sources_options(self, *_):
         """Test itermixing of iplist sources and options."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo start=no https://foob.ar/ merge=no https://rabo.of/
@@ -379,7 +379,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_last_option_priority_wins(self, *_):
         """Test last option defined for same ipset definition wins."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo url_timeout=42d
@@ -394,7 +394,7 @@ class TestIplistParseConfig(unittest.TestCase):
     @unittest.mock.patch('foomuuri.verbose')
     def test_iplist_name_and_sources_vebose_output(self, verbose, CONFIG, *_):
         """Test output of iplists name and sources when verbose >= 2."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo https://foob.ar/
@@ -412,7 +412,7 @@ class TestIplistParseConfig(unittest.TestCase):
 
     def test_iplist_dynamic(self, *_):
         """Test dynamic flag in iplist."""
-        with self.mock_config_foomuuri(
+        with mock_config_foomuuri(
             section='iplist',
             content="""
             @foo dynamic=yes
@@ -430,3 +430,181 @@ class TestIplistParseConfig(unittest.TestCase):
                 iplists['@bar'].options.element_timeout,
                 parse_duration('1m30s', -1),
             )
+
+
+@unittest.mock.patch(
+    'foomuuri.INTERNAL', new_callable=lambda: copy.deepcopy(BASE_INTERNAL)
+)
+@unittest.mock.patch(
+    'foomuuri.CONFIG', new_callable=lambda: copy.deepcopy(BASE_CONFIG)
+)
+class TestIplistSourceOptionConflicts(unittest.TestCase):
+    """Test iplist source option conflict warnings."""
+
+    @staticmethod
+    def conflict_calls(config_file, lines, source, option):
+        """Return expected conflict warning calls helper."""
+        return [
+            unittest.mock.call(
+                f'File {config_file} line {line}: Conflicting iplist '
+                f'source option "{option}" for "{source}"'
+            )
+            for line in lines
+        ]
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_conflict(self, warning, *_):
+        """Test warning about conflicting option in shared source."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d
+            @b https://foo url_timeout=2d
+        """,
+        ) as config_file:
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(
+                warning.call_args_list,
+                self.conflict_calls(
+                    config_file, [4, 5], 'https://foo', 'url_timeout'
+                ),
+            )
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_conflict_missing_later(self, warning, *_):
+        """Test warning when later iplist misses option."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d
+            @b https://foo
+        """,
+        ) as config_file:
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(
+                warning.call_args_list,
+                self.conflict_calls(
+                    config_file, [4, 5], 'https://foo', 'url_timeout'
+                ),
+            )
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_conflict_missing_earlier(self, warning, *_):
+        """Test warning when earlier iplist misses option."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo
+            @b https://foo url_timeout=2d
+        """,
+        ) as config_file:
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(
+                warning.call_args_list,
+                self.conflict_calls(
+                    config_file, [4, 5], 'https://foo', 'url_timeout'
+                ),
+            )
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_no_conflict_irrelevant(self, warning, *_):
+        """Test no warning for option irrelevant to source type."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo dns_timeout=1d
+            @b https://foo dns_timeout=2d
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(warning.call_args_list, [])
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_no_conflict_static(self, warning, *_):
+        """Test no warning for shared static IP source."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a 10.0.0.1
+            @b 10.0.0.1
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            warning.assert_not_called()
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_no_conflict_single_iplist(self, warning, *_):
+        """Test no warning for source referenced by single iplist."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            warning.assert_not_called()
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_no_conflict_same_value(self, warning, *_):
+        """Test no warning when shared source options have same value."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d
+            @b https://foo url_timeout=1d
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            warning.assert_not_called()
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_no_conflict_global_default(self, warning, *_):
+        """Test no warning when shared source uses same default."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            url_timeout=1d
+            @a https://foo
+            @b https://foo
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(warning.call_args_list, [])
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_multiple_conflicts(self, warning, *_):
+        """Test one warning per conflicting option."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d overwrite=yes
+            @b https://foo url_timeout=2d overwrite=no
+        """,
+        ) as config_file:
+            _ = parse_config_iplist(minimal_config())
+            self.assertEqual(
+                warning.call_args_list,
+                self.conflict_calls(
+                    config_file, [4, 5], 'https://foo', 'url_timeout'
+                )
+                + self.conflict_calls(
+                    config_file, [4, 5], 'https://foo', 'overwrite'
+                ),
+            )
+
+    @unittest.mock.patch('foomuuri.warning')
+    def test_source_option_overwrite_clears_refs(self, warning, *_):
+        """Test overwriting iplist sources clears old source references."""
+        with mock_config_foomuuri(
+            section='iplist',
+            content="""
+            @a https://foo url_timeout=1d
+            @b https://foo url_timeout=2d
+            @a https://bar
+        """,
+        ):
+            _ = parse_config_iplist(minimal_config())
+            for call in warning.call_args_list:
+                self.assertNotIn(
+                    'Conflicting iplist source option', call.args[0]
+                )
