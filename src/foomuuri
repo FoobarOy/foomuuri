@@ -9,6 +9,7 @@ License: GPL-2.0-or-later
 """
 
 import collections
+import collections.abc
 import concurrent.futures
 import contextlib
 import dataclasses
@@ -183,7 +184,7 @@ class TypedConfig:
         """Set attribute value via index operator."""
         self.__setattr__(name, value)
 
-    def __iter__(self) -> typing.Iterator[str]:
+    def __iter__(self) -> collections.abc.Iterator[str]:
         """Iterate over dataclass field names."""
         # pylint: disable=no-member
         return iter(self.__dataclass_fields__)
@@ -511,15 +512,15 @@ class IPLists:
         """Set iplist value via index operator."""
         self._entries[name] = value
 
-    def __iter__(self) -> typing.Iterator[str]:
+    def __iter__(self) -> collections.abc.Iterator[str]:
         """Iterate over iplist names."""
         return iter(self._entries)
 
-    def items(self) -> typing.ItemsView[str, IPList]:
+    def items(self) -> collections.abc.ItemsView[str, IPList]:
         """Return iterable of iplist mapping."""
         return self._entries.items()
 
-    def values(self) -> typing.ValuesView[IPList]:
+    def values(self) -> collections.abc.ValuesView[IPList]:
         """Return iterable of iplist mapping values."""
         return self._entries.values()
 
@@ -658,13 +659,13 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     only_one: dict[str, str] = dataclasses.field(default_factory=dict)
 
 
-RuleList = list[Rule]
-ZonePairKey = tuple[str, str]
-SpecialChainKey = tuple[str, str | None, str | None]
-ZonePairRules = dict[ZonePairKey, RuleList]
-SpecialChainRules = dict[SpecialChainKey, RuleList]
-Macros = dict[str, list[str]]  # macro name -> expansion values
-Zones = dict[str, list[str]]  # zone name -> interface list mapping
+type RuleList = list[Rule]
+type ZonePairKey = tuple[str, str]
+type SpecialChainKey = tuple[str, str | None, str | None]
+type ZonePairRules = dict[ZonePairKey, RuleList]
+type SpecialChainRules = dict[SpecialChainKey, RuleList]
+type Macros = dict[str, list[str]]  # macro name -> expansion values
+type Zones = dict[str, list[str]]  # zone name -> interface list mapping
 
 
 CONFIG = Config()
@@ -3580,7 +3581,7 @@ def output_footer() -> None:
 
 def save_file(
     filename: pathlib.PosixPath,
-    lines: dict | typing.Iterable[str],
+    lines: dict | collections.abc.Iterable[str],
 ) -> None:
     """Write lines to file. Use temporary file to make this atomic."""
     if str(filename) == '/dev/null':
@@ -4649,7 +4650,7 @@ def seconds_to_duration(seconds: int) -> str:
 
 def iterate_set_elements(
     data: dict | None,
-) -> typing.Iterator[tuple[str, int | None]]:
+) -> collections.abc.Iterator[tuple[str, int | None]]:
     """Iterate elements from "nft --json list set" output."""
     for toplevel in (data or {}).get('nftables', []):
         for elem in toplevel.get('set', {}).get('elem', []):
@@ -4923,7 +4924,7 @@ def iplist_parse_content(source: str, text: str) -> list[str]:
 
 
 # Map IP addresses to expiration timestamps.
-IPListAddresses = dict[str, int]
+type IPListAddresses = dict[str, int]
 
 
 class IPListSourceCacheEntry(typing.TypedDict, total=False):
@@ -4980,7 +4981,10 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         save_file(state_file('iplist_cache_file'), self.data)
 
     def add_manual(
-        self, iplist_name: str, addresses: typing.Iterable[str], timeout: int
+        self,
+        iplist_name: str,
+        addresses: collections.abc.Iterable[str],
+        timeout: int,
     ) -> None:
         """Add addresses to manual source and update timeouts."""
         now = int(time.time())
@@ -4997,7 +5001,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
             expire = self._normalize_expire(now, parsed_timeout)
 
     def delete_manual(
-        self, iplist_name: str, addresses: typing.Iterable[str]
+        self, iplist_name: str, addresses: collections.abc.Iterable[str]
     ) -> None:
         """Delete addresses from manual source."""
         entry = self._ensure_entry(f'manual.{iplist_name}')
@@ -5083,7 +5087,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
                 )
 
     def resolve_hostnames(
-        self, hostnames: typing.Mapping[str, IPListSourceOptions]
+        self, hostnames: collections.abc.Mapping[str, IPListSourceOptions]
     ) -> None:
         """Resolve hostnames and save their addresses to cache."""
         # Collect list of hostnames to resolve
@@ -5192,7 +5196,7 @@ class IPListSourceCache(collections.UserDict[str, IPListSourceCacheEntry]):
         return False
 
     @classmethod
-    def read(cls, iplists: IPLists) -> 'IPListSourceCache':
+    def read(cls, iplists: IPLists) -> typing.Self:
         """Read persistent source cache from disk."""
         self = cls()
         filename = state_file('iplist_cache_file')
@@ -5256,8 +5260,8 @@ class IPListValue:
         cls,
         source_cache: IPListSourceCache,
         name: str,
-        sources: typing.Iterable[str],
-    ) -> 'IPListValue':
+        sources: collections.abc.Iterable[str],
+    ) -> typing.Self:
         """Build a transient iplist from cached and static sources."""
         self = cls(name=name)
         static_addresses: list[str] = []

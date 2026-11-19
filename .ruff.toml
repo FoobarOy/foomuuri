@@ -15,7 +15,6 @@ lint.ignore = [
     "raw-string-in-exception",
     "f-string-in-exception",
     "commented-out-code",
-    "future-rewritable-type-annotation",
     "boolean-type-hint-positional-argument",
     "boolean-default-value-positional-argument",
     "boolean-positional-value-in-call",
