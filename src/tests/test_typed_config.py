@@ -2,7 +2,6 @@
 # pylint: disable=import-error
 
 import pathlib
-import typing
 import unittest
 from dataclasses import dataclass, field
 
@@ -36,7 +35,7 @@ class TestTypedConfig(unittest.TestCase):
 
             # pylint: disable=too-many-instance-attributes
             initialized_str: str = 'init_value1'
-            union_str_or_none: typing.Union[str, None] = None
+            union_str_or_none: str | None = None
             uninitialized_str: str = field(init=False)
             initialized_untyped = 'init_value2'  # ruff: ignore[implicit-class-var-in-dataclass]
             type_conversion_float: float = 0.0
@@ -46,9 +45,7 @@ class TestTypedConfig(unittest.TestCase):
             type_conversion_set: set = field(default_factory=set)
             parametrized_list: list[str] = field(default_factory=list)
             parametrized_dict: dict[str, int] = field(default_factory=dict)
-            parametrized_union: typing.Union[list[str], int] = field(
-                default_factory=list
-            )
+            parametrized_union: list[str] | int = field(default_factory=list)
             validation: str = field(
                 init=False, metadata={'validate': lambda v: v}
             )

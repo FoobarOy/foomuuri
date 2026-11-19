@@ -27,6 +27,7 @@ import subprocess
 import sys
 import syslog
 import time
+import types
 import typing
 import unicodedata
 
@@ -95,7 +96,7 @@ class Validators:
         return 1 <= len(value) <= 15  # IFNAMSIZ=16 including NUL
 
     @staticmethod
-    def has_elements(value: typing.Union[set, list]) -> bool:
+    def has_elements(value: set | list) -> bool:
         """Assert value is non-empty list or set."""
         return len(value) >= 1
 
@@ -163,7 +164,7 @@ class TypedConfig:
         hints to tuples of targets.
         """
         type_origin = typing.get_origin(expected_type)
-        if type_origin is typing.Union:
+        if type_origin in {typing.Union, types.UnionType}:
             return tuple(
                 TypedConfig._isinstance_target(arg)
                 for arg in typing.get_args(expected_type)
@@ -355,7 +356,7 @@ class Internal(TypedConfig):
         default_factory=list
     )  # Parameters for command
     force: int = 0  # --force
-    config_override: dict[str, typing.Union[str, int]] = dataclasses.field(
+    config_override: dict[str, str | int] = dataclasses.field(
         default_factory=dict
     )
 
@@ -585,70 +586,70 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
     # Basic rules
     statement: str = 'accept'
     cast: str = 'unicast'
-    protocol: typing.Optional[str] = None
-    saddr: typing.Optional[str] = None
-    daddr: typing.Optional[str] = None
-    sport: typing.Optional[str] = None
-    dport: typing.Optional[str] = None
-    iifname: typing.Optional[str] = None
-    oifname: typing.Optional[str] = None
-    mac_saddr: typing.Optional[str] = None
-    mac_daddr: typing.Optional[str] = None
+    protocol: str | None = None
+    saddr: str | None = None
+    daddr: str | None = None
+    sport: str | None = None
+    dport: str | None = None
+    iifname: str | None = None
+    oifname: str | None = None
+    mac_saddr: str | None = None
+    mac_daddr: str | None = None
 
     # Is this IPv4/6 specific rule?
     ipv4: bool = False
     ipv6: bool = False
 
     # Rate limits
-    global_rate: typing.Optional[str] = None
-    saddr_rate: typing.Optional[str] = None
-    saddr_rate_mask: typing.Optional[str] = None
-    saddr_rate_name: typing.Optional[str] = None
-    daddr_rate: typing.Optional[str] = None
-    daddr_rate_mask: typing.Optional[str] = None
-    daddr_rate_name: typing.Optional[str] = None
-    saddr_daddr_rate: typing.Optional[str] = None
-    saddr_daddr_rate_mask: typing.Optional[str] = None
-    saddr_daddr_rate_name: typing.Optional[str] = None
+    global_rate: str | None = None
+    saddr_rate: str | None = None
+    saddr_rate_mask: str | None = None
+    saddr_rate_name: str | None = None
+    daddr_rate: str | None = None
+    daddr_rate_mask: str | None = None
+    daddr_rate_name: str | None = None
+    saddr_daddr_rate: str | None = None
+    saddr_daddr_rate_mask: str | None = None
+    saddr_daddr_rate_name: str | None = None
 
     # User limits
-    uid: typing.Optional[str] = None
-    gid: typing.Optional[str] = None
+    uid: str | None = None
+    gid: str | None = None
 
     # Zonemap specific rules
-    szone: typing.Optional[str] = None
-    dzone: typing.Optional[str] = None
-    new_szone: typing.Optional[str] = None
-    new_dzone: typing.Optional[str] = None
+    szone: str | None = None
+    dzone: str | None = None
+    new_szone: str | None = None
+    new_dzone: str | None = None
 
     # Misc rules
-    nat_to: typing.Optional[str] = None  # snat/dnat to
-    queue: typing.Optional[str] = None  # optional queue flags
-    counter: typing.Optional[str] = None
-    helper: typing.Optional[str] = None
-    sipsec: typing.Optional[str] = None
-    dipsec: typing.Optional[str] = None
-    log: typing.Optional[str] = None
-    log_level: typing.Optional[str] = None
-    nft: typing.Optional[str] = None
-    mss: typing.Optional[str] = None
-    template: typing.Optional[str] = None
-    tproxy: typing.Optional[str] = None
-    mark_set: typing.Optional[str] = None
-    mark_match: typing.Optional[str] = None
-    priority_set: typing.Optional[str] = None
-    priority_match: typing.Optional[str] = None
-    iplist_add: typing.Optional[str] = None
-    iplist_update: typing.Optional[str] = None
-    iplist_delete: typing.Optional[str] = None
-    length: typing.Optional[str] = None
-    hdrlength: typing.Optional[str] = None
-    dscp: typing.Optional[str] = None
-    cgroup: typing.Optional[str] = None
-    ct_status: typing.Optional[str] = None
-    time: typing.Optional[str] = None
+    nat_to: str | None = None  # snat/dnat to
+    queue: str | None = None  # optional queue flags
+    counter: str | None = None
+    helper: str | None = None
+    sipsec: str | None = None
+    dipsec: str | None = None
+    log: str | None = None
+    log_level: str | None = None
+    nft: str | None = None
+    mss: str | None = None
+    template: str | None = None
+    tproxy: str | None = None
+    mark_set: str | None = None
+    mark_match: str | None = None
+    priority_set: str | None = None
+    priority_match: str | None = None
+    iplist_add: str | None = None
+    iplist_update: str | None = None
+    iplist_delete: str | None = None
+    length: str | None = None
+    hdrlength: str | None = None
+    dscp: str | None = None
+    cgroup: str | None = None
+    ct_status: str | None = None
+    time: str | None = None
     after_conntrack: bool = True
-    warning: typing.Optional[str] = None  # Print warning to user
+    warning: str | None = None  # Print warning to user
 
     # Internal housekeeping
     plain: bool = True  # Plain "log" or "counter" without anything else
@@ -659,7 +660,7 @@ class Rule(TypedConfig):  # pylint: disable=too-many-instance-attributes
 
 RuleList = list[Rule]
 ZonePairKey = tuple[str, str]
-SpecialChainKey = tuple[str, typing.Optional[str], typing.Optional[str]]
+SpecialChainKey = tuple[str, str | None, str | None]
 ZonePairRules = dict[ZonePairKey, RuleList]
 SpecialChainRules = dict[SpecialChainKey, RuleList]
 Macros = dict[str, list[str]]  # macro name -> expansion values
@@ -782,8 +783,8 @@ def syslog_open_or_close() -> None:
 def run_program_rc(
     args: list,
     *,
-    env: typing.Optional[dict[str, str]] = None,
-    stdin: typing.Optional[str] = None,
+    env: dict[str, str] | None = None,
+    stdin: str | None = None,
     print_output: bool = True,
     quiet: bool = False,
 ) -> int:
@@ -817,9 +818,9 @@ def run_program_rc(
 
 def run_program_pipe(
     args: list[str],
-    text_input: typing.Optional[str],
+    text_input: str | None,
     check_error: bool = True,
-) -> typing.Optional[str]:
+) -> str | None:
     """Run external program with stdin, return its output."""
     if not args:
         return ''
@@ -876,7 +877,7 @@ def nft_command(cmd: str, **kwargs: typing.Any) -> int:
     return run_program_rc(CONFIG.nft_bin + [cmd], **kwargs)
 
 
-def nft_json(cmd: str) -> typing.Optional[dict]:
+def nft_json(cmd: str) -> dict | None:
     """Run "nft --json cmd", return its output as json, ignore errors."""
     if not cmd:
         return {}
@@ -965,7 +966,7 @@ def find_config_files(
 
 
 def _validate_section_format(
-    current_section_id: typing.Optional[str],
+    current_section_id: str | None,
     tokens: list[str],
     fileline: str,
 ) -> str:
@@ -1255,7 +1256,7 @@ def expand_single_line(
     fileline: str,
     line: list[str],
     macros: Macros,
-) -> typing.Optional[list[tuple[str, list[str]]]]:
+) -> list[tuple[str, list[str]]] | None:
     """Expand first macro in line. Repeat call to expand all.
 
     Expansion can return multiple lines.
@@ -2157,7 +2158,7 @@ QUOTE_VALUE = re.compile(r'[a-zA-Z ]')
 
 
 def single_or_set(
-    data: typing.Union[str, list, set],
+    data: str | list | set,
     fileline: str = '',
     quote: bool = False,
 ) -> str:
@@ -2301,9 +2302,9 @@ def mark_match(rule: Rule) -> str:
 
 def time_only_one(
     rule: Rule,
-    oldvalue: typing.Optional[typing.Union[str, list[str]]],
-    newvalue: typing.Union[str, list[str]],
-) -> typing.Union[str, list[str]]:
+    oldvalue: str | list[str] | None,
+    newvalue: str | list[str],
+) -> str | list[str]:
     """Return newvalue if oldvalue is not set, else fail."""
     if oldvalue or not newvalue:
         fail(f'{rule.fileline}Invalid "time" value: {rule.time}')
@@ -2397,7 +2398,7 @@ def rule_statement(
     rule: Rule,
     ipv: int,
     *,
-    force_statement: typing.Optional[str] = None,
+    force_statement: str | None = None,
     do_lograte: bool = True,
 ) -> str:
     """Return rule's rate, log and statement as nft command."""
@@ -2609,7 +2610,7 @@ def parse_interface_names(rule: Rule) -> str:
 
 def parse_protocol_ports(
     rule: Rule, ipv: int, skip_icmp: bool = True
-) -> typing.Optional[str]:
+) -> str | None:
     """Parse tcp/udp sport/dport to nft rule.
 
     This can also handle rules like:
@@ -2665,7 +2666,7 @@ def parse_protocol_ports(
 
 def parse_iplist_to_single_ip(
     rule: Rule, key: str, value: str, ipv: int
-) -> typing.Optional[str]:
+) -> str | None:
     """Parse rule's iplist to single ipaddress, or None."""
     target = []
     for check in value.split():
@@ -2692,7 +2693,7 @@ def parse_iplist_to_single_ip(
     return target[0]
 
 
-def parse_nat_to(rule: Rule, ipv: int) -> typing.Optional[str]:
+def parse_nat_to(rule: Rule, ipv: int) -> str | None:
     """Parse snat/dnat "to" rule to nft rule."""
     if not rule.nat_to:
         return ''
@@ -2713,10 +2714,10 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
     rule: Rule,
     ipv: int,
     *,
-    cast: typing.Optional[str] = None,
+    cast: str | None = None,
     skip_options: bool = True,
     skip_icmp: bool = True,
-) -> typing.Optional[str]:
+) -> str | None:
     """Parse rule's matchers to nft rule.
 
     Return value "None" is "no match, skip rule".
@@ -2839,14 +2840,14 @@ def rule_matchers(  # ruff: ignore[too-many-locals]
 
 
 def output_cast(
-    cast: typing.Optional[str],
+    cast: str | None,
     szone: str,
     dzone: str,
     rules: RuleList,
     ipv: int,
     *,
     after_conntrack: bool = True,
-    includes_this_rule: typing.Optional[str] = None,
+    includes_this_rule: str | None = None,
 ) -> bool:
     """Output all uni/multi/broadcast rules for single zone-zone.
 
@@ -3579,7 +3580,7 @@ def output_footer() -> None:
 
 def save_file(
     filename: pathlib.PosixPath,
-    lines: typing.Union[dict, typing.Iterable[str]],
+    lines: dict | typing.Iterable[str],
 ) -> None:
     """Write lines to file. Use temporary file to make this atomic."""
     if str(filename) == '/dev/null':
@@ -3610,7 +3611,7 @@ def env_cleanup(text: str) -> str:
     return ''.join(char if char.isalnum() else '_' for char in value)
 
 
-def save_final(filename: typing.Optional[pathlib.PosixPath]) -> list[str]:
+def save_final(filename: pathlib.PosixPath | None) -> list[str]:
     """Save final ruleset to file."""
     # Convert to indented lines
     indent = 0
@@ -3945,7 +3946,7 @@ if HAVE_DBUS:
 
         def verify_polkit_privilege(
             self,
-            sender: typing.Optional[str],
+            sender: str | None,
             privilege: str,
         ) -> None:
             """Verify authorization from PolicyKit."""
@@ -4144,7 +4145,7 @@ if HAVE_DBUS:
             out_signature='as',
             sender_keyword='sender',
         )
-        def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
+        def getZones(self, sender: str | None = None) -> list[str]:
             """Get list of available zones.
 
             "localhost" can't have any interfaces so don't include it.
@@ -4164,7 +4165,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
@@ -4189,7 +4190,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Add interface to zone.
 
@@ -4216,7 +4217,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Change interface to zone.
 
@@ -4242,7 +4243,7 @@ if HAVE_DBUS:
             out_signature='as',
             sender_keyword='sender',
         )
-        def getZones(self, sender: typing.Optional[str] = None) -> list[str]:
+        def getZones(self, sender: str | None = None) -> list[str]:
             """Get list of available zones."""
             return super().getZones(sender)
 
@@ -4256,7 +4257,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Remove interface from zone, or from all if zone is empty.
 
@@ -4274,7 +4275,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Add interface to zone.
 
@@ -4292,7 +4293,7 @@ if HAVE_DBUS:
             self,
             zone: str,
             interface: str,
-            sender: typing.Optional[str] = None,
+            sender: str | None = None,
         ) -> str:
             """Change interface to zone.
 
@@ -4307,7 +4308,7 @@ if HAVE_DBUS:
             sender_keyword='sender',
         )
         def getZoneOfSource(
-            self, source: str, sender: typing.Optional[str] = None
+            self, source: str, sender: str | None = None
         ) -> str:
             """Get current zone of source.
 
@@ -4327,7 +4328,7 @@ if HAVE_DBUS:
             sender_keyword='sender',
         )
         def changeZoneOfSource(
-            self, zone: str, source: str, sender: typing.Optional[str] = None
+            self, zone: str, source: str, sender: str | None = None
         ) -> str:
             """Change source to zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
@@ -4342,7 +4343,7 @@ if HAVE_DBUS:
             sender_keyword='sender',
         )
         def removeSource(
-            self, zone: str, source: str, sender: typing.Optional[str] = None
+            self, zone: str, source: str, sender: str | None = None
         ) -> str:
             """Remove source from zone. See above getZoneOfSource()."""
             self.verify_polkit_privilege(sender, 'fi.foobar.Foomuuri1.config')
@@ -4502,7 +4503,7 @@ def iplist_verify_filters(name: str, values: list[str], fileline: str) -> None:
                 )
 
 
-def resolve_one_hostname(hostname: str) -> typing.Optional[set]:
+def resolve_one_hostname(hostname: str) -> set | None:
     """Resolve hostname and return its IP addresses."""
     if ':' in hostname:  # Allow "|missing-ok" but not "|json:"
         warning(f'Iplist filters are not supported for hostnames: {hostname}')
@@ -4526,7 +4527,7 @@ def active_sets() -> set[str]:
     return ret
 
 
-def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
+def get_url(url: str, options: IPListSourceOptions) -> str | None:
     """Download URL and return it as text, or None if failure."""
 
     def get_response_content(response: typing.Any, max_size: int) -> bytearray:
@@ -4585,7 +4586,7 @@ def get_url(url: str, options: IPListSourceOptions) -> typing.Optional[str]:
 def get_file(
     wildcard: str,
     options: IPListSourceOptions,
-) -> typing.Optional[str]:
+) -> str | None:
     """Read all files and return them as single text."""
     wildpath = pathlib.Path(remove_filters(wildcard))
     filenames = sorted(wildpath.parent.glob(wildpath.name))
@@ -4647,8 +4648,8 @@ def seconds_to_duration(seconds: int) -> str:
 
 
 def iterate_set_elements(
-    data: typing.Optional[dict],
-) -> typing.Iterator[tuple[str, typing.Optional[int]]]:
+    data: dict | None,
+) -> typing.Iterator[tuple[str, int | None]]:
     """Iterate elements from "nft --json list set" output."""
     for toplevel in (data or {}).get('nftables', []):
         for elem in toplevel.get('set', {}).get('elem', []):
@@ -4702,7 +4703,7 @@ def command_iplist_status() -> int:
 
 def iplist_element_contains(
     element: str,
-    needle: typing.Union[ipaddress.IPv4Network, ipaddress.IPv6Network],
+    needle: ipaddress.IPv4Network | ipaddress.IPv6Network,
 ) -> bool:
     """Check if needle is a subset of iplist element."""
     if '-' in element:
@@ -4847,7 +4848,7 @@ def command_iplist_flush() -> int:
 
 def lxml_parser(
     source: str, parser: typing.Any, path: str, text: str
-) -> typing.Optional[str]:
+) -> str | None:
     """Parse html/xml text with lxml."""
     # pylint: disable=c-extension-no-member
     try:
@@ -5626,7 +5627,7 @@ def command_iplist_refresh() -> int:
     return ret
 
 
-def get_counter_values() -> typing.Optional[dict[str, tuple[int, int]]]:
+def get_counter_values() -> dict[str, tuple[int, int]] | None:
     """Get named counter values from active ruleset."""
     data = nft_json('list counters table inet foomuuri')
     if not data:  # Foomuuri is not running
@@ -5951,7 +5952,7 @@ def monitor_run_command(  # ruff: ignore[too-many-positional-arguments]
     name: str,
     updown: str,
     extra: str,
-    history: typing.Optional[str],
+    history: str | None,
 ) -> None:
     """Run monitor's external command if configured.
 
@@ -6112,7 +6113,7 @@ def monitor_parse_line(
     cfg['time'] = (cfg['time'] + [stat_ms])[-cfg['statistics_size'] :]
 
 
-def command_option_values(cmd: list[str]) -> dict[str, typing.Optional[str]]:
+def command_option_values(cmd: list[str]) -> dict[str, str | None]:
     """Quick and dirty parser for "--foo n" and "--foo=n"."""
     ret = {}
     for index, item in enumerate(cmd):
