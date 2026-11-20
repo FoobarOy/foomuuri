@@ -103,3 +103,29 @@ entries, which appear after a bridge interface is added or removed.
 See this [issue](https://github.com/FoobarOy/foomuuri/issues/24) for
 instructions on blocking routing of 10.0.0.0/8 and similar private
 networks to the public internet.
+
+
+## Keeping Firewall Rules Active on System Shutdown
+
+The normal startup and shutdown timeline is:
+
+1. Power on
+2. `foomuuri-boot.service` loads the previous known-good firewall rules
+3. `foomuuri.service` start loads the firewall rules from `/etc/foomuuri`
+4. Network interfaces are activated
+5. System is running
+6. Network interfaces are stopped
+7. `foomuuri.service` stop clears the firewall rules
+8. Power off
+
+Because `foomuuri.service` is ordered `Before=network-pre.target`, network
+interfaces are already stopped before Foomuuri clears its rules during
+shutdown.
+
+If you still want to keep Foomuuri rules active during system shutdown,
+override `ExecStop` by running `systemctl edit foomuuri.service` and adding:
+
+```ini
+[Service]
+ExecStop=
+```
