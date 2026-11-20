@@ -16,16 +16,21 @@ computer running Foomuuri, similar to "localhost" in hostnames. See
 [zone names](../basic.md#zone-names) for recommended zone naming.
 
 The example above assumes you are using firewalld D-Bus
-(`dbus_firewalld` config option) emulation, where interfaces are attached
-to and detached from zones by NetworkManager. This is the recommended
-approach for laptops and personal servers, and this config option is
+([`dbus_firewalld`](foomuuri.md#dbus_firewalld) config option) emulation,
+where interfaces are attached to and detached from zones by NetworkManager.
+This is the recommended approach for laptops, and this config option is
 turned on by default when the `foomuuri-firewalld` package is installed.
 
 You can also define a default interface-to-zone mapping by listing
-interface name(s) after the zone name. This is useful for corporate
-servers with a static network configuration, and can be used with or
-without firewalld D-Bus emulation. This mapping is only a default, not
-static - interfaces can still be moved to other zones via D-Bus calls.
+interface name(s) after the zone name. This is useful for servers with a
+static network configuration, and can be used with or without firewalld
+D-Bus emulation. This mapping is only a default, not static - interfaces
+can still be moved to other zones via D-Bus calls.
+
+When all interfaces are static and mapped in `zone`, the `foomuuri-firewalld`
+package is not needed. NetworkManager still manages network interfaces and
+DHCP as usual, except that interface-to-zone assignment is handled by
+Foomuuri's configuration instead of NetworkManager.
 
 ```
 zone {
@@ -44,7 +49,8 @@ and `wg0` would conflict.
 zone {
   localhost
   public     eth0
-  wireguard  wg*  # Matches wg0, wg1, wgfoo, and so on
+  wireguard  wg*                   # Matches wg0, wg1, wgfoo, and so on
+  container  docker* podman* br-*  # Container interfaces
 }
 ```
 

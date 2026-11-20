@@ -153,10 +153,12 @@ use `20`.
 
 ## dbus_firewalld
 
-`dbus_firewalld` (default: `no`) enables or disables firewalld D-Bus
-emulation inside Foomuuri. NetworkManager can instruct firewalld to attach
-and detach interfaces to zones via a D-Bus call. This option enables
-Foomuuri to listen for the same firewalld D-Bus calls and act on them.
+`dbus_firewalld` (default: `no`, enabled by the `foomuuri-firewalld`
+package) enables or disables firewalld D-Bus emulation inside Foomuuri.
+NetworkManager can instruct firewalld to attach and detach interfaces to
+zones via a D-Bus call. This option enables Foomuuri to listen for the same
+firewalld D-Bus calls and act on them. If disabled, interfaces must be
+assigned to zones in the [zone](zone.md) section instead.
 
 Foomuuri also has its own D-Bus interface, which is currently used only by
 the `foomuuri set interface` command. All D-Bus interfaces can be disabled

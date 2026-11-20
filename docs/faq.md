@@ -85,17 +85,26 @@ Alternatively, see this [issue](https://github.com/FoobarOy/foomuuri/issues/9)
 for instructions on integrating Foomuuri with `fail2ban`.
 
 
-## Custom nftables Chains
-
-See this [discussion](https://github.com/FoobarOy/foomuuri/discussions/31)
-for instructions on defining custom nftables chains and jumping to them.
-
-
 ## QEMU/libvirt and vnet Interfaces in a Bridge
 
 See this [discussion](https://github.com/FoobarOy/foomuuri/discussions/15)
 for instructions on silently dropping `OUTPUT REJECT IN= OUT=vnetXX` log
 entries, which appear after a bridge interface is added or removed.
+
+
+## Docker
+
+Docker 29.9.3 and newer check whether anything owns the
+`org.fedoraproject.FirewallD1` D-Bus name to detect if firewalld is
+running. When `foomuuri-firewalld`
+([`dbus_firewalld`](config/section/foomuuri.md#dbus_firewalld))
+is enabled, Docker switches to firewalld mode and makes D-Bus calls,
+which Foomuuri does not implement, causing `dockerd` to exit.
+
+To use Docker 29.9.3+ with Foomuuri, uninstall the `foomuuri-firewalld`
+package (or set [`dbus_firewalld`](config/section/foomuuri.md#dbus_firewalld)
+to `no`) so that Docker falls back to direct `nft` calls, and configure
+interface-to-zone mappings in the [`zone`](config/section/zone.md) section.
 
 
 ## Preventing Private Networks from Routing to the Public Internet
@@ -129,3 +138,9 @@ override `ExecStop` by running `systemctl edit foomuuri.service` and adding:
 [Service]
 ExecStop=
 ```
+
+
+## Custom nftables Chains
+
+See this [discussion](https://github.com/FoobarOy/foomuuri/discussions/31)
+for instructions on defining custom nftables chains and jumping to them.
