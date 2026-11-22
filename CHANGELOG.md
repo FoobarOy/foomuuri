@@ -8,6 +8,7 @@
 * BREAKING CHANGE: Iplist URL/file content type defaults to `overwrite=no`.
   Now all content types default to `no`.
 * Add `hdrlength` matcher to check IP packet header length in bytes.
+* Add `iperf3` macro to default services.
 
 ## 0.34 (2026-10-16)
 
