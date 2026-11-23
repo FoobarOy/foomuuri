@@ -49,8 +49,9 @@ and `wg0` would conflict.
 zone {
   localhost
   public     eth0
-  wireguard  wg*                   # Matches wg0, wg1, wgfoo, and so on
-  container  docker* podman* br-*  # Container interfaces
+  wireguard  wg*                    # Matches wg0, wg1, wgfoo, and so on
+  container  docker* podman* br-*   # Container interfaces
+  vm         virbr* vboxnet* vmnet* # Virtual machine interfaces
 }
 ```
 
