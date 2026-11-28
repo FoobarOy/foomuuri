@@ -3670,17 +3670,20 @@ def apply_final() -> int:
     good_file = state_file('good_file')
     next_file = state_file('next_file')
     if INTERNAL.command == 'check':
+        # Check ruleset with "nft check" command.
+        # Warning: There are cases where "nft check" success but
+        # nft detects error when loading the ruleset ("start").
         if INTERNAL.root_power:  # "nft check" requires root
             ret = run_program_rc(
                 CONFIG.nft_bin + ['--check', '--file', next_file]
             )
+            if ret:
+                fail(f'nft failed to check ruleset, error code {ret}', False)
+            else:
+                verbose('check success', 0)
         else:
             ret = 0
             warning('Not running as "root", skipping "nft check"')
-        if ret:
-            fail(f'Nftables failed to check ruleset, error code {ret}', False)
-        else:
-            verbose('check success', 0)
         return ret
 
     # Run pre_start / pre_stop hook
@@ -3691,9 +3694,9 @@ def apply_final() -> int:
         CONFIG.nft_bin + ['--file', next_file], print_output=False
     )
 
-    # Check failure
+    # Loading failed. Currently active ruleset is kept unchanged.
     if ret:
-        fail(f'Failed to load ruleset to nftables, error code {ret}', False)
+        fail(f'Failed to load ruleset to kernel, error code {ret}', False)
         return 1
 
     # Success. Rename "next" to "good", signal dbus to reload and run hook
